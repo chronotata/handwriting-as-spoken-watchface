@@ -66,10 +66,23 @@
 #define INDENT 9       /* staircase step per row                    */
 #define DATE_BAND 36    /* height reserved for the date line         */
 
-#define ROW_GAP 6       /* ink-to-ink gap between rows, uniform             */
-                        /* Every gap on screen is exactly this. To open one  */
-                        /* row's spacing, add blank pixels to that word's PNG */
-                        /* and re-run tune.py - the layout stacks canvases.   */
+#define ROW_GAP 4       /* gap between stacked CANVASES.                      */
+                        /*                                                    */
+                        /* Canvas heights are uniform per size family, so the  */
+                        /* row pitch is constant (TIME_BOX_H + ROW_GAP) and    */
+                        /* baselines land on the same lines all day. That is   */
+                        /* what stops a word's neighbours moving when it is    */
+                        /* replaced by a different word.                       */
+                        /*                                                    */
+                        /* This is therefore the MINIMUM visible ink gap, not  */
+                        /* the actual one: it is what you see when a full      */
+                        /* descender sits directly above a full ascender       */
+                        /* ("eight o' clock"). Everywhere else the gap opens   */
+                        /* up by whatever ink the two words do not use - up to */
+                        /* ROW_GAP + 31 for "to" above "one".                  */
+                        /*                                                    */
+                        /* Raising this pushes the worst-case phrase into the  */
+                        /* date; tools/tune.py checks and refuses to generate. */
 #define MIN_TRAIL 6     /* horizontal gap before an inline "minutes" */
 
 /*
@@ -80,15 +93,16 @@
  * the rows above float, upward into the space reserved for the tallest case
  * ("twenty-" / "eight" / "past" / "midnight" at :28).
  */
-#define REL_TOP 100
+#define REL_TOP 96
 
 #define DATE_SPACE 7        /* gap before the month, and before the year   */
-#define DATE_TOP_LIMIT 190  /* time rows must stay above this (the date's  */
-                            /* ascenders reach up to here)                 */
+#define DATE_TOP_LIMIT 194  /* time rows must stay above this (the date's  */
+                            /* ascenders reach up to here). Keep this      */
+                            /* 2px above DATE_BASELINE - DATE_BOX_BASE.    */
 
 #define ORD_RISE 6           /* how far the ordinal's baseline sits above */
                              /* the day/year baseline                     */
-#define DATE_BASELINE 211   /* fixed for every date, so months without    */
+#define DATE_BASELINE 215   /* fixed for every date, so months without    */
                             /* descenders do not sit lower than those with */
 
 /* ---------------------------------------------------------------- */

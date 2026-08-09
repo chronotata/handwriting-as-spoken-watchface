@@ -9,11 +9,26 @@ to the pixel and the reveal animation leaked fragments for three iterations.
 With images the geometry is exact: the reveal draws a sub-rectangle, so nothing
 unrevealed is ever drawn at all.
 
-Canvases are TIGHT around the ink and the layout stacks them with a constant
-gap, so every visual gap on screen is identical - and any one of them can be
-opened later by adding blank rows to that word's PNG. Padding an image IS the
-spacing control, which matters most for version 2 where these are replaced with
-real handwriting.
+Canvas heights are UNIFORM PER SIZE FAMILY
+------------------------------------------
+Every word in a family gets the same canvas height - the union of the family's
+ink extents, ascender line to descender line - with the baseline at the same
+offset in every one. Widths stay tight to each word's own ink.
+
+That means the layout's row pitch is constant, so a word's neighbours never
+move when it is replaced by a different word: "twenty-" holds still as "three"
+becomes "four", and baselines land on the same lines all day, like ruled paper.
+
+It costs the property the tight-canvas version had - that every visual ink gap
+was exactly ROW_GAP. Now ROW_GAP is only the MINIMUM gap, reached when a full
+descender sits above a full ascender; elsewhere the gap opens up by whatever
+ink the two words do not use. That trade was made deliberately: even baselines
+matter more than even ink gaps, both on screen and as a substrate to draw real
+handwriting over in version 2.
+
+The padding also exists to be drawn into. A tight "one" was 16px tall and left
+nowhere to put a flourish; on the family box it is 47px with room above and
+below the baseline.
 
     python tools/tune.py        # requires Pillow
 """
@@ -93,6 +108,18 @@ def read_sizes():
     return out
 
 
+def read_layout():
+    """The layout constants needed for the vertical budget check."""
+    text = CONFIG.read_text()
+    out = {}
+    for key in ("ROW_GAP", "REL_TOP", "DATE_BASELINE", "SCREEN_H"):
+        m = re.search(r"^#define\s+%s\s+(-?\d+)" % key, text, re.M)
+        if not m:
+            sys.exit("could not find %s in config.h" % key)
+        out[key] = int(m.group(1))
+    return out
+
+
 def half_space(font):
     return max(1, round((font.getbbox("x x")[2] - font.getbbox("xx")[2]) / 2))
 
@@ -146,6 +173,75 @@ def level_colour(i):
     return CH[i & 3], CH[(i >> 2) & 3], 0
 
 
+def family_boxes(rendered):
+    """-> {family: (max ascent, max descent)} over every word in that family.
+
+    Font metrics are deliberately NOT used here. A script face's declared
+    ascent/descent are far larger than any glyph it actually draws, and padding
+    to them would waste 20-odd pixels a row that this layout cannot spare. The
+    union of real ink extents is the tightest box that still holds every word.
+    """
+    box = {}
+    for _name, fam, _text, crop, baseline in rendered:
+        asc, desc = baseline, crop.height - baseline
+        a, d = box.get(fam, (0, 0))
+        box[fam] = (max(a, asc), max(d, desc))
+    return box
+
+
+def pad_to_box(crop, baseline, box):
+    """Place a tight crop on its family box, aligned by BASELINE - which is the
+    whole point: every word in a family then shares one baseline offset, so
+    swapping one for another moves nothing."""
+    asc, desc = box
+    out = Image.new("L", (crop.width, asc + desc), 0)
+    out.paste(crop, (0, asc - baseline))
+    return out
+
+
+def check_fit(rendered, box, layout):
+    """Does the tallest possible phrase still clear the screen and the date?
+
+    The worst case is a split minute word: four TIME rows stacked
+    ("twenty-" / "eight" / "past" / "midnight" at :28). This checks the
+    vertical budget only - pure arithmetic over the boxes and the config
+    constants. It is a guard rail, NOT verification: the layout itself is
+    verified by compiling handwritten.c against a Pebble stub and sweeping all
+    1440 minutes, per CONTEXT.md section 5.
+    """
+    A, D = box["TIME"]
+    H, G = A + D, layout["ROW_GAP"]
+    rel_top = layout["REL_TOP"]
+    date_ink_top = layout["DATE_BASELINE"] - box["DATE"][0]
+
+    asc = {t: b for _n, f, t, _c, b in rendered if f == "TIME"}
+
+    # Row 0 of a split phrase is always "twenty-"; its unused ascent is the
+    # only slack at the top of the screen.
+    top_canvas = rel_top - 2 * (H + G)
+    ink_top = top_canvas + (A - asc["twenty-"])
+    # The hour row's descent is fully used by "midnight", so no slack below.
+    ink_bottom = rel_top + 2 * H + G
+
+    problems = []
+    if ink_top < 0:
+        problems.append("top row is clipped by %dpx (lower REL_TOP or ROW_GAP)"
+                        % -ink_top)
+    if ink_bottom > date_ink_top - 1:
+        problems.append("hour row collides with the date by %dpx "
+                        "(raise DATE_BASELINE, or lower REL_TOP/ROW_GAP)"
+                        % (ink_bottom - date_ink_top + 1))
+
+    print("\nvertical budget (worst case, :28 'twenty-eight past midnight')")
+    print("  TIME box      %dpx  (ascent %d / descent %d)" % (H, A, D))
+    print("  phrase ink    %d..%d" % (ink_top, ink_bottom))
+    print("  date ink top  %d          clearance %dpx"
+          % (date_ink_top, date_ink_top - ink_bottom))
+    print("  min visible gap between rows: %dpx (= ROW_GAP)" % G)
+    if problems:
+        sys.exit("\nDOES NOT FIT:\n  - " + "\n  - ".join(problems))
+
+
 def to_palette(img):
     """Quantise to LEVELS levels. Index 0 is transparent; the C rewrites the
     palette at load so ink and paper colours stay configurable."""
@@ -164,33 +260,58 @@ def main():
     if not TTF.exists():
         sys.exit("missing font: %s" % TTF)
     sizes = read_sizes()
+    layout = read_layout()
     IMGDIR.mkdir(parents=True, exist_ok=True)
     EXPORT.mkdir(parents=True, exist_ok=True)
 
-    rows, media, total = [], [], 0
+    # Pass 1: render tight, so the family boxes can be measured.
+    rendered = []
     for name, fam, text in words():
         crop, baseline = render_word(text, sizes[fam])
+        rendered.append((name, fam, text, crop, baseline))
+
+    box = family_boxes(rendered)
+    check_fit(rendered, box, layout)
+
+    # Pass 2: pad every word onto its family box and write it out.
+    rows, media, total = [], [], 0
+    for name, fam, text, crop, baseline in rendered:
+        img = pad_to_box(crop, baseline, box[fam])
         stem = name.lower()
         path = IMGDIR / ("%s.png" % stem)
-        to_palette(crop).save(path, transparency=0)
+        to_palette(img).save(path, transparency=0)
         total += path.stat().st_size
-        crop.save(EXPORT / ("%s.png" % stem))   # template to draw over for v2
+        img.save(EXPORT / ("%s.png" % stem))   # template to draw over for v2
 
-        rows.append((name, crop.width, crop.height, baseline, text))
+        rows.append((name, img.width, img.height, box[fam][0], text))
         media.append({"type": "bitmap", "name": name.upper(),
                       "file": "images/%s.png" % stem,
                       "memoryFormat": "4BitPalette",
                       "storageFormat": "pbi"})
 
     out = ["/* GENERATED by tools/tune.py - do not edit. */",
-           "/* Canvases are tight around the ink; the layout stacks them with */",
-           "/* a constant gap, so padding a PNG opens that row's spacing. */",
-           "", "#pragma once", "#include <stdint.h>", "",
-           "typedef struct {",
-           "  uint32_t res;   /* resource id            */",
-           "  uint8_t w, h;   /* canvas size in pixels  */",
-           "  uint8_t base;   /* canvas top -> baseline */",
-           "} WordGeom;", "", "typedef enum {"]
+           "/* Canvas HEIGHT and BASELINE are uniform within a size family, so */",
+           "/* swapping one word for another moves nothing around it. Widths   */",
+           "/* stay tight to each word's own ink. */",
+           "", "#pragma once", "#include <stdint.h>", ""]
+    out.append("/* Family boxes: ascent + descent, and the shared baseline offset. */")
+    for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD"):
+        a, d = box[fam]
+        out.append("#define %s_BOX_H %d" % (fam, a + d))
+        out.append("#define %s_BOX_BASE %d" % (fam, a))
+    out.append("")
+    out.append("/* Ink ascent of \"twenty-\", the top row of the tallest phrase. The")
+    out.append("   difference from TIME_BOX_BASE is the only slack at the top of the")
+    out.append("   screen, so config.h's budget assertion needs it. */")
+    out.append("#define SPLIT_HEAD_ASC %d"
+               % next(b for _n, f, t, _c, b in rendered
+                      if f == "TIME" and t == "twenty-"))
+    out += ["",
+            "typedef struct {",
+            "  uint32_t res;   /* resource id            */",
+            "  uint8_t w, h;   /* canvas size in pixels  */",
+            "  uint8_t base;   /* canvas top -> baseline */",
+            "} WordGeom;", "", "typedef enum {"]
     for name, w, h, base, text in rows:
         out.append("  %s,%s/* %s */" % (name, " " * max(1, 18 - len(name)), text))
     out += ["  W_COUNT", "} WordId;", "",
@@ -205,13 +326,14 @@ def main():
     PACKAGE.write_text(json.dumps(pkg, indent=2) + "\n")
 
     widest = max(rows, key=lambda r: r[1])
-    tallest = max(rows, key=lambda r: r[2])
-    print("wrote %d images, %.1f kB -> resources/images/" % (len(rows), total / 1024))
+    print("\nwrote %d images, %.1f kB -> resources/images/" % (len(rows), total / 1024))
     print("wrote src/c/geometry.h and package.json")
     print("wrote %d templates -> handwriting-templates/  (draw over these for v2)"
           % len(rows))
     print("widest  %-12r %3dpx" % (widest[4], widest[1]))
-    print("tallest %-12r %3dpx" % (tallest[4], tallest[2]))
+    print("family boxes  " + "  ".join(
+        "%s %dpx/base %d" % (f, box[f][0] + box[f][1], box[f][0])
+        for f in ("TIME", "SOLO", "MINS", "DATE", "ORD")))
     print("\nnext:  pebble build && pebble install --emulator emery")
 
 

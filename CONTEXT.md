@@ -1,8 +1,10 @@
 # Handwritten (British) — Project Context
 
 Status: **v1.1 built, installed, and confirmed working on both the emulator
-and real Pebble Time 2 hardware.** This document describes what shipped and
-why. For the blow-by-blow of how it got here — three failed masking schemes,
+and real Pebble Time 2 hardware.** Canvas heights were made uniform per size
+family after v1.1 (§2, §3.2); that change is verified by arithmetic and a
+1440-minute layout sweep but has **not yet been seen on hardware**. This
+document describes what shipped and why. For the blow-by-blow of how it got here — three failed masking schemes,
 the font-vs-bitmap decision, the split-line layout exploration — see the
 project's chat history; it isn't repeated here.
 
@@ -35,15 +37,39 @@ of an image (`gbitmap_create_as_sub_bitmap`) rather than drawing everything
 and then hiding part of it. Nothing unrevealed is ever drawn, so nothing
 can leak.
 
-**Canvas-driven layout.** Each PNG is cropped tight to its own ink — no
-shared canvas height across a word family. The C stacks these canvases
-directly, so the padding baked into a word's PNG *is* its spacing. Every
-visual gap between stacked rows is therefore identical (`ROW_GAP`, 6px),
-and can be opened for one specific row later by adding blank rows to that
-word's image and re-running `tune.py` — no code change. This was chosen
-deliberately over a denser (43px) alternative that would have produced
-uneven, non-tunable gaps; 40px was accepted as the trade-off for a real
-tuning lever, which also matters directly for v2 hand-drawn artwork.
+**Canvas-driven layout, uniform per family.** Every PNG in a size family
+shares one canvas *height* — the union of that family's ink extents,
+ascender line to descender line — with the baseline at the same offset in
+all of them. Widths stay tight to each word's own ink. `tune.py` measures
+the boxes and emits them as `TIME_BOX_H` / `TIME_BOX_BASE` and so on.
+
+The consequence is a **constant row pitch** (`TIME_BOX_H + ROW_GAP`, 51px).
+A word's neighbours cannot move when it is replaced by a different word,
+and baselines land on the same lines all day — the stacked layout uses
+y = 25 / 76 / 127 / 178, always. See §3.2 for why that matters.
+
+Families are the five *size* families (`TIME`, `SOLO`, `MINS`, `DATE`,
+`ORD`), not roles. Role-based families were considered and rejected because
+roles overlap: *four* is both a minute word and an hour word, so role
+families would need two rendered copies of every shared word. `TIME`
+contains every role group, so unifying it unifies all of them for free.
+
+Font metrics are deliberately not used to size the box. A script face's
+declared ascent and descent are far larger than anything it actually draws,
+and padding to them would waste around 20px a row this layout cannot spare.
+
+**This reverses the original tight-canvas decision, on purpose.** Tight
+canvases made every visual ink gap exactly `ROW_GAP`; that is now gone.
+`ROW_GAP` is only the *minimum* gap, seen when a full descender sits
+directly above a full ascender (*"eight o' clock"*); elsewhere it opens up
+by whatever ink the two words leave unused, to `ROW_GAP + 31` for *to*
+above *one*. Even ink gaps were traded for even baselines because ruled
+paper is the better model for a handwriting face, and because it is a far
+better substrate to draw v2 artwork over — a tight *one* was 16px tall with
+nowhere to put a flourish; on the family box it is 47px.
+
+Per-row spacing is still tunable the same way: add blank rows to a word's
+PNG and re-run `tune.py`.
 
 **Colour: 4-bit palettised, decoded not indexed.** Images carry 16 shades
 so edges can be antialiased. The source palette colours are arbitrary —
@@ -82,12 +108,40 @@ mean neither ever redraws unless the word itself changes.
 
 ### 3.2 Vertical anchoring
 
-The relation row's canvas top is pinned at `REL_TOP` (100); the hour row
+The relation row's canvas top is pinned at `REL_TOP` (96); the hour row
 stacks directly below it. Both hold position for the whole half-hour
 (`:01`–`:30` and `:31`–`:59`) and are **never redrawn** by a minute tick
 that only changes the row above them. Only the floating row(s) above
 `REL_TOP` move, into space reserved for the worst case: `twenty-` / `eight`
 / `past` / `midnight` at `:28`.
+
+Because the row pitch is now constant (§2), the rows above `REL_TOP` no
+longer move either, as long as the row *count* is unchanged. Previously
+`twenty-` shifted by up to 12px whenever the second half of a split word
+changed height — *twenty-three* → *twenty-four* moved it 12px and
+re-animated it — because rows were stacked upward by measured height.
+Sweeping all 1440 minutes, that alone was **336 redraws a day**, and it is
+now zero:
+
+| redraws per day | tight | uniform |
+|---|---|---|
+| genuinely a new word (unavoidable) | 1819 | 1819 |
+| same word, position only | 747 | **411** |
+
+The 411 that remain are dominated by `minutes` (288), which moves
+*horizontally*: in the split layout its x is `host.x + host.width +
+MIN_TRAIL`, chasing the width of *one*..*nine* (41–77px). Uniform heights
+cannot fix that; pinning it to a fixed column would, at the cost of a
+visible gap after short words. Left as-is deliberately.
+
+**The vertical budget is tight and is checked, not assumed.** The worst case
+is four `TIME` rows: 4 × 47 + 3 × `ROW_GAP`. At the shipped constants the
+phrase ink spans y = 1..194 with the date's ascenders starting at 196 — 2px
+of clearance. `tools/tune.py` recomputes this from the real ink extents on
+every run and refuses to generate if it fails, naming the constant to
+change; `handwritten.c` carries `_Static_assert`s as a backstop for the case
+where `config.h` is edited without re-running `tune.py`. Raising
+`FONT_SIZE_TIME` or `ROW_GAP` is what will trip them.
 
 ### 3.3 Compound and split words
 
@@ -139,9 +193,9 @@ both sides.
 | `FONT_SIZE_DATE` | 24 | day digits, year, month |
 | `FONT_SIZE_ORD` | 15 | st/nd/rd/th |
 | `INDENT` | 9 | staircase step |
-| `ROW_GAP` | 6 | uniform ink-to-ink gap between stacked rows |
-| `REL_TOP` | 100 | pinned canvas top of the relation row |
-| `DATE_BASELINE` | 211 | fixed regardless of month/day |
+| `ROW_GAP` | 4 | canvas-to-canvas gap; the *minimum* visible ink gap |
+| `REL_TOP` | 96 | pinned canvas top of the relation row |
+| `DATE_BASELINE` | 215 | fixed regardless of month/day |
 | `ORD_RISE` | 6 | ordinal's baseline rise above the date baseline |
 | `DATE_SPACE` | 7 | gap before the month, and before the year |
 | `MIN_TRAIL` | 6 | horizontal gap before an inline `minutes` |
@@ -150,6 +204,9 @@ both sides.
 **Changing a `FONT_SIZE_*` requires re-running `tools/tune.py`** — it
 re-renders every affected image and regenerates `geometry.h`. Changing any
 other constant only needs a rebuild.
+
+`DATE_TOP_LIMIT` (194) is not independent: keep it 2px above
+`DATE_BASELINE - DATE_BOX_BASE`. A `_Static_assert` enforces it.
 
 ---
 
@@ -251,7 +308,16 @@ this in any project, not just this one:
 Not started. The architecture is already shaped for it:
 
 - `tools/tune.py` exports `handwriting-templates/` — all 62 words as plain
-  PNGs at their exact final canvas sizes, ready to draw over.
+  PNGs at their exact final canvas sizes, ready to draw over. Since the
+  family-box change these are uniform per family (47px for time words, 29px
+  for date atoms) with the baseline at a fixed offset in every one, so they
+  behave like ruled paper and leave real room above and below the baseline.
+- Keep the canvas height and the baseline position when redrawing. Widths
+  are free — they are per-word and only affect horizontal spacing.
+- `minute`/`minutes` are the exception at 15px with the baseline flush to
+  the bottom: the rendered font has no descender there, so no room was
+  reserved. If hand-drawn versions want a looping *y*, that family's box
+  needs padding first (add blank rows to both PNGs and re-run `tune.py`).
 - Swapping in real handwriting is a resource-and-`geometry.h` change; no
   layout, anchoring, or animation code should need to move.
 - The same four-level colour ceiling applies to scanned artwork as to the

@@ -18,6 +18,33 @@
 #include "config.h"
 #include "geometry.h"
 
+#ifndef TIME_BOX_H
+#error "src/c/geometry.h predates uniform family boxes. Run: python tools/tune.py"
+#endif
+
+/*
+ * Backstop for the vertical budget. tools/tune.py performs the full check with
+ * real per-word ink extents and refuses to generate if it fails; this catches
+ * the case where config.h is edited afterwards and the build is run without
+ * re-running tune.py.
+ *
+ * The tallest phrase is a split minute word - four TIME rows, "twenty-" /
+ * "eight" / "past" / "midnight" at :28 - anchored by the relation row at
+ * REL_TOP. The hour row's canvas bottom must clear the date's ascenders.
+ */
+_Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP
+                 < DATE_BASELINE - DATE_BOX_BASE,
+               "hour row overlaps the date: lower REL_TOP or ROW_GAP, "
+               "or raise DATE_BASELINE");
+_Static_assert(REL_TOP - 2 * (TIME_BOX_H + ROW_GAP)
+                 + (TIME_BOX_BASE - SPLIT_HEAD_ASC) >= 0,
+               "top row is clipped by the top of the screen: raise REL_TOP, "
+               "or lower ROW_GAP or FONT_SIZE_TIME");
+_Static_assert(DATE_TOP_LIMIT <= DATE_BASELINE - DATE_BOX_BASE,
+               "DATE_TOP_LIMIT is below the date's own ascenders");
+_Static_assert(DATE_BASELINE + (DATE_BOX_H - DATE_BOX_BASE) <= SCREEN_H,
+               "date descenders fall off the bottom of the screen");
+
 /* ------------------------------------------------------------------ */
 /* Rows and elements                                                   */
 /* ------------------------------------------------------------------ */
