@@ -24,11 +24,6 @@ it's actually said out loud — *"quarter past three"*, *"twenty-nine minutes
 to midnight"*, *"half past seven"* — handwritten across the screen, one
 word at a time, rather than reading digits off a clock face.
 
-<p align="center">
-  <!-- Replace with a real photo of it running on your watch, and/or the mockups in this repo -->
-  <img src="mock-FINAL.png" width="640" alt="Layout mockups">
-</p>
-
 ## Features
 
 - **Traditional time-telling** — *past*/*to* the hour, *quarter*,
@@ -45,15 +40,19 @@ word at a time, rather than reading digits off a clock face.
 
 ## Status
 
-Working end to end: builds clean, and has been installed and confirmed
-correct on both the Pebble emulator and a real Pebble Time 2. Consider this
-the first tagged version — a stable point to branch further changes from.
+**v1.1 — working end to end.** Builds clean, and has been installed and
+confirmed correct on both the Pebble emulator and a real Pebble Time 2.
+Emery (Pebble Time 2, 200×228) is the only target platform for now; other
+Pebble hardware is deferred.
+
+Treat this as the stable point to branch further changes from.
 
 **Next planned step (v2):** replacing the rendered typeface with the
 maintainer's own handwriting. The rendering pipeline already exports a full
-set of correctly-sized template images for this (see
-`handwriting-templates/` after running `tools/tune.py`) — turning that into
-finished artwork just hasn't happened yet.
+set of correctly-sized template images for this — the 62 PNGs in
+`handwriting-templates/`, each at the exact canvas size its finished
+artwork needs to be. Swapping them in is a resources-and-`geometry.h`
+change; no layout, anchoring, or animation code should need to move.
 
 ## Building it yourself
 

@@ -1,7 +1,7 @@
 {
-  "name": "handwritten-british",
-  "author": "you",
-  "version": "2.0.0",
+  "name": "handwriting-as-spoken-watchface",
+  "author": "chronotata",
+  "version": "1.1.0",
   "keywords": [
     "pebble-app"
   ],
@@ -10,7 +10,7 @@
     "pebble-clay": "^1.0.4"
   },
   "pebble": {
-    "displayName": "Handwritten",
+    "displayName": "Handwritten As Spoken",
     "uuid": "ee702255-db04-45b0-8659-0a9843ff6a8f",
     "sdkVersion": "3",
     "enableMultiJS": true,
