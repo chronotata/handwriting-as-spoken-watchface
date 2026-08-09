@@ -1,0 +1,119 @@
+/*
+ * config.h - every tunable number in one place.
+ *
+ * IMPORTANT: after changing any FONT_SIZE_* value, run
+ *
+ *     python tools/tune.py
+ *
+ * That regenerates the font entries in package.json and rebuilds inktable.h to
+ * match. The SDK takes a font's rasterised size from the trailing number in its
+ * resource name, so if the two drift apart the build silently keeps the old
+ * size and nothing will look right.
+ */
+
+#pragma once
+
+/* ---------------------------------------------------------------- */
+/* Screen (Emery / Pebble Time 2)                                    */
+/* ---------------------------------------------------------------- */
+
+#define SCREEN_W 200
+#define SCREEN_H 228
+
+/* ---------------------------------------------------------------- */
+/* Font sizes - BUILD TIME ONLY. Re-run tools/tune.py after editing. */
+/* Maximum recommended size is 48.                                   */
+/* ---------------------------------------------------------------- */
+
+#define FONT_SIZE_TIME 40  /* minute number, past/to, hour word */
+#define FONT_SIZE_SOLO 46  /* midnight / midday standing alone  */
+#define FONT_SIZE_MINS 25  /* the small "minute(s)" annotation  */
+#define FONT_SIZE_DATE 24  /* day number and year               */
+#define FONT_SIZE_ORD  15  /* the superscript st/nd/rd/th       */
+
+/* ---------------------------------------------------------------- */
+/* Vertical offsets - compile-time defaults.                         */
+/*                                                                   */
+/* These are also live sliders on the phone settings page, so you can */
+/* nudge rows on the watch without rebuilding. Anything set there     */
+/* overrides the values here.                                        */
+/*                                                                   */
+/* SIGN: standard screen coordinates. NEGATIVE moves a row UP,        */
+/* POSITIVE moves it DOWN. Offset +1 on the hour row puts every hour  */
+/* word one pixel lower.                                             */
+/*                                                                   */
+/* Offsets are applied at draw time only. They never feed back into   */
+/* the gap or anchor calculations, so nudging one row cannot move     */
+/* another - but a large offset can push a row into its neighbour,    */
+/* because nothing re-flows to compensate.                            */
+/* ---------------------------------------------------------------- */
+
+#define OFFSET_MINUTE   0  /* row 0   - the minute number       */
+#define OFFSET_MINUTES  0  /* row 1.5 - "minute" / "minutes"    */
+#define OFFSET_RELATION 0  /* row 1   - "past" / "to"           */
+#define OFFSET_HOUR     0  /* row 2   - the hour word           */
+#define OFFSET_SOLO     0  /* solo midnight / midday            */
+#define OFFSET_DATE     0  /* the date line                     */
+
+#define OFFSET_MIN -15
+#define OFFSET_MAX  15
+
+/* ---------------------------------------------------------------- */
+/* Layout                                                            */
+/* ---------------------------------------------------------------- */
+
+#define MARGIN 10       /* left and right screen margin              */
+#define INDENT 9       /* staircase step per row                    */
+#define DATE_BAND 36    /* height reserved for the date line         */
+
+#define ROW_GAP 6       /* ink-to-ink gap between rows, uniform             */
+                        /* Every gap on screen is exactly this. To open one  */
+                        /* row's spacing, add blank pixels to that word's PNG */
+                        /* and re-run tune.py - the layout stacks canvases.   */
+#define MIN_TRAIL 6     /* horizontal gap before an inline "minutes" */
+
+/*
+ * Fixed canvas top for the relation row ("past" / "to").
+ *
+ * Pinning this is what stops the relation and hour rows drifting as the minute
+ * ticks - they hold position for a whole half hour and are never redrawn. Only
+ * the rows above float, upward into the space reserved for the tallest case
+ * ("twenty-" / "eight" / "past" / "midnight" at :28).
+ */
+#define REL_TOP 100
+
+#define DATE_SPACE 7        /* gap before the month, and before the year   */
+#define DATE_TOP_LIMIT 190  /* time rows must stay above this (the date's  */
+                            /* ascenders reach up to here)                 */
+
+#define ORD_RISE 6           /* how far the ordinal's baseline sits above */
+                             /* the day/year baseline                     */
+#define DATE_BASELINE 211   /* fixed for every date, so months without    */
+                            /* descenders do not sit lower than those with */
+
+/* ---------------------------------------------------------------- */
+/* Animation                                                         */
+/* ---------------------------------------------------------------- */
+
+#define WRITE_SPEED 260   /* reveal speed, pixels per second */
+#define WRITE_FRAME_MS 33 /* redraw interval                 */
+
+/*
+ * The reveal mask covers each row's whole vertical band, bounded by the ink of
+ * the rows above and below, rather than a rectangle fitted to the glyphs. That
+ * makes it independent of font metrics, which is deliberate: fitting the mask
+ * to the text repeatedly let a few pixels of tall letters and descenders show
+ * through, because neither Pebble's reported text box nor the generated ink
+ * table describes a script face's true extents exactly.
+ *
+ * There is nothing to tune here as a result. If fragments ever appear again,
+ * the cause is the LAYOUT, not the mask - most likely OPTICAL_GAP being small
+ * enough that two rows' ink nearly touches.
+ */
+
+/* ---------------------------------------------------------------- */
+/* Wording                                                           */
+/* ---------------------------------------------------------------- */
+
+#define MIDDAY_WORD "midday"
+#define WITCHING_HOUR 3   /* easter egg fires at this hour, on the hour */

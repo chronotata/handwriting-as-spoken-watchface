@@ -1,0 +1,16 @@
+# Pebble build output — regenerate with `pebble build`
+build/
+
+# Node
+node_modules/
+
+# Windows download markers, picked up when dragging files in via WSL
+*:Zone.Identifier
+
+# Python
+__pycache__/
+*.pyc
+
+# OS noise
+.DS_Store
+Thumbs.db

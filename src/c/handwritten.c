@@ -1,0 +1,709 @@
+/*
+ * Handwritten (British)
+ *
+ * Tells the time the way it is spoken: "quarter past three", "two to six",
+ * "twenty-seven minutes to midnight", "midnight".
+ *
+ * Rewritten from the 2014 bitmap original for the Pebble Time 2 (Emery,
+ * 200 x 228). See CONTEXT.md for the layout rules and why they are as they are;
+ * every tunable number is in config.h.
+ *
+ * Words are pre-rendered images, not font text. That is deliberate: drawing
+ * text meant guessing where Pebble had put the glyphs in order to reveal them a
+ * slice at a time, and the guess was never exact. With images the reveal draws
+ * a sub-rectangle, so nothing unrevealed is ever drawn at all.
+ */
+
+#include <pebble.h>
+#include "config.h"
+#include "geometry.h"
+
+/* ------------------------------------------------------------------ */
+/* Rows and elements                                                   */
+/* ------------------------------------------------------------------ */
+
+typedef enum {
+  ROW_MINUTE = 0,   /* the minute number, or the first half of a split one */
+  ROW_MINUTES,      /* "minute" / "minutes"                                */
+  ROW_RELATION,     /* "past" / "to"                                       */
+  ROW_HOUR,         /* the hour word                                       */
+  ROW_SOLO,         /* midnight / midday standing alone                    */
+  ROW_DATE,
+  ROW_COUNT
+} RowId;
+
+#define MAX_ELEMENTS 16
+
+typedef struct {
+  uint8_t word;     /* WordId */
+  uint8_t row;      /* RowId  */
+  int16_t x;
+  int16_t top;      /* canvas top, before the row offset */
+  bool animate;
+} Element;
+
+typedef struct {
+  Element items[MAX_ELEMENTS];
+  int count;
+} Face;
+
+/* ------------------------------------------------------------------ */
+/* State                                                               */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+  GColor paper;
+  GColor ink;
+  bool show_date;
+  int8_t offset[ROW_COUNT];
+} Settings;
+
+#define SETTINGS_KEY 2
+
+static Settings s_settings;
+static Window *s_window;
+static Layer *s_layer;
+
+static Face s_face, s_prev;
+static bool s_have_prev;
+
+static GBitmap *s_cache[W_COUNT];   /* only the words on screen are loaded */
+
+static AppTimer *s_timer;
+static int s_progress, s_total;
+static int s_last_yday = -1;
+
+/* ------------------------------------------------------------------ */
+/* Vocabulary                                                          */
+/* ------------------------------------------------------------------ */
+
+static const uint8_t kOnes[19] = {
+  W_ONE, W_TWO, W_THREE, W_FOUR, W_FIVE, W_SIX, W_SEVEN, W_EIGHT, W_NINE,
+  W_TEN, W_ELEVEN, W_TWELVE, W_THIRTEEN, W_FOURTEEN, W_FIFTEEN, W_SIXTEEN,
+  W_SEVENTEEN, W_EIGHTEEN, W_NINETEEN
+};
+
+static const uint8_t kMonths[12] = {
+  W_MON1, W_MON2, W_MON3, W_MON4, W_MON5, W_MON6,
+  W_MON7, W_MON8, W_MON9, W_MON10, W_MON11, W_MON12
+};
+
+static const uint8_t kDigits[10] = {
+  W_D0, W_D1, W_D2, W_D3, W_D4, W_D5, W_D6, W_D7, W_D8, W_D9
+};
+
+static uint8_t ordinal_word(int day) {
+  if (day >= 11 && day <= 13) {
+    return W_TH;
+  }
+  switch (day % 10) {
+    case 1:  return W_ST;
+    case 2:  return W_ND;
+    case 3:  return W_RD;
+    default: return W_TH;
+  }
+}
+
+/*
+ * Twelve o'clock is asymmetric on purpose: "midday" only when it stands alone,
+ * "noon" after it, "twelve" before it. "midnight" is used on both sides.
+ */
+static uint8_t hour_word(int hour24, bool past) {
+  if (hour24 % 12 == 0) {
+    if (hour24 == 0) {
+      return W_MIDNIGHT;
+    }
+    return past ? W_NOON : W_TWELVE;
+  }
+  return kOnes[hour24 % 12 - 1];
+}
+
+/* ------------------------------------------------------------------ */
+/* Bitmaps                                                             */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Images are 4-bit palettised. The colours baked into the PNG are arbitrary -
+ * only their DISTINCTNESS matters, because this rewrites the whole palette at
+ * load with a ramp from paper to ink. That is what keeps the colour settings
+ * working while still allowing antialiased edges.
+ *
+ * The source palette must not be greyscale. Pebble has two bits per channel, so
+ * only four greys exist; sixteen grey levels collapse to four colours during
+ * conversion and the SDK re-indexes the pixels to match, which destroys the
+ * index-to-intensity mapping and renders every word invisible.
+ */
+static void tint(GBitmap *bmp) {
+  GColor *pal = gbitmap_get_palette(bmp);
+  if (!pal) {
+    return;
+  }
+
+  /* Paper and ink as 0-255 per channel. GColor stores two bits each. */
+  const int pr = s_settings.paper.r * 85, pg = s_settings.paper.g * 85,
+            pb = s_settings.paper.b * 85;
+  const int ir = s_settings.ink.r * 85, ig = s_settings.ink.g * 85,
+            ib = s_settings.ink.b * 85;
+
+  for (int i = 0; i < 16; i++) {
+    /*
+     * Recover the intensity from the colour ALREADY in the palette rather than
+     * from the index, because the SDK is free to reorder a palette during
+     * conversion. tune.py encodes level 0-15 as (level & 3) in red and
+     * (level >> 2) in green, so this decodes it wherever the entry landed.
+     */
+    const int lvl = pal[i].r + 4 * pal[i].g;
+    if (lvl <= 0) {
+      pal[i] = GColorClear;
+      continue;
+    }
+    /*
+     * Blend at full 8-bit precision, then round to the nearest level Pebble
+     * can show. Blending in 2-bit space instead loses so much to truncation
+     * that only the very brightest pixels come out as ink, and strokes render
+     * grey.
+     */
+    const int r = (pr * (15 - lvl) + ir * lvl) / 15;
+    const int g = (pg * (15 - lvl) + ig * lvl) / 15;
+    const int b = (pb * (15 - lvl) + ib * lvl) / 15;
+    pal[i] = GColorFromRGB(((r + 42) / 85) * 85,
+                           ((g + 42) / 85) * 85,
+                           ((b + 42) / 85) * 85);
+  }
+}
+
+
+static GBitmap *bitmap_for(uint8_t word) {
+  if (word >= W_COUNT) {
+    return NULL;
+  }
+  if (!s_cache[word]) {
+    s_cache[word] = gbitmap_create_with_resource(WORDS[word].res);
+    if (s_cache[word]) {
+      tint(s_cache[word]);
+    }
+  }
+  return s_cache[word];
+}
+
+/* Drop anything not on screen. Called after every rebuild, so at most the
+ * dozen words currently visible are ever resident. */
+static void prune_cache(void) {
+  for (int i = 0; i < W_COUNT; i++) {
+    if (!s_cache[i]) {
+      continue;
+    }
+    bool used = false;
+    for (int j = 0; j < s_face.count; j++) {
+      if (s_face.items[j].word == i) {
+        used = true;
+        break;
+      }
+    }
+    if (!used) {
+      gbitmap_destroy(s_cache[i]);
+      s_cache[i] = NULL;
+    }
+  }
+}
+
+static void drop_all_bitmaps(void) {
+  for (int i = 0; i < W_COUNT; i++) {
+    if (s_cache[i]) {
+      gbitmap_destroy(s_cache[i]);
+      s_cache[i] = NULL;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Building the face                                                   */
+/* ------------------------------------------------------------------ */
+
+static Element *push(Face *f, uint8_t word, RowId row) {
+  if (f->count >= MAX_ELEMENTS) {
+    return NULL;
+  }
+  Element *e = &f->items[f->count++];
+  e->word = word;
+  e->row = row;
+  e->x = 0;
+  e->top = 0;
+  e->animate = false;
+  return e;
+}
+
+/*
+ * Insert an already-positioned element at `at`, shifting later elements
+ * right. The reveal animation plays in ARRAY order, so this exists purely to
+ * put an element where it should be READ, not where its geometry happened to
+ * be computed. The split-word "minutes" annotation is one such case: its
+ * position depends on its neighbour, so it is easiest to compute last, but it
+ * must animate third ("twenty-" / "nine" / "minutes" / "to" / "three"), not
+ * fifth just because it was appended last.
+ */
+static void insert_element(Face *f, int at, Element e) {
+  if (f->count >= MAX_ELEMENTS) {
+    return;
+  }
+  for (int i = f->count; i > at; i--) {
+    f->items[i] = f->items[i - 1];
+  }
+  f->items[at] = e;
+  f->count++;
+}
+
+/*
+ * Stack canvases downward from `first`, each ROW_GAP below the last. Because
+ * canvases are tight around the ink, every visual gap is exactly ROW_GAP.
+ */
+static void stack(Face *f, int from, int to, int first_top) {
+  int y = first_top;
+  for (int i = from; i <= to; i++) {
+    f->items[i].top = y;
+    y += WORDS[f->items[i].word].h + ROW_GAP;
+  }
+}
+
+static void indent_rows(Face *f, int from, int to) {
+  for (int i = from; i <= to; i++) {
+    f->items[i].x = MARGIN + (i - from) * INDENT;
+  }
+}
+
+/* Centre a run of rows vertically in the space above the date. */
+static void centre(Face *f, int from, int to) {
+  int span = 0;
+  for (int i = from; i <= to; i++) {
+    span += WORDS[f->items[i].word].h;
+  }
+  span += ROW_GAP * (to - from);
+  stack(f, from, to, (DATE_TOP_LIMIT - span) / 2);
+}
+
+static void build_date(Face *f, struct tm *t) {
+  if (!s_settings.show_date) {
+    return;
+  }
+  const int day = t->tm_mday;
+  const uint8_t d1 = (day >= 10) ? kDigits[day / 10] : 0xFF;
+  const uint8_t d2 = kDigits[day % 10];
+  const uint8_t suf = ordinal_word(day);
+  const uint8_t mon = kMonths[t->tm_mon];
+  const int year = 1900 + t->tm_year;
+  const uint8_t y[4] = {
+    kDigits[(year / 1000) % 10], kDigits[(year / 100) % 10],
+    kDigits[(year / 10) % 10], kDigits[year % 10]
+  };
+
+  uint8_t seq[8];
+  int n = 0;
+  if (d1 != 0xFF) {
+    seq[n++] = d1;
+  }
+  seq[n++] = d2;
+  seq[n++] = suf;
+  seq[n++] = mon;
+  for (int i = 0; i < 4; i++) {
+    seq[n++] = y[i];
+  }
+
+  int total = 0;
+  for (int i = 0; i < n; i++) {
+    total += WORDS[seq[i]].w;
+  }
+  total += DATE_SPACE * 2;   /* before the month, and before the year */
+
+  int x = (SCREEN_W - total) / 2;
+  for (int i = 0; i < n; i++) {
+    Element *e = push(f, seq[i], ROW_DATE);
+    if (!e) {
+      return;
+    }
+    e->x = x;
+    /*
+     * Digits have no descenders, so base == height for all of them - which
+     * meant lining up the ordinal's canvas TOP with the digit's barely raised
+     * it (1-3px, depending on which suffix). What a superscript actually
+     * needs is its own BASELINE raised well clear of the digit's, which
+     * ORD_RISE does directly. Because base == height here too, this also
+     * makes st/nd/rd/th share one consistent raised line instead of each
+     * landing at a different height.
+     */
+    e->top = (seq[i] == suf)
+             ? DATE_BASELINE - ORD_RISE - WORDS[suf].base
+             : DATE_BASELINE - WORDS[seq[i]].base;
+    x += WORDS[seq[i]].w;
+    if (seq[i] == suf || seq[i] == mon) {
+      x += DATE_SPACE;
+    }
+  }
+}
+
+static void build_face(Face *f, struct tm *t) {
+  f->count = 0;
+  const int h = t->tm_hour;
+  const int m = t->tm_min;
+
+  if (h == WITCHING_HOUR && m == 0) {
+    push(f, W_THE, ROW_MINUTE);
+    push(f, W_WITCHING, ROW_RELATION);
+    push(f, W_HOUR, ROW_HOUR);
+    indent_rows(f, 0, 2);
+    centre(f, 0, 2);
+  } else if (m == 0 && (h == 0 || h == 12)) {
+    push(f, h == 0 ? W_SOLO_MIDNIGHT : W_SOLO_MIDDAY, ROW_SOLO);
+    indent_rows(f, 0, 0);
+    centre(f, 0, 0);
+  } else if (m == 0) {
+    push(f, hour_word(h, true), ROW_MINUTE);
+    push(f, W_OCLOCK, ROW_HOUR);
+    indent_rows(f, 0, 1);
+    centre(f, 0, 1);
+  } else {
+    int mins;
+    bool past;
+    int ref;
+    if (m <= 30) {
+      mins = m;
+      past = true;
+      ref = h;
+    } else {
+      mins = 60 - m;
+      past = false;
+      ref = (h + 1) % 24;
+    }
+
+    const bool split = (mins >= 21 && mins <= 29);
+    const bool show_mins = (mins % 5) != 0;
+
+    int rel_idx;
+    if (split) {
+      push(f, W_TWENTYDASH, ROW_MINUTE);
+      push(f, kOnes[mins - 21], ROW_MINUTE);
+      rel_idx = 2;
+    } else {
+      uint8_t head;
+      if (mins == 15) {
+        head = W_QUARTER;
+      } else if (mins == 20) {
+        /* kOnes only covers one..nineteen (19 entries) - kOnes[19] for 20
+         * read one past the end. Silent undefined behaviour, not a crash,
+         * which is why it quietly drew "one" instead. */
+        head = W_TWENTY;
+      } else if (mins == 30) {
+        head = W_HALF;
+      } else {
+        head = kOnes[mins - 1];
+      }
+      push(f, head, ROW_MINUTE);
+      rel_idx = 1;
+      if (show_mins) {
+        /* Its own row for non-split words, so it never moves as the number
+         * changes and is never redrawn. */
+        push(f, mins == 1 ? W_MINUTE : W_MINUTES, ROW_MINUTES);
+        rel_idx = 2;
+      }
+    }
+
+    push(f, past ? W_PAST : W_TO, ROW_RELATION);
+    push(f, hour_word(ref, past), ROW_HOUR);
+    const int last = f->count - 1;
+
+    /*
+     * Fixed indents by ROLE, not by position: relation is always 2 steps in,
+     * the hour word always 3, whether or not a middle row (a split word's
+     * second half, or "minutes" on its own line) is present. Indenting by
+     * position instead meant "past"/"one" sat at indent 1/2 in a 3-row phrase
+     * ("quarter past one") but indent 2/3 in a 4-row phrase ("fourteen
+     * minutes past one") - so ticking between them moved and redrew both
+     * words even though the words themselves had not changed.
+     */
+    f->items[0].x = MARGIN;
+    if (rel_idx == 2) {
+      f->items[1].x = MARGIN + INDENT;
+    }
+    f->items[rel_idx].x = MARGIN + 2 * INDENT;
+    f->items[last].x = MARGIN + 3 * INDENT;
+
+    /* The relation row is pinned; everything else hangs off it. */
+    f->items[rel_idx].top = REL_TOP;
+    stack(f, rel_idx, last, REL_TOP);
+    int y = REL_TOP;
+    for (int i = rel_idx - 1; i >= 0; i--) {
+      y -= ROW_GAP + WORDS[f->items[i].word].h;
+      f->items[i].top = y;
+    }
+
+    /*
+     * On a split word, "minutes" rides beside the short second half.
+     * Inserted at index 2 - right after that word - rather than appended, so
+     * it animates in the order it is read: "twenty-" / "nine" / "minutes" /
+     * "to" / "three". Appending it left it revealing dead last, after words
+     * that come before it in the phrase.
+     */
+    if (split && show_mins) {
+      const Element *host = &f->items[1];
+      Element e;
+      e.word = mins == 1 ? W_MINUTE : W_MINUTES;
+      e.row = ROW_MINUTES;
+      e.animate = false;
+      const int after = host->x + WORDS[host->word].w + MIN_TRAIL;
+      const int clamp = SCREEN_W - MARGIN - WORDS[e.word].w;
+      e.x = (after < clamp) ? after : clamp;
+      /* Baseline-aligned with the word it follows. */
+      e.top = host->top + WORDS[host->word].base - WORDS[e.word].base;
+      insert_element(f, 2, e);
+    }
+  }
+
+  build_date(f, t);
+}
+
+/* ------------------------------------------------------------------ */
+/* Change detection                                                    */
+/* ------------------------------------------------------------------ */
+
+static bool same(const Element *a, const Element *b) {
+  return a->word == b->word && a->row == b->row
+      && a->x == b->x && a->top == b->top;
+}
+
+static void mark_changes(bool date_changed) {
+  s_total = 0;
+  for (int i = 0; i < s_face.count; i++) {
+    Element *e = &s_face.items[i];
+    if (e->row == ROW_DATE) {
+      e->animate = date_changed;      /* static all day otherwise */
+    } else if (!s_have_prev) {
+      e->animate = true;
+    } else {
+      e->animate = true;
+      for (int j = 0; j < s_prev.count; j++) {
+        if (same(e, &s_prev.items[j])) {
+          e->animate = false;
+          break;
+        }
+      }
+    }
+    if (e->animate) {
+      s_total += WORDS[e->word].w;
+    }
+  }
+  s_progress = 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Drawing                                                             */
+/* ------------------------------------------------------------------ */
+
+static int row_offset(uint8_t row) {
+  return (row < ROW_COUNT) ? s_settings.offset[row] : 0;
+}
+
+/*
+ * Draw the first `reveal` pixels of a word.
+ *
+ * Only the revealed slice is drawn - there is no mask over the rest. That is
+ * the whole reason this face uses images: with text there was no way to know
+ * exactly where the glyphs were, and every masking scheme leaked a few pixels.
+ */
+static void draw_element(GContext *ctx, const Element *e, int reveal) {
+  if (reveal <= 0) {
+    return;
+  }
+  GBitmap *bmp = bitmap_for(e->word);
+  if (!bmp) {
+    return;
+  }
+  const WordGeom *g = &WORDS[e->word];
+  const int w = (reveal < g->w) ? reveal : g->w;
+  const int y = e->top + row_offset(e->row);
+
+  graphics_context_set_compositing_mode(ctx, GCompOpSet);
+  if (w >= g->w) {
+    graphics_draw_bitmap_in_rect(ctx, bmp, GRect(e->x, y, g->w, g->h));
+    return;
+  }
+  GBitmap *slice = gbitmap_create_as_sub_bitmap(bmp, GRect(0, 0, w, g->h));
+  if (slice) {
+    graphics_draw_bitmap_in_rect(ctx, slice, GRect(e->x, y, w, g->h));
+    gbitmap_destroy(slice);
+  }
+}
+
+static void update_proc(Layer *layer, GContext *ctx) {
+  int travelled = s_progress;
+  for (int i = 0; i < s_face.count; i++) {
+    const Element *e = &s_face.items[i];
+    if (!e->animate) {
+      draw_element(ctx, e, WORDS[e->word].w);
+      continue;
+    }
+    draw_element(ctx, e, travelled);
+    travelled -= WORDS[e->word].w;
+    if (travelled < 0) {
+      travelled = 0;
+    }
+  }
+  (void)layer;
+}
+
+static void timer_cb(void *data) {
+  s_timer = NULL;
+  s_progress += (WRITE_SPEED * WRITE_FRAME_MS) / 1000;
+  if (s_progress < s_total) {
+    s_timer = app_timer_register(WRITE_FRAME_MS, timer_cb, NULL);
+  } else {
+    s_progress = s_total;
+  }
+  layer_mark_dirty(s_layer);
+  (void)data;
+}
+
+static void start_animation(void) {
+  if (s_timer) {
+    app_timer_cancel(s_timer);
+    s_timer = NULL;
+  }
+  if (s_total > 0) {
+    s_timer = app_timer_register(WRITE_FRAME_MS, timer_cb, NULL);
+  }
+  layer_mark_dirty(s_layer);
+}
+
+/* ------------------------------------------------------------------ */
+/* Refresh                                                             */
+/* ------------------------------------------------------------------ */
+
+static void refresh(struct tm *t, bool force) {
+  const bool date_changed = force || (t->tm_yday != s_last_yday);
+  s_last_yday = t->tm_yday;
+
+  build_face(&s_face, t);
+  prune_cache();
+  mark_changes(date_changed);
+
+  s_prev = s_face;
+  s_have_prev = true;
+  start_animation();
+}
+
+static void refresh_now(bool force) {
+  const time_t now = time(NULL);
+  refresh(localtime(&now), force);
+}
+
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  refresh(tick_time, false);
+  (void)units_changed;
+}
+
+/* ------------------------------------------------------------------ */
+/* Settings                                                            */
+/* ------------------------------------------------------------------ */
+
+static void settings_defaults(void) {
+  s_settings.paper = GColorBlack;
+  s_settings.ink = GColorWhite;
+  s_settings.show_date = true;
+  s_settings.offset[ROW_MINUTE] = OFFSET_MINUTE;
+  s_settings.offset[ROW_MINUTES] = OFFSET_MINUTES;
+  s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
+  s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
+  s_settings.offset[ROW_SOLO] = OFFSET_SOLO;
+  s_settings.offset[ROW_DATE] = OFFSET_DATE;
+}
+
+static void settings_load(void) {
+  settings_defaults();
+  persist_read_data(SETTINGS_KEY, &s_settings, sizeof(s_settings));
+}
+
+static int8_t clamp_offset(int32_t v) {
+  if (v < OFFSET_MIN) v = OFFSET_MIN;
+  if (v > OFFSET_MAX) v = OFFSET_MAX;
+  return (int8_t)v;
+}
+
+static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
+  Tuple *t = dict_find(it, key);
+  if (t) {
+    s_settings.offset[row] = clamp_offset(t->value->int32);
+  }
+}
+
+static void inbox_received(DictionaryIterator *it, void *context) {
+  Tuple *t;
+  if ((t = dict_find(it, MESSAGE_KEY_PaperColor))) {
+    s_settings.paper = GColorFromHEX(t->value->int32);
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_InkColor))) {
+    s_settings.ink = GColorFromHEX(t->value->int32);
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_ShowDate))) {
+    s_settings.show_date = t->value->int32 != 0;
+  }
+  read_offset(it, MESSAGE_KEY_OffMinute, ROW_MINUTE);
+  read_offset(it, MESSAGE_KEY_OffMinutes, ROW_MINUTES);
+  read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
+  read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
+  read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);
+  read_offset(it, MESSAGE_KEY_OffDate, ROW_DATE);
+
+  persist_write_data(SETTINGS_KEY, &s_settings, sizeof(s_settings));
+  window_set_background_color(s_window, s_settings.paper);
+
+  /* Colours are baked into each bitmap's palette, so they must be reloaded. */
+  drop_all_bitmaps();
+  s_have_prev = false;
+  refresh_now(true);
+  (void)context;
+}
+
+/* ------------------------------------------------------------------ */
+/* Lifecycle                                                           */
+/* ------------------------------------------------------------------ */
+
+static void window_load(Window *window) {
+  Layer *root = window_get_root_layer(window);
+  window_set_background_color(window, s_settings.paper);
+  s_layer = layer_create(layer_get_bounds(root));
+  layer_set_update_proc(s_layer, update_proc);
+  layer_add_child(root, s_layer);
+  refresh_now(true);
+}
+
+static void window_unload(Window *window) {
+  if (s_timer) {
+    app_timer_cancel(s_timer);
+    s_timer = NULL;
+  }
+  drop_all_bitmaps();
+  layer_destroy(s_layer);
+  (void)window;
+}
+
+static void init(void) {
+  settings_load();
+  s_window = window_create();
+  window_set_window_handlers(s_window, (WindowHandlers) {
+    .load = window_load,
+    .unload = window_unload,
+  });
+  window_stack_push(s_window, true);
+  app_message_register_inbox_received(inbox_received);
+  app_message_open(256, 64);
+  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+}
+
+static void deinit(void) {
+  tick_timer_service_unsubscribe();
+  window_destroy(s_window);
+}
+
+int main(void) {
+  init();
+  app_event_loop();
+  deinit();
+}
