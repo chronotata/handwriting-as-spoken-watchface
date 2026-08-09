@@ -96,8 +96,13 @@ per-word-layer memory leak.
 | middle (row/tag varies) | split word's second half, or `minutes` on its own line | 1 (when present) |
 | `ROW_RELATION` | `past` / `to` | **2, always** |
 | `ROW_HOUR` | the hour word | **3, always** |
-| `ROW_SOLO` | `midnight` / `midday` alone | centred |
-| `ROW_DATE` | the date line | centred, own baseline |
+| `ROW_SOLO` | `midnight` / `midday` alone | 0 (centred *vertically*) |
+| `ROW_DATE` | the date line | centred horizontally, own baseline |
+
+Only the date line is centred horizontally. Everything else — including the
+solo `midnight`/`midday` — sits at the left margin and steps right by
+`INDENT`; "centred" for the solo row means vertically, in the space above
+the date.
 
 **Relation and hour are pinned to indent 2/3 regardless of what's above
 them.** This was a deliberate late fix: indenting by *array position*
@@ -212,14 +217,47 @@ other constant only needs a rebuild.
 
 ## 5. Verification method
 
-Every layout claim in this document has been checked by compiling
-`handwritten.c` against a hand-written Pebble API stub and running its
-*real* `build_face()` over all 1440 minutes of the day (a small C test
-harness, not a Python re-implementation) — checking bounds, indent
-consistency, animation order, and stacked-row gap uniformity directly
-against the shipping code. This caught real bugs a python model would not
-have (the `kOnes[19]` out-of-bounds read at `:20`/`:40` being the clearest
-example) and is the standard to hold any future change to.
+```
+python3 tools/tune.py    # writes tools/test/generated.h
+tools/test/run.sh        # needs gcc; no Pebble SDK
+```
+
+Every layout claim in this document is checked by `tools/test/`, which
+compiles the *real* `src/c/handwritten.c` against a hand-written Pebble API
+stub (`pebble.h`, `stub.c`) and sweeps its own `build_face()` over all 1440
+minutes of the day, every date of a leap year, and the asymmetric wording
+cases. Around 127,000 assertions, under a second.
+
+It is deliberately not a Python re-implementation. A model agrees with
+itself, not with the watch: the `kOnes[19]` out-of-bounds read at
+`:20`/`:40` was undefined behaviour that drew a plausible wrong word rather
+than crashing, and a model would have had its own array and its own bug, or
+neither. Here `-fsanitize=address,undefined` reports it outright as
+`index 19 out of bounds for type 'uint8_t [19]'`.
+
+What it checks:
+
+| | |
+|---|---|
+| bounds | every word's **ink** on screen and clear of the date's ascenders — not its canvas, which legitimately overhangs the top (§3.2) |
+| indents | relation at 2 steps, hour at 3, by role rather than array position |
+| stacking | consecutive canvases exactly `ROW_GAP` apart, inline `minutes` excepted |
+| reveal order | array order equals reading order |
+| pinned rows | relation at `REL_TOP`, hour one pitch below, and `twenty-` never moving |
+| date | one fixed baseline for every month, ordinal raised, line centred |
+| memory | the reveal is played out frame by frame, so `prune_cache()` and the sub-bitmap slicing run for real under ASAN |
+
+The suite is only worth what it catches, so it has been checked against
+regressions rather than assumed: re-introducing the `kOnes[19]` read, the
+indent-by-position bug, the appended-`minutes` reveal-order bug, an
+unpinned relation row, a flattened ordinal, and a `prune_cache()` that
+stops freeing all produce failures. Hold future changes to that standard —
+if a change cannot break a test, add the test that it would break.
+
+Two things the suite does **not** cover: anything about how the words
+actually look (colour, antialiasing, stroke weight — all of §2's palette
+work), and the vertical budget arithmetic, which lives in `tune.py` and the
+`_Static_assert`s instead. Hardware remains the final check.
 
 ---
 
@@ -287,7 +325,7 @@ them was the actual bug.
 
 **Settings page invisible on the phone, despite Clay being correctly
 wired up end to end.** Two separate causes, both in `package.json`, both
-silent — see `UPGRADING.md` §8 for the detail and how to avoid repeating
+silent — see `UPGRADING.md` §9 for the detail and how to avoid repeating
 this in any project, not just this one:
 
 - `pebble.capabilities` never contained `"configurable"`. Without it the

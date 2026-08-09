@@ -19,7 +19,7 @@
 #include "geometry.h"
 
 #ifndef TIME_BOX_H
-#error "src/c/geometry.h predates uniform family boxes. Run: python tools/tune.py"
+#error "src/c/geometry.h predates uniform family boxes. Run: python3 tools/tune.py"
 #endif
 
 /*
@@ -733,4 +733,5 @@ int main(void) {
   init();
   app_event_loop();
   deinit();
+  return 0;
 }

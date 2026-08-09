@@ -137,17 +137,51 @@ python3 tools/tune.py
 ```
 
 This renders all 62 words the face can show into `resources/images/`,
-writes `src/c/geometry.h`, and updates the bitmap resource list in
-`package.json`. **Re-run this any time you change a `FONT_SIZE_*` in
-`config.h`** — image, geometry, and manifest all have to move together, or
-the layout math and the actual pictures on screen will disagree.
+writes `src/c/geometry.h` and `tools/test/generated.h`, and updates the
+bitmap resource list in `package.json`. **Re-run this any time you change a
+`FONT_SIZE_*` in `config.h`** — image, geometry, and manifest all have to
+move together, or the layout math and the actual pictures on screen will
+disagree. `handwritten.c` will refuse to compile against a stale
+`geometry.h` rather than build something wrong.
 
 It also writes `handwriting-templates/` — the same 62 words as plain PNGs
 at their exact final sizes, for tracing over with real handwriting later.
 
+`tune.py` checks the vertical budget before it writes anything, and stops
+if the tallest phrase no longer fits, naming the constant to change:
+
+```
+DOES NOT FIT:
+  - top row is clipped by 6px (lower REL_TOP or ROW_GAP)
+  - hour row collides with the date by 7px (raise DATE_BASELINE, ...)
+```
+
+Raising `FONT_SIZE_TIME` or `ROW_GAP` is what usually trips it. See
+`CONTEXT.md` §3.2 for how tight the budget is and why.
+
 ---
 
-## 5. Build and test in the emulator
+## 5. Run the layout tests
+
+```bash
+tools/test/run.sh
+```
+
+Needs `gcc` and nothing else — no Pebble SDK, so this runs anywhere and
+takes under a second. It compiles the real `handwritten.c` against a stub of
+the SDK and sweeps every minute of the day and every date of a leap year,
+about 127,000 assertions, under AddressSanitizer.
+
+Run it before every `pebble build`. It catches in a second what otherwise
+takes an emulator round trip to notice, and several of the bugs in
+`CONTEXT.md` §6 are in it as explicit regression tests.
+
+If it reports `tools/test/generated.h is missing`, run `tools/tune.py` first
+(§4). On Windows, run it from WSL like everything else here.
+
+---
+
+## 6. Build and test in the emulator
 
 ```bash
 pebble build
@@ -166,7 +200,7 @@ pebble emu-set-time --emulator emery 12:00   # solo "midday"
 
 ---
 
-## 6. Install on the real watch
+## 7. Install on the real watch
 
 **One-time setup, on your phone:**
 1. Install the Pebble app from **repebble.com/app** — not necessarily the
@@ -194,7 +228,7 @@ real hardware the same way `--emulator` does from the simulator.
 
 ---
 
-## 7. Tuning without a rebuild
+## 8. Tuning without a rebuild
 
 Open the watchface's settings in the Pebble phone app. Six sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
@@ -207,7 +241,7 @@ since canvases are cropped tight and stacked) and re-run `tools/tune.py`.
 
 ---
 
-## 8. If you (or an AI assistant) hand-edit `package.json`
+## 9. If you (or an AI assistant) hand-edit `package.json`
 
 **Never regenerate this file wholesale.** Two fields are easy to silently
 destroy that way, and neither failure is obvious until you go looking for
@@ -232,7 +266,7 @@ mean to change and leave everything else untouched — or use
 `pebble package install` for anything dependency-related, which manages
 this correctly on its own.
 
-## 9. What's next: version 2
+## 10. What's next: version 2
 
 Draw over the templates in `handwriting-templates/` — each is already
 sized exactly for its slot in the layout. Swapping them in is a resources

@@ -3,7 +3,7 @@
  *
  * IMPORTANT: after changing any FONT_SIZE_* value, run
  *
- *     python tools/tune.py
+ *     python3 tools/tune.py
  *
  * That regenerates the font entries in package.json and rebuilds inktable.h to
  * match. The SDK takes a font's rasterised size from the trailing number in its
@@ -63,8 +63,7 @@
 /* ---------------------------------------------------------------- */
 
 #define MARGIN 10       /* left and right screen margin              */
-#define INDENT 9       /* staircase step per row                    */
-#define DATE_BAND 36    /* height reserved for the date line         */
+#define INDENT 9        /* staircase step per row                    */
 
 #define ROW_GAP 4       /* gap between stacked CANVASES.                      */
                         /*                                                    */
