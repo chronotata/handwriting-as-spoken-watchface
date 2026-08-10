@@ -61,6 +61,20 @@ module.exports = [
         messageKey: 'ShowDate',
         label: 'Show the date',
         defaultValue: true
+      },
+      // The values are indices into kDateFormats[] in src/c/handwritten.c and
+      // are the wire format, so they must not be reordered or renumbered -
+      // a new format goes on the end of both lists. Clay sends a select as a
+      // STRING; tuple_int() on the C side accepts either representation.
+      {
+        type: 'select',
+        messageKey: 'DateFormat',
+        label: 'Date format',
+        defaultValue: '0',
+        options: [
+          { label: '10th Aug. 2026', value: '0' },
+          { label: 'Mon. 10th Aug.', value: '1' }
+        ]
       }
     ]
   },

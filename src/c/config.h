@@ -99,6 +99,18 @@
                             /* ascenders reach up to here). Keep this      */
                             /* 2px above DATE_BASELINE - DATE_BOX_BASE.    */
 
+/*
+ * Which entry of kDateFormats (handwritten.c) a fresh install starts on, and
+ * what an out-of-range value from the phone falls back to.
+ *
+ *   0  "10th Aug. 2026"
+ *   1  "Mon. 10th Aug."
+ *
+ * Leave this at 0. Existing watches persist their own choice and never read
+ * it; changing it only moves people who have never opened the settings page.
+ */
+#define DEFAULT_DATE_FORMAT 0
+
 #define ORD_RISE 6           /* how far the ordinal's baseline sits above */
                              /* the day/year baseline                     */
 #define DATE_BASELINE 215   /* fixed for every date, so months without    */

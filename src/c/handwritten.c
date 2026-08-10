@@ -22,6 +22,10 @@
 #error "src/c/geometry.h predates uniform family boxes. Run: python3 tools/tune.py"
 #endif
 
+#ifndef GEOMETRY_HAS_WEEKDAYS
+#error "src/c/geometry.h has no weekday words. Run: python3 tools/tune.py"
+#endif
+
 /*
  * Backstop for the vertical budget. tools/tune.py performs the full check with
  * real per-word ink extents and refuses to generate if it fails; this catches
@@ -78,11 +82,20 @@ typedef struct {
 /* State                                                               */
 /* ------------------------------------------------------------------ */
 
+/*
+ * APPEND-ONLY. settings_load() reads this straight out of persistent storage
+ * as raw bytes, so a watch upgrading from an older build supplies a SHORTER
+ * blob: persist_read_data fills what it has and leaves the rest at the
+ * defaults set moments earlier. That works only while new fields go on the
+ * END - inserting one in the middle would reinterpret every existing user's
+ * colours and row offsets as something else.
+ */
 typedef struct {
   GColor paper;
   GColor ink;
   bool show_date;
   int8_t offset[ROW_COUNT];
+  uint8_t date_format;   /* index into kDateFormats */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -117,6 +130,12 @@ static const uint8_t kMonths[12] = {
 
 static const uint8_t kDigits[10] = {
   W_D0, W_D1, W_D2, W_D3, W_D4, W_D5, W_D6, W_D7, W_D8, W_D9
+};
+
+/* Indexed by struct tm's tm_wday, so SUNDAY FIRST. tools/tune.py's WEEKDAYS
+ * list is in the same order for the same reason; the two must not drift. */
+static const uint8_t kWeekdays[7] = {
+  W_DOW_SUN, W_DOW_MON, W_DOW_TUE, W_DOW_WED, W_DOW_THU, W_DOW_FRI, W_DOW_SAT
 };
 
 static uint8_t ordinal_word(int day) {
@@ -308,42 +327,143 @@ static void centre(Face *f, int from, int to) {
   stack(f, from, to, (DATE_TOP_LIMIT - span) / 2);
 }
 
+/*
+ * The date line is built from ATOMS, not from a hard-coded word order.
+ *
+ * An atom is one readable unit - the weekday, the day-with-its-ordinal, the
+ * month, the year - which may expand to several words ("21st" is three). A
+ * format is just an ordered list of atoms, and DATE_SPACE goes BETWEEN atoms:
+ * never before the first, never after the last, never inside one.
+ *
+ * That positional rule replaces the old "add a space after the ordinal and
+ * after the month" test. The two agree exactly for the original format, but
+ * identity-based spacing only worked because the month happened to be
+ * followed by the year; in any format ending on the month it would have
+ * appended a phantom trailing gap and thrown the centring off. Adding a
+ * format should never require touching this function - only kDateFormats.
+ */
+typedef enum {
+  ATOM_END = 0,
+  ATOM_WEEKDAY,   /* "Mon."                                   */
+  ATOM_DAY,       /* the day number and its raised ordinal    */
+  ATOM_MONTH,     /* "Aug."                                   */
+  ATOM_YEAR       /* four digits                              */
+} DateAtom;
+
+#define DATE_ATOMS_MAX 4    /* atoms in one format, excluding ATOM_END */
+#define DATE_MAX_WORDS 10   /* every atom at once: 1 + 3 + 1 + 4, plus slack */
+
+typedef struct {
+  const char *sample;                  /* what it looks like; for tests   */
+  uint8_t atoms[DATE_ATOMS_MAX + 1];   /* ATOM_END terminated             */
+} DateFormatSpec;
+
+/*
+ * Order is the wire format: the index is what the phone stores and sends, so
+ * NEW FORMATS GO ON THE END. Reordering these would silently change the date
+ * for everyone who has already chosen one.
+ */
+static const DateFormatSpec kDateFormats[] = {
+  { "10th Aug. 2026", { ATOM_DAY, ATOM_MONTH, ATOM_YEAR, ATOM_END } },
+  { "Mon. 10th Aug.", { ATOM_WEEKDAY, ATOM_DAY, ATOM_MONTH, ATOM_END } }
+};
+
+#define DATE_FORMAT_COUNT \
+  ((uint8_t)(sizeof(kDateFormats) / sizeof(kDateFormats[0])))
+
+_Static_assert(DATE_MAX_WORDS <= MAX_ELEMENTS,
+               "a date format can overflow the element array");
+
+typedef struct {
+  uint8_t word[DATE_MAX_WORDS];
+  bool raised[DATE_MAX_WORDS];   /* superscript ordinal      */
+  bool gap[DATE_MAX_WORDS];      /* DATE_SPACE goes BEFORE it */
+  int n;
+} DateSeq;
+
+static void date_push(DateSeq *q, uint8_t word, bool raised) {
+  if (q->n >= DATE_MAX_WORDS) {
+    return;
+  }
+  q->word[q->n] = word;
+  q->raised[q->n] = raised;
+  q->gap[q->n] = false;
+  q->n++;
+}
+
+/* Expand one atom into words. Spacing is not this function's business - the
+ * caller marks the gap on whichever word turns out to be the atom's first. */
+static void date_atom(DateSeq *q, uint8_t kind, const struct tm *t) {
+  switch (kind) {
+    case ATOM_WEEKDAY:
+      date_push(q, kWeekdays[t->tm_wday % 7], false);
+      break;
+
+    case ATOM_DAY: {
+      const int day = t->tm_mday;
+      if (day >= 10) {
+        date_push(q, kDigits[(day / 10) % 10], false);
+      }
+      date_push(q, kDigits[day % 10], false);
+      date_push(q, ordinal_word(day), true);
+      break;
+    }
+
+    case ATOM_MONTH:
+      date_push(q, kMonths[t->tm_mon % 12], false);
+      break;
+
+    case ATOM_YEAR: {
+      const int year = 1900 + t->tm_year;
+      date_push(q, kDigits[(year / 1000) % 10], false);
+      date_push(q, kDigits[(year / 100) % 10], false);
+      date_push(q, kDigits[(year / 10) % 10], false);
+      date_push(q, kDigits[year % 10], false);
+      break;
+    }
+
+    default:
+      break;
+  }
+}
+
 static void build_date(Face *f, struct tm *t) {
   if (!s_settings.show_date) {
     return;
   }
-  const int day = t->tm_mday;
-  const uint8_t d1 = (day >= 10) ? kDigits[day / 10] : 0xFF;
-  const uint8_t d2 = kDigits[day % 10];
-  const uint8_t suf = ordinal_word(day);
-  const uint8_t mon = kMonths[t->tm_mon];
-  const int year = 1900 + t->tm_year;
-  const uint8_t y[4] = {
-    kDigits[(year / 1000) % 10], kDigits[(year / 100) % 10],
-    kDigits[(year / 10) % 10], kDigits[year % 10]
-  };
 
-  uint8_t seq[8];
-  int n = 0;
-  if (d1 != 0xFF) {
-    seq[n++] = d1;
+  /* Persisted settings and phone messages are both untrusted input. */
+  const uint8_t fmt = (s_settings.date_format < DATE_FORMAT_COUNT)
+                      ? s_settings.date_format : 0;
+  const DateFormatSpec *spec = &kDateFormats[fmt];
+
+  DateSeq q;
+  q.n = 0;
+  for (int i = 0; i < DATE_ATOMS_MAX && spec->atoms[i] != ATOM_END; i++) {
+    const int start = q.n;
+    date_atom(&q, spec->atoms[i], t);
+    if (i > 0 && q.n > start) {
+      q.gap[start] = true;   /* the space between this atom and the last */
+    }
   }
-  seq[n++] = d2;
-  seq[n++] = suf;
-  seq[n++] = mon;
-  for (int i = 0; i < 4; i++) {
-    seq[n++] = y[i];
+  if (q.n == 0) {
+    return;
   }
 
   int total = 0;
-  for (int i = 0; i < n; i++) {
-    total += WORDS[seq[i]].w;
+  for (int i = 0; i < q.n; i++) {
+    total += WORDS[q.word[i]].w;
+    if (q.gap[i]) {
+      total += DATE_SPACE;
+    }
   }
-  total += DATE_SPACE * 2;   /* before the month, and before the year */
 
   int x = (SCREEN_W - total) / 2;
-  for (int i = 0; i < n; i++) {
-    Element *e = push(f, seq[i], ROW_DATE);
+  for (int i = 0; i < q.n; i++) {
+    if (q.gap[i]) {
+      x += DATE_SPACE;
+    }
+    Element *e = push(f, q.word[i], ROW_DATE);
     if (!e) {
       return;
     }
@@ -357,13 +477,10 @@ static void build_date(Face *f, struct tm *t) {
      * makes st/nd/rd/th share one consistent raised line instead of each
      * landing at a different height.
      */
-    e->top = (seq[i] == suf)
-             ? DATE_BASELINE - ORD_RISE - WORDS[suf].base
-             : DATE_BASELINE - WORDS[seq[i]].base;
-    x += WORDS[seq[i]].w;
-    if (seq[i] == suf || seq[i] == mon) {
-      x += DATE_SPACE;
-    }
+    e->top = q.raised[i]
+             ? DATE_BASELINE - ORD_RISE - WORDS[q.word[i]].base
+             : DATE_BASELINE - WORDS[q.word[i]].base;
+    x += WORDS[q.word[i]].w;
   }
 }
 
@@ -634,6 +751,7 @@ static void settings_defaults(void) {
   s_settings.paper = GColorBlack;
   s_settings.ink = GColorWhite;
   s_settings.show_date = true;
+  s_settings.date_format = DEFAULT_DATE_FORMAT;
   s_settings.offset[ROW_MINUTE] = OFFSET_MINUTE;
   s_settings.offset[ROW_MINUTES] = OFFSET_MINUTES;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
@@ -647,6 +765,45 @@ static void settings_load(void) {
   persist_read_data(SETTINGS_KEY, &s_settings, sizeof(s_settings));
 }
 
+/*
+ * Clay's select control sends its value as a STRING, where the colour, toggle
+ * and slider controls all send integers. Rather than depend on which control
+ * a setting happens to use today - change a select to a radio group and the
+ * type changes under you - read either representation.
+ *
+ * Parsed by hand rather than with atoi() to keep this free of any assumption
+ * about which standard headers the Pebble SDK drags in.
+ */
+static int32_t tuple_int(const Tuple *t) {
+  if (t->type != TUPLE_CSTRING) {
+    return t->value->int32;
+  }
+  const char *s = t->value->cstring;
+  if (!s) {
+    return 0;
+  }
+  while (*s == ' ') {
+    s++;
+  }
+  bool neg = false;
+  if (*s == '-' || *s == '+') {
+    neg = (*s == '-');
+    s++;
+  }
+  int32_t v = 0;
+  for (; *s >= '0' && *s <= '9'; s++) {
+    if (v > 99999999) {
+      break;          /* nothing legitimate is this long; stop before it wraps */
+    }
+    v = v * 10 + (*s - '0');
+  }
+  return neg ? -v : v;
+}
+
+static uint8_t clamp_date_format(int32_t v) {
+  return (v >= 0 && v < DATE_FORMAT_COUNT) ? (uint8_t)v : DEFAULT_DATE_FORMAT;
+}
+
 static int8_t clamp_offset(int32_t v) {
   if (v < OFFSET_MIN) v = OFFSET_MIN;
   if (v > OFFSET_MAX) v = OFFSET_MAX;
@@ -656,7 +813,7 @@ static int8_t clamp_offset(int32_t v) {
 static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
   Tuple *t = dict_find(it, key);
   if (t) {
-    s_settings.offset[row] = clamp_offset(t->value->int32);
+    s_settings.offset[row] = clamp_offset(tuple_int(t));
   }
 }
 
@@ -669,7 +826,10 @@ static void inbox_received(DictionaryIterator *it, void *context) {
     s_settings.ink = GColorFromHEX(t->value->int32);
   }
   if ((t = dict_find(it, MESSAGE_KEY_ShowDate))) {
-    s_settings.show_date = t->value->int32 != 0;
+    s_settings.show_date = tuple_int(t) != 0;
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_DateFormat))) {
+    s_settings.date_format = clamp_date_format(tuple_int(t));
   }
   read_offset(it, MESSAGE_KEY_OffMinute, ROW_MINUTE);
   read_offset(it, MESSAGE_KEY_OffMinutes, ROW_MINUTES);

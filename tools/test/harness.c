@@ -64,11 +64,35 @@ static int ink_bottom_of(const Element *e) {
   return baseline_of(e) + WORD_INK[e->word].desc;
 }
 
+/*
+ * Sakamoto's algorithm. 0 = Sunday, matching struct tm's tm_wday.
+ *
+ * Done arithmetically rather than through mktime() so the sweep stays
+ * deterministic: mktime() consults the host timezone, which would make the
+ * weekday - and therefore the whole date line in format 2 - depend on where
+ * the tests happen to be run.
+ */
+static int day_of_week(int year, int mon0, int mday) {
+  static const int kShift[12] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+  int y = year;
+  if (mon0 < 2) {
+    y -= 1;
+  }
+  return (y + y / 4 - y / 100 + y / 400 + kShift[mon0] + mday) % 7;
+}
+
+/*
+ * tm_wday MUST be filled in here. It was not, originally, and nothing noticed
+ * because nothing read it - but the moment a date format shows the weekday, a
+ * memset-to-zero tm makes every single swept date a Sunday and the weekday
+ * assertion passes without ever having been tested.
+ */
 static struct tm make_tm(int yday, int mday, int mon, int year, int h, int m) {
   struct tm t;
   memset(&t, 0, sizeof(t));
   t.tm_hour = h; t.tm_min = m;
   t.tm_mday = mday; t.tm_mon = mon; t.tm_year = year - 1900; t.tm_yday = yday;
+  t.tm_wday = day_of_week(year, mon, mday);
   return t;
 }
 
@@ -223,6 +247,134 @@ static void check_date_baseline(const Face *f, int h, int m) {
   }
 }
 
+/*
+ * The format-1 date builder EXACTLY as it stood before the atom refactor,
+ * transcribed rather than reimplemented: identity-based spacing ("a space
+ * after the ordinal and after the month"), the hard-coded DATE_SPACE * 2 in
+ * the total, the original centring.
+ *
+ * This is the oracle for the refactor. The new code derives spacing from atom
+ * POSITION instead, which is a different rule that happens to agree for this
+ * one format - "happens to agree" is precisely the sort of claim that needs
+ * checking against the thing it replaced, not against itself. Once a third
+ * format exists this function stays frozen: it describes format 1 only.
+ */
+static void legacy_format1(const struct tm *t, uint8_t *word, int16_t *xs,
+                           int16_t *tops, int *out_n) {
+  const int day = t->tm_mday;
+  const uint8_t d1 = (day >= 10) ? kDigits[day / 10] : 0xFF;
+  const uint8_t d2 = kDigits[day % 10];
+  const uint8_t suf = ordinal_word(day);
+  const uint8_t mon = kMonths[t->tm_mon];
+  const int year = 1900 + t->tm_year;
+  const uint8_t y[4] = {
+    kDigits[(year / 1000) % 10], kDigits[(year / 100) % 10],
+    kDigits[(year / 10) % 10], kDigits[year % 10]
+  };
+
+  uint8_t seq[8];
+  int n = 0;
+  if (d1 != 0xFF) {
+    seq[n++] = d1;
+  }
+  seq[n++] = d2;
+  seq[n++] = suf;
+  seq[n++] = mon;
+  for (int i = 0; i < 4; i++) {
+    seq[n++] = y[i];
+  }
+
+  int total = 0;
+  for (int i = 0; i < n; i++) {
+    total += WORDS[seq[i]].w;
+  }
+  total += DATE_SPACE * 2;
+
+  int x = (SCREEN_W - total) / 2;
+  for (int i = 0; i < n; i++) {
+    word[i] = seq[i];
+    xs[i] = (int16_t)x;
+    tops[i] = (int16_t)((seq[i] == suf)
+                        ? DATE_BASELINE - ORD_RISE - WORDS[suf].base
+                        : DATE_BASELINE - WORDS[seq[i]].base);
+    x += WORDS[seq[i]].w;
+    if (seq[i] == suf || seq[i] == mon) {
+      x += DATE_SPACE;
+    }
+  }
+  *out_n = n;
+}
+
+/* Format 1 must come out of the refactored builder bit for bit. */
+static void check_format1_unchanged(const Face *f, const struct tm *t,
+                                    int h, int m) {
+  char buf[180];
+  uint8_t word[8];
+  int16_t xs[8], tops[8];
+  int want_n = 0;
+  legacy_format1(t, word, xs, tops, &want_n);
+
+  int got = 0;
+  for (int i = 0; i < f->count; i++) {
+    const Element *e = &f->items[i];
+    if (e->row != ROW_DATE) {
+      continue;
+    }
+    if (got < want_n) {
+      snprintf(buf, sizeof(buf),
+               "atom %d: word %d/%d x %d/%d top %d/%d (new/legacy)",
+               got, e->word, word[got], e->x, xs[got], e->top, tops[got]);
+      CHECK(e->word == word[got] && e->x == xs[got] && e->top == tops[got],
+            "refactor changed format 1", h, m, buf);
+    }
+    got++;
+  }
+  snprintf(buf, sizeof(buf), "%d date elements, legacy built %d", got, want_n);
+  CHECK(got == want_n, "refactor changed format 1 element count", h, m, buf);
+}
+
+/* Format 2: the weekday is right, and the year is gone. */
+static void check_weekday_format(const Face *f, const struct tm *t,
+                                 int h, int m) {
+  char buf[180];
+  const int wday = day_of_week(1900 + t->tm_year, t->tm_mon, t->tm_mday);
+  const uint8_t want = kWeekdays[wday];
+
+  int date_elements = 0, weekdays = 0;
+  const Element *first = NULL;
+  for (int i = 0; i < f->count; i++) {
+    const Element *e = &f->items[i];
+    if (e->row != ROW_DATE) {
+      continue;
+    }
+    if (!first) {
+      first = e;
+    }
+    date_elements++;
+    for (int d = 0; d < 7; d++) {
+      if (e->word == kWeekdays[d]) {
+        weekdays++;
+        snprintf(buf, sizeof(buf), "showed weekday %d, date is weekday %d",
+                 d, wday);
+        CHECK(e->word == want, "wrong weekday", h, m, buf);
+      }
+    }
+  }
+
+  CHECK(weekdays == 1, "format 2 should carry exactly one weekday", h, m, "");
+  if (first) {
+    snprintf(buf, sizeof(buf), "first date element is word %d", first->word);
+    CHECK(first->word == want, "weekday is not first in reading order",
+          h, m, buf);
+  }
+
+  /* weekday + day digits + ordinal + month, and no year. */
+  const int want_n = 1 + ((t->tm_mday >= 10) ? 2 : 1) + 1 + 1;
+  snprintf(buf, sizeof(buf), "%d date elements, expected %d (year present?)",
+           date_elements, want_n);
+  CHECK(date_elements == want_n, "format 2 element count", h, m, buf);
+}
+
 /* ------------------------------------------------------------------ */
 /* Sweeps                                                              */
 /* ------------------------------------------------------------------ */
@@ -252,11 +404,13 @@ static void play_reveal(void) {
   }
 }
 
-static void sweep_minutes(void) {
+static void sweep_minutes(uint8_t fmt) {
   int redrawn = 0, moved = 0, elements = 0, peak_bitmaps = 0;
 
+  s_settings.date_format = fmt;
   s_have_prev = false;
   s_last_yday = -1;
+  drop_all_bitmaps();
 
   for (int t = 0; t < 1440; t++) {
     const int h = t / 60, m = t % 60;
@@ -278,6 +432,11 @@ static void sweep_minutes(void) {
     check_reading_order(&s_face, h, m);
     check_pinned_rows(&s_face, h, m);
     check_date_baseline(&s_face, h, m);
+    if (fmt == 0) {
+      check_format1_unchanged(&s_face, &tm, h, m);
+    } else if (fmt == 1) {
+      check_weekday_format(&s_face, &tm, h, m);
+    }
 
     for (int i = 0; i < s_face.count; i++) {
       const Element *e = &s_face.items[i];
@@ -321,9 +480,11 @@ static void sweep_minutes(void) {
 
 /* Every date of a leap year, so all twelve months, both ordinal edge cases
  * (11th-13th take "th") and the 1/2/3 suffixes are all placed. */
-static void sweep_dates(void) {
+static void sweep_dates(uint8_t fmt) {
   static const int kDays[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
   int yday = 0;
+  bool seen_wday[7] = {false, false, false, false, false, false, false};
+  s_settings.date_format = fmt;
   for (int mon = 0; mon < 12; mon++) {
     for (int day = 1; day <= kDays[mon]; day++, yday++) {
       struct tm tm = make_tm(yday, day, mon, 2028, 10, 37);
@@ -331,6 +492,12 @@ static void sweep_dates(void) {
       refresh(&tm, true);
       check_bounds(&s_face, mon + 1, day);
       check_date_baseline(&s_face, mon + 1, day);
+      if (fmt == 0) {
+        check_format1_unchanged(&s_face, &tm, mon + 1, day);
+      } else if (fmt == 1) {
+        check_weekday_format(&s_face, &tm, mon + 1, day);
+        seen_wday[tm.tm_wday % 7] = true;
+      }
 
       const uint8_t want = (day >= 11 && day <= 13) ? W_TH
                          : (day % 10 == 1) ? W_ST
@@ -343,7 +510,68 @@ static void sweep_dates(void) {
       CHECK(found, "wrong ordinal suffix", mon + 1, day, "");
     }
   }
+
+  /*
+   * Guards the failure mode this sweep was blind to until tm_wday was filled
+   * in: if every swept date came out the same weekday, the weekday assertion
+   * above would agree with itself all year and prove nothing.
+   */
+  if (fmt == 1) {
+    for (int d = 0; d < 7; d++) {
+      char buf[60];
+      snprintf(buf, sizeof(buf), "weekday %d never appeared in a whole year", d);
+      CHECK(seen_wday[d], "weekday sweep is vacuous", 0, 0, buf);
+    }
+  }
+
   printf("  dates swept          %d\n", yday);
+}
+
+/*
+ * The settings path, which is where a date format actually arrives from.
+ *
+ * Clay sends a select as a cstring while every other control on the page
+ * sends an int, so tuple_int() has to read both - and an out-of-range index
+ * must land on the default rather than off the end of kDateFormats.
+ */
+static void check_settings(void) {
+  struct { TupleType type; int32_t i; const char *s; int32_t want;
+           const char *why; } cases[] = {
+    {TUPLE_INT,     1, NULL, 1,  "int tuple"},
+    {TUPLE_CSTRING, 0, "1",  1,  "cstring tuple, as Clay's select sends it"},
+    {TUPLE_CSTRING, 0, "0",  0,  "cstring zero"},
+    {TUPLE_CSTRING, 0, " 2", 2,  "leading space"},
+    {TUPLE_CSTRING, 0, "-3", -3, "negative"},
+    {TUPLE_CSTRING, 0, "",   0,  "empty string"},
+    {TUPLE_CSTRING, 0, NULL, 0,  "null string"}
+  };
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    Tuple t;
+    t.type = cases[i].type;
+    if (cases[i].type == TUPLE_CSTRING) {
+      t.value->cstring = cases[i].s;
+    } else {
+      t.value->int32 = cases[i].i;
+    }
+    char buf[100];
+    snprintf(buf, sizeof(buf), "%s -> %d, expected %d", cases[i].why,
+             (int)tuple_int(&t), (int)cases[i].want);
+    CHECK(tuple_int(&t) == cases[i].want, "tuple parse", 0, 0, buf);
+  }
+
+  /* Anything outside kDateFormats falls back rather than indexing off it. */
+  CHECK(clamp_date_format(-1) == DEFAULT_DATE_FORMAT, "date format clamp",
+        0, 0, "negative");
+  CHECK(clamp_date_format(DATE_FORMAT_COUNT) == DEFAULT_DATE_FORMAT,
+        "date format clamp", 0, 0, "one past the end");
+  CHECK(clamp_date_format(9999) == DEFAULT_DATE_FORMAT, "date format clamp",
+        0, 0, "far out of range");
+  for (uint8_t f = 0; f < DATE_FORMAT_COUNT; f++) {
+    CHECK(clamp_date_format(f) == f, "date format clamp", 0, 0, "in range");
+  }
+
+  printf("  settings cases       %d\n",
+         (int)(sizeof(cases) / sizeof(cases[0])) + 3 + DATE_FORMAT_COUNT);
 }
 
 /* The wording rules, spot-checked where they are asymmetric on purpose:
@@ -394,9 +622,21 @@ int main(void) {
   printf("  TIME box %dpx/base %d   ROW_GAP %d   REL_TOP %d   DATE_BASELINE %d\n",
          TIME_BOX_H, TIME_BOX_BASE, ROW_GAP, REL_TOP, DATE_BASELINE);
 
-  sweep_minutes();
-  sweep_dates();
+  /*
+   * Driven off DATE_FORMAT_COUNT, not off a literal 2: adding a fourth entry
+   * to kDateFormats should pull it into the full sweep without anyone having
+   * to remember to widen this loop.
+   */
+  for (uint8_t fmt = 0; fmt < DATE_FORMAT_COUNT; fmt++) {
+    printf("\ndate format %d - \"%s\"\n", fmt, kDateFormats[fmt].sample);
+    sweep_minutes(fmt);
+    sweep_dates(fmt);
+  }
+
+  printf("\n");
+  settings_defaults();
   check_wording();
+  check_settings();
 
   drop_all_bitmaps();
   printf("  live bitmaps at exit %d\n", stub_live_bitmaps());

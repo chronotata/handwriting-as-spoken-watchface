@@ -66,6 +66,13 @@
 #define RESOURCE_ID_W_ND 60
 #define RESOURCE_ID_W_RD 61
 #define RESOURCE_ID_W_TH 62
+#define RESOURCE_ID_W_DOW_SUN 63
+#define RESOURCE_ID_W_DOW_MON 64
+#define RESOURCE_ID_W_DOW_TUE 65
+#define RESOURCE_ID_W_DOW_WED 66
+#define RESOURCE_ID_W_DOW_THU 67
+#define RESOURCE_ID_W_DOW_FRI 68
+#define RESOURCE_ID_W_DOW_SAT 69
 
 typedef struct { uint8_t asc, desc; } WordInk;
 
@@ -133,4 +140,11 @@ static const WordInk WORD_INK[] = {
   {11, 0},        /* nd */
   {11, 0},        /* rd */
   {11, 0},        /* th */
+  {15, 5},        /* Sun. */
+  {15, 4},        /* Mon. */
+  {15, 0},        /* Tue. */
+  {18, 0},        /* Wed. */
+  {17, 1},        /* Thu. */
+  {15, 3},        /* Fri. */
+  {15, 5},        /* Sat. */
 };

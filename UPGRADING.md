@@ -136,15 +136,28 @@ pip install Pillow --break-system-packages   # if not already present
 python3 tools/tune.py
 ```
 
-This renders all 62 words the face can show into `resources/images/`,
+This renders all 69 words the face can show into `resources/images/`,
 writes `src/c/geometry.h` and `tools/test/generated.h`, and updates the
 bitmap resource list in `package.json`. **Re-run this any time you change a
 `FONT_SIZE_*` in `config.h`** — image, geometry, and manifest all have to
 move together, or the layout math and the actual pictures on screen will
-disagree. `handwritten.c` will refuse to compile against a stale
-`geometry.h` rather than build something wrong.
+disagree. **Also re-run it after adding any word** — a new date format, a
+new wording rule — since the word list lives in `tune.py`.
 
-It also writes `handwriting-templates/` — the same 62 words as plain PNGs
+`handwritten.c` will refuse to compile against a stale `geometry.h` rather
+than build something wrong. Each guard names the generation it needs:
+
+```
+#error "src/c/geometry.h predates uniform family boxes. Run: python3 tools/tune.py"
+#error "src/c/geometry.h has no weekday words. Run: python3 tools/tune.py"
+```
+
+Both mean the same thing — run `tune.py`. They exist because a stale
+`geometry.h` once *did* get committed on its own, and the mismatch between
+the table and the images it indexes is not something a build would
+otherwise notice.
+
+It also writes `handwriting-templates/` — the same 69 words as plain PNGs
 at their exact final sizes, for tracing over with real handwriting later.
 
 `tune.py` checks the vertical budget before it writes anything, and stops
@@ -170,7 +183,7 @@ tools/test/run.sh
 Needs `gcc` and nothing else — no Pebble SDK, so this runs anywhere and
 takes under a second. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
-about 127,000 assertions, under AddressSanitizer.
+once per date format — about 250,000 assertions, under AddressSanitizer.
 
 Run it before every `pebble build`. It catches in a second what otherwise
 takes an emulator round trip to notice, and several of the bugs in
@@ -232,7 +245,8 @@ real hardware the same way `--emulator` does from the simulator.
 
 Open the watchface's settings in the Pebble phone app. Six sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
-and apply the moment you change them. No rebuild, no reinstall.
+and apply the moment you change them. No rebuild, no reinstall. The same
+page carries the colours, the date on/off toggle, and the date format.
 
 For anything beyond a pixel nudge — spacing between two specific rows, or
 how large a word's ink reads relative to its neighbours — edit that word's
@@ -266,7 +280,40 @@ mean to change and leave everything else untouched — or use
 `pebble package install` for anything dependency-related, which manages
 this correctly on its own.
 
-## 10. What's next: version 2
+A third field is worth the same care: **`pebble.messageKeys`**. The SDK
+numbers these by list position, so a new key goes on the **end**. Both
+sides are regenerated from this file at build time, so renumbering is
+internally consistent and will not break anything today — but appending
+keeps the C stub in `tools/test/pebble.h`, which hard-codes the numbers,
+honest without a hunt.
+
+---
+
+## 10. Adding a date format
+
+Three edits and a `tune.py` run. Formats are data — `build_date()` should
+not need to change.
+
+1. **New words?** If the format shows something the face has never drawn
+   (the weekday words were exactly this), add them to `tools/tune.py`'s
+   word list, appended at the **end** so existing resource ids don't
+   renumber. Anything in the `DATE` family that fits inside the existing
+   box costs nothing: the other date PNGs regenerate byte-identically.
+2. **`src/c/handwritten.c`** — add a row to `kDateFormats[]`, on the end.
+   The index is the wire format; the phone stores and sends it, so
+   reordering existing rows changes the date under everyone who already
+   chose one.
+3. **`src/pkjs/config.js`** — add the matching `options` entry, with the
+   same index as its `value`.
+
+Then `python3 tools/tune.py && tools/test/run.sh`. The test sweep is driven
+off `DATE_FORMAT_COUNT`, so the new format is swept for bounds, baseline
+and centring automatically — but the format-*specific* assertions are not
+written for you. Add one, and prove it can fail before believing it.
+
+---
+
+## 11. What's next: version 2
 
 Draw over the templates in `handwriting-templates/` — each is already
 sized exactly for its slot in the layout. Swapping them in is a resources

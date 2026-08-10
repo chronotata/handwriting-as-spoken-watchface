@@ -79,6 +79,11 @@ ONES = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
 MONTHS = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.",
           "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."]
 
+# SUNDAY FIRST, to match struct tm's tm_wday. handwritten.c indexes
+# kWeekdays[] with tm_wday directly, so this order is load-bearing: rotating
+# it silently shifts every weekday by a day rather than failing to build.
+WEEKDAYS = ["Sun.", "Mon.", "Tue.", "Wed.", "Thu.", "Fri.", "Sat."]
+
 
 def words():
     """(C enum name, size family, text). '|' means half a space."""
@@ -96,6 +101,10 @@ def words():
     out += [("W_D%d" % d, "DATE", str(d)) for d in range(10)]
     out += [("W_MON%d" % (i + 1), "DATE", m) for i, m in enumerate(MONTHS)]
     out += [("W_" + o.upper(), "ORD", o) for o in ("st", "nd", "rd", "th")]
+    # Appended LAST on purpose. Resource ids are this list's index + 1, so
+    # adding anywhere earlier would renumber every word after it and churn
+    # geometry.h and package.json for no reason.
+    out += [("W_DOW_" + d[:3].upper(), "DATE", d) for d in WEEKDAYS]
     return out
 
 
@@ -327,6 +336,11 @@ def main():
            "/* swapping one word for another moves nothing around it. Widths   */",
            "/* stay tight to each word's own ink. */",
            "", "#pragma once", "#include <stdint.h>", ""]
+    out.append("/* Marks a geometry.h new enough to contain the weekday words.")
+    out.append("   handwritten.c #errors without it, so a stale file cannot be")
+    out.append("   built against silently - the same trick as TIME_BOX_H. */")
+    out.append("#define GEOMETRY_HAS_WEEKDAYS 1")
+    out.append("")
     out.append("/* Family boxes: ascent + descent, and the shared baseline offset. */")
     for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD"):
         a, d = box[fam]

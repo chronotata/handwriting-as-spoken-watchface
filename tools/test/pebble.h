@@ -141,7 +141,20 @@ int persist_write_data(uint32_t key, const void *buf, size_t size);
 /* AppMessage                                                        */
 /* ---------------------------------------------------------------- */
 
-typedef struct { union { int32_t int32; uint32_t uint32; } value[1]; } Tuple;
+/* Clay sends a select as a cstring and everything else as an int, so the
+ * tuple's TYPE is part of what handwritten.c has to cope with. Modelling it
+ * here is what lets the tests feed tuple_int() both representations. */
+typedef enum {
+  TUPLE_BYTE_ARRAY = 0,
+  TUPLE_CSTRING = 1,
+  TUPLE_UINT = 2,
+  TUPLE_INT = 3
+} TupleType;
+
+typedef struct {
+  TupleType type;
+  union { int32_t int32; uint32_t uint32; const char *cstring; } value[1];
+} Tuple;
 typedef struct DictionaryIterator DictionaryIterator;
 Tuple *dict_find(DictionaryIterator *iter, uint32_t key);
 void app_message_register_inbox_received(void (*cb)(DictionaryIterator *, void *));
@@ -156,6 +169,7 @@ void app_message_open(uint32_t in, uint32_t out);
 #define MESSAGE_KEY_OffHour 7
 #define MESSAGE_KEY_OffSolo 8
 #define MESSAGE_KEY_OffDate 9
+#define MESSAGE_KEY_DateFormat 10
 
 /* ---------------------------------------------------------------- */
 /* Tick service and event loop                                       */

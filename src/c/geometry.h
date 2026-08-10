@@ -6,6 +6,11 @@
 #pragma once
 #include <stdint.h>
 
+/* Marks a geometry.h new enough to contain the weekday words.
+   handwritten.c #errors without it, so a stale file cannot be
+   built against silently - the same trick as TIME_BOX_H. */
+#define GEOMETRY_HAS_WEEKDAYS 1
+
 /* Family boxes: ascent + descent, and the shared baseline offset. */
 #define TIME_BOX_H 47
 #define TIME_BOX_BASE 31
@@ -92,6 +97,13 @@ typedef enum {
   W_ND,              /* nd */
   W_RD,              /* rd */
   W_TH,              /* th */
+  W_DOW_SUN,         /* Sun. */
+  W_DOW_MON,         /* Mon. */
+  W_DOW_TUE,         /* Tue. */
+  W_DOW_WED,         /* Wed. */
+  W_DOW_THU,         /* Thu. */
+  W_DOW_FRI,         /* Fri. */
+  W_DOW_SAT,         /* Sat. */
   W_COUNT
 } WordId;
 
@@ -158,4 +170,11 @@ static const WordGeom WORDS[W_COUNT] = {
   {RESOURCE_ID_W_ND, 16, 11, 11},
   {RESOURCE_ID_W_RD, 15, 11, 11},
   {RESOURCE_ID_W_TH, 11, 11, 11},
+  {RESOURCE_ID_W_DOW_SUN, 40, 28, 19},
+  {RESOURCE_ID_W_DOW_MON, 41, 28, 19},
+  {RESOURCE_ID_W_DOW_TUE, 31, 28, 19},
+  {RESOURCE_ID_W_DOW_WED, 40, 28, 19},
+  {RESOURCE_ID_W_DOW_THU, 36, 28, 19},
+  {RESOURCE_ID_W_DOW_FRI, 32, 28, 19},
+  {RESOURCE_ID_W_DOW_SAT, 37, 28, 19},
 };

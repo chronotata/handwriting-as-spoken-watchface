@@ -29,7 +29,8 @@
       "OffRelation",
       "OffHour",
       "OffSolo",
-      "OffDate"
+      "OffDate",
+      "DateFormat"
     ],
     "resources": {
       "media": [
@@ -464,6 +465,55 @@
           "type": "bitmap",
           "name": "W_TH",
           "file": "images/w_th.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_DOW_SUN",
+          "file": "images/w_dow_sun.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_DOW_MON",
+          "file": "images/w_dow_mon.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_DOW_TUE",
+          "file": "images/w_dow_tue.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_DOW_WED",
+          "file": "images/w_dow_wed.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_DOW_THU",
+          "file": "images/w_dow_thu.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_DOW_FRI",
+          "file": "images/w_dow_fri.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_DOW_SAT",
+          "file": "images/w_dow_sat.png",
           "memoryFormat": "4BitPalette",
           "storageFormat": "pbi"
         }

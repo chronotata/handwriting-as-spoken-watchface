@@ -25,7 +25,7 @@ native to the Pebble Time 2 (Emery, 200×228):
 ## 2. Architecture: pre-rendered word bitmaps
 
 Words are **images, not font text.** `tools/tune.py` renders every word the
-face can ever show — 62 of them — to individual PNGs at build-configuration
+face can ever show — 69 of them — to individual PNGs at build-configuration
 time; `handwritten.c` only ever blits rectangles of those images.
 
 **Why not a font:** three consecutive attempts to mask *unrevealed* text
@@ -168,6 +168,35 @@ that baseline by its own baseline, not by aligning its canvas top to the
 digit's — digits have no descenders, so top-alignment barely raised it at
 all (§6 has the numbers).
 
+**Formats are data, not code.** An *atom* is one readable unit — the
+weekday, the day-with-its-ordinal, the month, the year — which may expand to
+several word images ("21st" is three). A format is an ordered list of atoms
+in `kDateFormats[]`, and `DATE_SPACE` goes **between** atoms: never before
+the first, never after the last, never inside one. Adding a format means
+adding a row to that table, a matching option in `src/pkjs/config.js`, and
+nothing else — `build_date()` should not need to change.
+
+```
+0   "10th Aug. 2026"    DAY MONTH YEAR
+1   "Mon. 10th Aug."    WEEKDAY DAY MONTH
+```
+
+The index is the wire format — it is what the phone stores and sends — so
+**new formats go on the end** and existing rows are never reordered or
+renumbered. Doing either would silently change the date for everyone who
+had already chosen one.
+
+That positional spacing rule replaced an identity-based one ("add a space
+after the ordinal and after the month"). The two agree exactly for format 0,
+which is why the switch was safe, but identity-based spacing only worked
+because the month happened to be followed by the year; in any format ending
+on the month it would have appended a phantom trailing gap and thrown the
+centring off by 3px. The harness pins this down both ways — see §5.
+
+`kWeekdays[]` is indexed by `struct tm`'s `tm_wday`, so it is **Sunday
+first**, as is `WEEKDAYS` in `tune.py`. Rotating either one shifts every
+weekday by a day without failing to build.
+
 ### 3.5 Wording rules
 
 ```
@@ -226,7 +255,9 @@ Every layout claim in this document is checked by `tools/test/`, which
 compiles the *real* `src/c/handwritten.c` against a hand-written Pebble API
 stub (`pebble.h`, `stub.c`) and sweeps its own `build_face()` over all 1440
 minutes of the day, every date of a leap year, and the asymmetric wording
-cases. Around 127,000 assertions, under a second.
+cases — **once per date format**, driven off `DATE_FORMAT_COUNT` so a new
+format is swept without anyone remembering to widen a loop. Around 250,000
+assertions, under a second.
 
 It is deliberately not a Python re-implementation. A model agrees with
 itself, not with the watch: the `kOnes[19]` out-of-bounds read at
@@ -245,14 +276,27 @@ What it checks:
 | reveal order | array order equals reading order |
 | pinned rows | relation at `REL_TOP`, hour one pitch below, and `twenty-` never moving |
 | date | one fixed baseline for every month, ordinal raised, line centred |
+| date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
+| settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range format index falls back rather than indexing off `kDateFormats` |
 | memory | the reveal is played out frame by frame, so `prune_cache()` and the sub-bitmap slicing run for real under ASAN |
 
 The suite is only worth what it catches, so it has been checked against
 regressions rather than assumed: re-introducing the `kOnes[19]` read, the
 indent-by-position bug, the appended-`minutes` reveal-order bug, an
 unpinned relation row, a flattened ordinal, and a `prune_cache()` that
-stops freeing all produce failures. Hold future changes to that standard —
-if a change cannot break a test, add the test that it would break.
+stops freeing all produce failures. So do, since the date formats landed:
+an off-by-one `kWeekdays` index, a gap emitted before the first atom
+instead of only between atoms, and `make_tm()` leaving `tm_wday` at zero.
+Hold future changes to that standard — if a change cannot break a test,
+add the test that it would break.
+
+That last one is worth dwelling on. `make_tm()` never set `tm_wday`, and
+nothing noticed for as long as nothing read it. The moment a format showed
+the weekday, a `memset`-to-zero `tm` would have made every swept date a
+Sunday — and the weekday assertion would have passed all year without ever
+being tested. A test that cannot fail is worse than no test, because it is
+counted. `sweep_dates()` now also asserts that all seven weekdays actually
+appeared.
 
 Two things the suite does **not** cover: anything about how the words
 actually look (colour, antialiasing, stroke weight — all of §2's palette
@@ -345,7 +389,7 @@ this in any project, not just this one:
 
 Not started. The architecture is already shaped for it:
 
-- `tools/tune.py` exports `handwriting-templates/` — all 62 words as plain
+- `tools/tune.py` exports `handwriting-templates/` — all 69 words as plain
   PNGs at their exact final canvas sizes, ready to draw over. Since the
   family-box change these are uniform per family (47px for time words, 29px
   for date atoms) with the baseline at a fixed offset in every one, so they
@@ -358,6 +402,9 @@ Not started. The architecture is already shaped for it:
   needs padding first (add blank rows to both PNGs and re-run `tune.py`).
 - Swapping in real handwriting is a resource-and-`geometry.h` change; no
   layout, anchoring, or animation code should need to move.
+- The seven weekday words (`Sun.`–`Sat.`) are templates too, and are only
+  drawn by date format 1. They sit in the `DATE` box like the months, so
+  they need no special treatment — but they do bring the set to 69.
 - The same four-level colour ceiling applies to scanned artwork as to the
   rendered font — bold, high-contrast strokes will reproduce far better
   than soft pencil gradations.
@@ -371,3 +418,8 @@ Not started. The architecture is already shaped for it:
 None blocking. Possible future directions, none committed: extending
 `OFFSET_*` tuning to include per-row size multipliers (currently sizes are
 build-time only, per §4); other Pebble platforms; v2 artwork.
+
+Date format 1 (`Mon. 10th Aug.`) has passed the layout sweep but, like the
+family-box change above it, **has not yet been seen on hardware**. The
+format machinery is built for more than two — `UPGRADING.md` §10 is the
+recipe — but no third format is planned.
