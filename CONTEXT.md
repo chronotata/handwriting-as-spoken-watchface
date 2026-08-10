@@ -1,9 +1,9 @@
 # Handwritten (British) — Project Context
 
-Status: **v1.1 built, installed, and confirmed working on both the emulator
-and real Pebble Time 2 hardware.** Canvas heights were made uniform per size
-family after v1.1 (§2, §3.2); that change is verified by arithmetic and a
-1440-minute layout sweep but has **not yet been seen on hardware**. This
+Status: **built, installed, and confirmed working on both the emulator and
+real Pebble Time 2 hardware**, including the uniform family boxes (§2, §3.2)
+and the selectable date formats (§3.4) — both of which were arithmetic and a
+layout sweep only until they were seen on the watch. This
 document describes what shipped and why. For the blow-by-blow of how it got here — three failed masking schemes,
 the font-vs-bitmap decision, the split-line layout exploration — see the
 project's chat history; it isn't repeated here.
@@ -419,7 +419,18 @@ None blocking. Possible future directions, none committed: extending
 `OFFSET_*` tuning to include per-row size multipliers (currently sizes are
 build-time only, per §4); other Pebble platforms; v2 artwork.
 
-Date format 1 (`Mon. 10th Aug.`) has passed the layout sweep but, like the
-family-box change above it, **has not yet been seen on hardware**. The
-format machinery is built for more than two — `UPGRADING.md` §10 is the
-recipe — but no third format is planned.
+Both date formats are confirmed on hardware. The format machinery is built
+for more than two — `UPGRADING.md` §10 is the recipe — but no third format
+is planned.
+
+**Two working copies.** The git folder is the only place anything is
+authored or generated: edits, `tune.py`, `run.sh`. A separate build folder
+on the Linux filesystem receives a one-way copy, because `pebble build` is
+far slower over `/mnt/c`. The direction is fixed deliberately.
+`package.json` is both hand-authored (`messageKeys`) and generated
+(`resources.media`), so when each folder generated its own, each ended up
+holding half the truth — one had the weekday bitmaps declared but not the
+`DateFormat` key, the other the reverse, and the build failed on a symbol
+that was sitting in the other copy. Any file with two authors in two places
+will find that bug. The local sync helper is not committed; it has absolute
+paths in it.
