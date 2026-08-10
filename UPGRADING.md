@@ -183,7 +183,8 @@ tools/test/run.sh
 Needs `gcc` and nothing else — no Pebble SDK, so this runs anywhere and
 takes under a second. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
-once per date format — about 250,000 assertions, under AddressSanitizer.
+once per date format and minutes mode — about 684,000 assertions, under
+AddressSanitizer.
 
 Run it before every `pebble build`. It catches in a second what otherwise
 takes an emulator round trip to notice, and several of the bugs in
@@ -246,7 +247,8 @@ real hardware the same way `--emulator` does from the simulator.
 Open the watchface's settings in the Pebble phone app. Six sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
 and apply the moment you change them. No rebuild, no reinstall. The same
-page carries the colours, the date on/off toggle, and the date format.
+page carries the colours, the date on/off toggle, the date format, and
+whether `minute(s)` is spoken.
 
 For anything beyond a pixel nudge — spacing between two specific rows, or
 how large a word's ink reads relative to its neighbours — edit that word's

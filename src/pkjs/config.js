@@ -55,6 +55,34 @@ module.exports = [
   {
     type: 'section',
     items: [
+      { type: 'heading', defaultValue: 'Wording' },
+      // Values are indices into kMinutesModes[] in src/c/handwritten.c and
+      // are the wire format - never reordered, new modes on the end.
+      {
+        type: 'select',
+        messageKey: 'MinutesText',
+        label: 'Say "minutes"',
+        defaultValue: '0',
+        options: [
+          { label: 'Only when not a round five', value: '0' },
+          { label: 'Never', value: '1' },
+          { label: 'After any number', value: '2' }
+        ]
+      },
+      {
+        type: 'text',
+        defaultValue:
+          '"Only when not a round five" gives <em>twenty-nine minutes to ' +
+          'ten</em> but <em>five past five</em>. "Never" drops it ' +
+          'everywhere. "After any number" says <em>five minutes past ' +
+          'five</em>, while still saying <em>quarter past</em> and ' +
+          '<em>half past</em> — "quarter minutes past" is not English.'
+      }
+    ]
+  },
+  {
+    type: 'section',
+    items: [
       { type: 'heading', defaultValue: 'Date' },
       {
         type: 'toggle',

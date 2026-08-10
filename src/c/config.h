@@ -142,3 +142,18 @@
 
 #define MIDDAY_WORD "midday"
 #define WITCHING_HOUR 3   /* easter egg fires at this hour, on the hour */
+
+/*
+ * Which entry of kMinutesModes (handwritten.c) a fresh install starts on,
+ * and what an out-of-range value from the phone falls back to.
+ *
+ *   0  "twenty-nine minutes to ten", "five past five"   (only when the
+ *      minute is not a multiple of five - how v1 always behaved)
+ *   1  "twenty-nine to ten", "five past five"           (never)
+ *   2  "twenty-nine minutes to ten", "five minutes past five", but still
+ *      "quarter past" and "half past"                   (after numbers)
+ *
+ * Leave this at 0: it is the behaviour every existing watch already has,
+ * and watches that have chosen otherwise persist their own value.
+ */
+#define DEFAULT_MINUTES_MODE 0

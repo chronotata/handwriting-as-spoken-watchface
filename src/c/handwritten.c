@@ -95,7 +95,8 @@ typedef struct {
   GColor ink;
   bool show_date;
   int8_t offset[ROW_COUNT];
-  uint8_t date_format;   /* index into kDateFormats */
+  uint8_t date_format;    /* index into kDateFormats  */
+  uint8_t minutes_mode;   /* index into kMinutesModes */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -147,6 +148,48 @@ static uint8_t ordinal_word(int day) {
     case 2:  return W_ND;
     case 3:  return W_RD;
     default: return W_TH;
+  }
+}
+
+/*
+ * When the "minute(s)" annotation is spoken.
+ *
+ * Index order is the wire format - the phone stores and sends it - so new
+ * modes go on the end and these are never reordered.
+ */
+typedef enum {
+  MINS_AUTO = 0,    /* only when the minute is not a multiple of five */
+  MINS_NEVER,       /* never                                          */
+  MINS_ALWAYS       /* after numbers, but not after "quarter"/"half"  */
+} MinutesMode;
+
+static const char *const kMinutesModes[] = {
+  "only when not a multiple of five",
+  "never",
+  "after numbers, not after quarter/half"
+};
+
+#define MINUTES_MODE_COUNT \
+  ((uint8_t)(sizeof(kMinutesModes) / sizeof(kMinutesModes[0])))
+
+/*
+ * `mins` is the spoken minute count - the number actually said aloud, so 29
+ * at both :29 and :31 - not tm_min.
+ *
+ * MINS_ALWAYS keys off the two cases where the minute is spoken as a WORD
+ * rather than a number. "quarter minutes past" and "half minutes past" are
+ * not English, and no amount of "always" makes them so; 15 and 30 are the
+ * only two, because 45 is spoken as "quarter to" with mins == 15.
+ */
+static bool wants_minutes(int mins) {
+  switch (s_settings.minutes_mode) {
+    case MINS_NEVER:
+      return false;
+    case MINS_ALWAYS:
+      return mins != 15 && mins != 30;
+    case MINS_AUTO:
+    default:
+      return (mins % 5) != 0;
   }
 }
 
@@ -519,7 +562,7 @@ static void build_face(Face *f, struct tm *t) {
     }
 
     const bool split = (mins >= 21 && mins <= 29);
-    const bool show_mins = (mins % 5) != 0;
+    const bool show_mins = wants_minutes(mins);
 
     int rel_idx;
     if (split) {
@@ -752,6 +795,7 @@ static void settings_defaults(void) {
   s_settings.ink = GColorWhite;
   s_settings.show_date = true;
   s_settings.date_format = DEFAULT_DATE_FORMAT;
+  s_settings.minutes_mode = DEFAULT_MINUTES_MODE;
   s_settings.offset[ROW_MINUTE] = OFFSET_MINUTE;
   s_settings.offset[ROW_MINUTES] = OFFSET_MINUTES;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
@@ -804,6 +848,10 @@ static uint8_t clamp_date_format(int32_t v) {
   return (v >= 0 && v < DATE_FORMAT_COUNT) ? (uint8_t)v : DEFAULT_DATE_FORMAT;
 }
 
+static uint8_t clamp_minutes_mode(int32_t v) {
+  return (v >= 0 && v < MINUTES_MODE_COUNT) ? (uint8_t)v : DEFAULT_MINUTES_MODE;
+}
+
 static int8_t clamp_offset(int32_t v) {
   if (v < OFFSET_MIN) v = OFFSET_MIN;
   if (v > OFFSET_MAX) v = OFFSET_MAX;
@@ -830,6 +878,9 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   }
   if ((t = dict_find(it, MESSAGE_KEY_DateFormat))) {
     s_settings.date_format = clamp_date_format(tuple_int(t));
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_MinutesText))) {
+    s_settings.minutes_mode = clamp_minutes_mode(tuple_int(t));
   }
   read_offset(it, MESSAGE_KEY_OffMinute, ROW_MINUTE);
   read_offset(it, MESSAGE_KEY_OffMinutes, ROW_MINUTES);

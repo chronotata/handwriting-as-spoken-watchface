@@ -215,6 +215,27 @@ Twelve o'clock is asymmetric on purpose: `midday` only when it stands
 alone, `noon` after it (*past*), `twelve` before it (*to*); `midnight` on
 both sides.
 
+**Whether `minute(s)` is spoken is a setting** (`kMinutesModes`, chosen on
+the phone). `mins` below is the *spoken* minute count — 29 at both `:29`
+and `:31` — not `tm_min`:
+
+```
+0  auto    mins % 5 != 0        "twenty-nine minutes to ten", "five past five"
+1  never   never                "twenty-nine to ten",         "five past five"
+2  always  mins != 15, 30       "twenty-nine minutes to ten", "five minutes past five"
+```
+
+Mode 2 stops at 15 and 30 because those are the two minutes spoken as a
+*word* rather than a number — "quarter minutes past" and "half minutes
+past" are not English, and no amount of "always" makes them so. 45 needs no
+special case: it is spoken as *quarter to*, with `mins == 15`.
+
+The modes cost nothing structurally. Where `minutes` appears on a non-split
+word it takes its own row, and beside a split word it rides inline — both
+shapes already existed, so mode 2 introduces no new row count and no new
+vertical extent, and mode 1 only removes rows. Confirmed by sweeping all
+three modes against both date formats (§5), not assumed.
+
 ---
 
 ## 4. Tunable constants (`config.h`)
@@ -255,9 +276,10 @@ Every layout claim in this document is checked by `tools/test/`, which
 compiles the *real* `src/c/handwritten.c` against a hand-written Pebble API
 stub (`pebble.h`, `stub.c`) and sweeps its own `build_face()` over all 1440
 minutes of the day, every date of a leap year, and the asymmetric wording
-cases — **once per date format**, driven off `DATE_FORMAT_COUNT` so a new
-format is swept without anyone remembering to widen a loop. Around 250,000
-assertions, under a second.
+cases — **once per date format × minutes mode**, driven off
+`DATE_FORMAT_COUNT` and `MINUTES_MODE_COUNT` so a new setting value is swept
+without anyone remembering to widen a loop. Around 684,000 assertions, under
+a second.
 
 It is deliberately not a Python re-implementation. A model agrees with
 itself, not with the watch: the `kOnes[19]` out-of-bounds read at
@@ -277,7 +299,8 @@ What it checks:
 | pinned rows | relation at `REL_TOP`, hour one pitch below, and `twenty-` never moving |
 | date | one fixed baseline for every month, ordinal raised, line centred |
 | date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
-| settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range format index falls back rather than indexing off `kDateFormats` |
+| minutes modes | presence, absence and singular/plural of `minute(s)` asserted from the spec wording rather than from a copy of the predicate, plus the specific phrases the setting promises (*five minutes past five*, *quarter past one*) |
+| settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range index falls back rather than indexing off `kDateFormats` or `kMinutesModes` |
 | memory | the reveal is played out frame by frame, so `prune_cache()` and the sub-bitmap slicing run for real under ASAN |
 
 The suite is only worth what it catches, so it has been checked against
@@ -286,7 +309,9 @@ indent-by-position bug, the appended-`minutes` reveal-order bug, an
 unpinned relation row, a flattened ordinal, and a `prune_cache()` that
 stops freeing all produce failures. So do, since the date formats landed:
 an off-by-one `kWeekdays` index, a gap emitted before the first atom
-instead of only between atoms, and `make_tm()` leaving `tm_wday` at zero.
+instead of only between atoms, `make_tm()` leaving `tm_wday` at zero, a
+"never" mode that wasn't, an "always" mode that said *quarter minutes past*,
+and a `minutes` that never went singular.
 Hold future changes to that standard — if a change cannot break a test,
 add the test that it would break.
 

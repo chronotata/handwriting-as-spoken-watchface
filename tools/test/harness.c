@@ -375,6 +375,67 @@ static void check_weekday_format(const Face *f, const struct tm *t,
   CHECK(date_elements == want_n, "format 2 element count", h, m, buf);
 }
 
+/*
+ * The "minute(s)" annotation, stated as the SPEC says it rather than as the
+ * code computes it.
+ *
+ * wants_minutes() is a three-line predicate, so a harness copy of it would
+ * be the "model agrees with itself" trap in miniature - it would pass by
+ * construction. These assertions are written from the wording the setting
+ * promises instead: never; always except the two word-minutes; only on
+ * non-multiples of five. If someone changes the predicate, these have to be
+ * re-argued from the spec, which is the point.
+ */
+static void check_minutes_mode(const Face *f, uint8_t mode, int h, int m) {
+  char buf[180];
+
+  int found = 0;
+  uint8_t which = 0;
+  for (int i = 0; i < f->count; i++) {
+    if (f->items[i].word == W_MINUTE || f->items[i].word == W_MINUTES) {
+      found++;
+      which = f->items[i].word;
+    }
+  }
+
+  snprintf(buf, sizeof(buf), "%d of them", found);
+  CHECK(found <= 1, "more than one \"minutes\"", h, m, buf);
+
+  /* On the hour there is no minute number to annotate, in any mode. */
+  if (m == 0) {
+    CHECK(found == 0, "\"minutes\" on the hour", h, m, kMinutesModes[mode]);
+    return;
+  }
+
+  const int mins = (m <= 30) ? m : 60 - m;
+  bool want;
+  switch (mode) {
+    case MINS_NEVER:
+      want = false;
+      break;
+    case MINS_ALWAYS:
+      /* "quarter" and "half" are the words; everything else is a number. */
+      want = (mins != 15 && mins != 30);
+      break;
+    default:
+      want = (mins % 5) != 0;
+      break;
+  }
+
+  snprintf(buf, sizeof(buf), "mode \"%s\", spoken minute %d: %s, expected %s",
+           kMinutesModes[mode], mins, found ? "shown" : "absent",
+           want ? "shown" : "absent");
+  CHECK(found == (want ? 1 : 0), "\"minutes\" shown when it should not be "
+        "(or vice versa)", h, m, buf);
+
+  if (found) {
+    snprintf(buf, sizeof(buf), "spoken minute %d took %s", mins,
+             which == W_MINUTE ? "\"minute\"" : "\"minutes\"");
+    CHECK(which == (mins == 1 ? W_MINUTE : W_MINUTES),
+          "singular/plural", h, m, buf);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Sweeps                                                              */
 /* ------------------------------------------------------------------ */
@@ -404,10 +465,11 @@ static void play_reveal(void) {
   }
 }
 
-static void sweep_minutes(uint8_t fmt) {
+static void sweep_minutes(uint8_t fmt, uint8_t mode) {
   int redrawn = 0, moved = 0, elements = 0, peak_bitmaps = 0;
 
   s_settings.date_format = fmt;
+  s_settings.minutes_mode = mode;
   s_have_prev = false;
   s_last_yday = -1;
   drop_all_bitmaps();
@@ -437,6 +499,7 @@ static void sweep_minutes(uint8_t fmt) {
     } else if (fmt == 1) {
       check_weekday_format(&s_face, &tm, h, m);
     }
+    check_minutes_mode(&s_face, mode, h, m);
 
     for (int i = 0; i < s_face.count; i++) {
       const Element *e = &s_face.items[i];
@@ -485,6 +548,11 @@ static void sweep_dates(uint8_t fmt) {
   int yday = 0;
   bool seen_wday[7] = {false, false, false, false, false, false, false};
   s_settings.date_format = fmt;
+  s_settings.minutes_mode = DEFAULT_MINUTES_MODE;   /* the date line is
+                                                       independent of it; pin
+                                                       it so this sweep does
+                                                       not inherit whatever
+                                                       ran last */
   for (int mon = 0; mon < 12; mon++) {
     for (int day = 1; day <= kDays[mon]; day++, yday++) {
       struct tm tm = make_tm(yday, day, mon, 2028, 10, 37);
@@ -570,13 +638,81 @@ static void check_settings(void) {
     CHECK(clamp_date_format(f) == f, "date format clamp", 0, 0, "in range");
   }
 
+  CHECK(clamp_minutes_mode(-1) == DEFAULT_MINUTES_MODE, "minutes mode clamp",
+        0, 0, "negative");
+  CHECK(clamp_minutes_mode(MINUTES_MODE_COUNT) == DEFAULT_MINUTES_MODE,
+        "minutes mode clamp", 0, 0, "one past the end");
+  CHECK(clamp_minutes_mode(9999) == DEFAULT_MINUTES_MODE, "minutes mode clamp",
+        0, 0, "far out of range");
+  for (uint8_t f = 0; f < MINUTES_MODE_COUNT; f++) {
+    CHECK(clamp_minutes_mode(f) == f, "minutes mode clamp", 0, 0, "in range");
+  }
+
   printf("  settings cases       %d\n",
-         (int)(sizeof(cases) / sizeof(cases[0])) + 3 + DATE_FORMAT_COUNT);
+         (int)(sizeof(cases) / sizeof(cases[0])) + 6
+         + DATE_FORMAT_COUNT + MINUTES_MODE_COUNT);
 }
 
 /* The wording rules, spot-checked where they are asymmetric on purpose:
  * "midday" only standing alone, "noon" after it, "twelve" before it. */
+/*
+ * The three "minutes" modes, spelled out at the examples the setting was
+ * asked for. check_minutes_mode() already sweeps the rule over all 1440
+ * minutes; these pin the specific phrases a person would read on the watch,
+ * so a rule that drifts still has to explain itself against real wording.
+ */
+static void check_minutes_wording(void) {
+  struct { uint8_t mode; int h, m; bool want; const char *phrase; } cases[] = {
+    {MINS_AUTO,   1,  1, true,  "one minute past one"},
+    {MINS_AUTO,   1,  5, false, "five past one"},
+    {MINS_AUTO,   9, 36, true,  "twenty-four minutes to ten"},
+    {MINS_AUTO,   1, 25, false, "twenty-five past one"},
+
+    {MINS_NEVER,  1,  1, false, "one past one"},
+    {MINS_NEVER,  9, 36, false, "twenty-four to ten"},
+    {MINS_NEVER,  1, 15, false, "quarter past one"},
+    {MINS_NEVER,  1, 30, false, "half past one"},
+
+    {MINS_ALWAYS, 5,  5, true,  "five minutes past five"},
+    {MINS_ALWAYS, 1,  1, true,  "one minute past one"},
+    {MINS_ALWAYS, 1, 10, true,  "ten minutes past one"},
+    {MINS_ALWAYS, 1, 20, true,  "twenty minutes past one"},
+    {MINS_ALWAYS, 1, 25, true,  "twenty-five minutes past one"},
+    {MINS_ALWAYS, 9, 36, true,  "twenty-four minutes to ten"},
+    {MINS_ALWAYS, 1, 15, false, "quarter past one, NOT quarter minutes past"},
+    {MINS_ALWAYS, 1, 45, false, "quarter to two, NOT quarter minutes to"},
+    {MINS_ALWAYS, 1, 30, false, "half past one, NOT half minutes past"},
+    {MINS_ALWAYS, 1,  0, false, "one o' clock takes no minutes"}
+  };
+
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    s_settings.minutes_mode = cases[i].mode;
+    struct tm tm = make_tm(232, 21, 7, 2026, cases[i].h, cases[i].m);
+    s_have_prev = false;
+    refresh(&tm, true);
+
+    bool found = false;
+    for (int j = 0; j < s_face.count; j++) {
+      if (s_face.items[j].word == W_MINUTE ||
+          s_face.items[j].word == W_MINUTES) {
+        found = true;
+        break;
+      }
+    }
+    CHECK(found == cases[i].want, "minutes wording",
+          cases[i].h, cases[i].m, cases[i].phrase);
+  }
+
+  s_settings.minutes_mode = DEFAULT_MINUTES_MODE;
+  printf("  minutes wording      %d\n",
+         (int)(sizeof(cases) / sizeof(cases[0])));
+}
+
 static void check_wording(void) {
+  /* These cases describe the default mode; :25 dropping "minutes" is true
+   * of MINS_AUTO only, and is a deliberate choice of a different mode. */
+  s_settings.minutes_mode = MINS_AUTO;
+
   struct { int h, m; uint8_t want; const char *why; } cases[] = {
     {0,  0,  W_SOLO_MIDNIGHT, "midnight alone"},
     {12, 0,  W_SOLO_MIDDAY,   "midday alone"},
@@ -628,14 +764,18 @@ int main(void) {
    * to remember to widen this loop.
    */
   for (uint8_t fmt = 0; fmt < DATE_FORMAT_COUNT; fmt++) {
-    printf("\ndate format %d - \"%s\"\n", fmt, kDateFormats[fmt].sample);
-    sweep_minutes(fmt);
+    for (uint8_t mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
+      printf("\ndate format %d \"%s\"  x  minutes %d \"%s\"\n",
+             fmt, kDateFormats[fmt].sample, mode, kMinutesModes[mode]);
+      sweep_minutes(fmt, mode);
+    }
     sweep_dates(fmt);
   }
 
   printf("\n");
   settings_defaults();
   check_wording();
+  check_minutes_wording();
   check_settings();
 
   drop_all_bitmaps();
