@@ -517,6 +517,140 @@ static void check_palette(void) {
   printf("  palette schemes      5\n");
 }
 
+/*
+ * WHERE THE WORDS ARE ACTUALLY DRAWN, offsets included.
+ *
+ * Everything above this point asserts on e->top, which is the layout as
+ * COMPUTED. draw_element() then adds row_offset(), and for a long time
+ * nothing tested that step at all - so a bug that lived entirely between the
+ * two was invisible. It duly appeared: the two halves of a split minute word
+ * shared one row, so nudging "twenty-" clear of the top of the screen moved
+ * the number below it as well, while the inline "minute(s)" - pinned to that
+ * number's baseline at build time but carrying its own row's offset - stayed
+ * behind. Setting offset[ROW_MINUTES] = -5 by hand produced 683,874 checks
+ * and 0 failures.
+ *
+ * These checks close that gap. They are about the RELATIONSHIPS the offsets
+ * are supposed to preserve, not about particular pixel values.
+ */
+static int drawn_baseline(const Element *e) {
+  return e->top + WORDS[e->word].base + row_offset(e->row);
+}
+
+static void set_offsets(int split_head, int minute, int minutes) {
+  s_settings.offset_split_head = (int8_t)split_head;
+  s_settings.offset[ROW_MINUTE] = (int8_t)minute;
+  s_settings.offset[ROW_MINUTES] = (int8_t)minutes;
+}
+
+/*
+ * Every element must move by EXACTLY its own row's offset - no more, which
+ * would mean a row is dragging a neighbour with it, and no less, which would
+ * mean a slider does not reach what it claims to.
+ *
+ * Stating it that way rather than "the annotation stays level with the
+ * number" matters. The first version of this check only compared those two
+ * with both offsets set alike, and the old shared-row behaviour passed it
+ * cleanly: when the number and the annotation move together they stay level
+ * whether or not the head is tangled up with them. It has to be phrased as
+ * independence, or it does not test the thing that broke.
+ */
+static void check_offset_independence(void) {
+  char buf[220];
+  const int kNudge[] = {0, -8, 5, -15, 15};
+  int inline_lines = 0;
+
+  for (size_t a = 0; a < sizeof(kNudge) / sizeof(kNudge[0]); a++) {
+    for (size_t b = 0; b < sizeof(kNudge) / sizeof(kNudge[0]); b++) {
+      const int head = kNudge[a], num = kNudge[b];
+
+      for (int t = 0; t < 1440; t++) {
+        const int h = t / 60, m = t % 60;
+        struct tm tm = make_tm(232, 21, 7, 2026, h, m);
+
+        set_offsets(0, 0, 0);
+        s_have_prev = false;
+        refresh(&tm, true);
+        const Face flat = s_face;
+
+        set_offsets(head, num, num);
+        s_have_prev = false;
+        refresh(&tm, true);
+
+        /* Offsets are a draw-time concern, so the face itself must be
+         * identical - same words, same order, same computed tops. */
+        CHECK(s_face.count == flat.count, "offsets changed the layout",
+              h, m, "element count");
+
+        for (int i = 0; i < s_face.count && i < flat.count; i++) {
+          const Element *e = &s_face.items[i];
+          const int want_move = (e->row == ROW_SPLIT_HEAD) ? head
+                              : (e->row == ROW_MINUTE)     ? num
+                              : (e->row == ROW_MINUTES)    ? num : 0;
+          const int moved = drawn_baseline(e)
+                          - (flat.items[i].top + WORDS[flat.items[i].word].base);
+          snprintf(buf, sizeof(buf),
+                   "head %+d number %+d: element %d (word %d, row %d) moved "
+                   "%d, its own offset is %d", head, num, i, e->word, e->row,
+                   moved, want_move);
+          CHECK(moved == want_move,
+                "a row did not move by exactly its own offset", h, m, buf);
+        }
+
+        /*
+         * The two halves of a split number must sit on DIFFERENT rows.
+         *
+         * Without this the whole separation can be undone and every other
+         * assertion here still passes: put the head back on ROW_MINUTE and
+         * it moves by ROW_MINUTE's offset, which the rule above accepts as
+         * perfectly consistent. Consistency was never the property that
+         * broke - reachability was. The head needs a slider that moves it
+         * and nothing else, and that is only true if it has its own row.
+         */
+        for (int i = 0; i < s_face.count; i++) {
+          if (s_face.items[i].word != W_TWENTYDASH) {
+            continue;
+          }
+          CHECK(s_face.items[i].row == ROW_SPLIT_HEAD,
+                "the split head is not on its own row", h, m,
+                "it cannot be nudged clear of the screen edge on its own");
+          if (i + 1 < s_face.count) {
+            snprintf(buf, sizeof(buf), "head row %d, number row %d",
+                     s_face.items[i].row, s_face.items[i + 1].row);
+            CHECK(s_face.items[i].row != s_face.items[i + 1].row,
+                  "both halves of a split number share one row", h, m, buf);
+          }
+        }
+
+        /* And the relationship the separation exists to protect: with the
+         * number and the annotation set alike, an inline "minute(s)" stays
+         * on the number's line. */
+        const Element *host = NULL, *ann = NULL;
+        for (int i = 0; i < s_face.count; i++) {
+          if (s_face.items[i].row == ROW_MINUTE)  host = &s_face.items[i];
+          if (s_face.items[i].row == ROW_MINUTES) ann  = &s_face.items[i];
+        }
+        if (host && ann &&
+            baseline_of(ann) == baseline_of(host)) {   /* inline, not stacked */
+          inline_lines++;
+          snprintf(buf, sizeof(buf),
+                   "head %+d number %+d: annotation baseline %d, number %d",
+                   head, num, drawn_baseline(ann), drawn_baseline(host));
+          CHECK(drawn_baseline(ann) == drawn_baseline(host),
+                "\"minute(s)\" left the number's line once drawn", h, m, buf);
+        }
+      }
+    }
+  }
+
+  set_offsets(OFFSET_SPLIT_HEAD, OFFSET_MINUTE, OFFSET_MINUTES);
+  s_have_prev = false;
+  printf("  drawn offsets        %d inline lines over %d offset pairs\n",
+         inline_lines,
+         (int)((sizeof(kNudge) / sizeof(kNudge[0])) *
+               (sizeof(kNudge) / sizeof(kNudge[0]))));
+}
+
 /* ------------------------------------------------------------------ */
 /* Sweeps                                                              */
 /* ------------------------------------------------------------------ */
@@ -872,6 +1006,7 @@ int main(void) {
   check_wording();
   check_minutes_wording();
   check_palette();
+  check_offset_independence();
   check_settings();
 
   drop_all_bitmaps();

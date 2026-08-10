@@ -48,6 +48,20 @@
 /* because nothing re-flows to compensate.                            */
 /* ---------------------------------------------------------------- */
 
+/*
+ * The three rows above "past"/"to" are nudged independently on purpose.
+ *
+ * A split minute word occupies two of them - "twenty-" then "one" - and they
+ * used to share one offset, so pulling the head clear of the top of the
+ * screen dragged the number down with it while the inline "minute(s)",
+ * which is pinned to the number's baseline, stayed put. It read as the
+ * annotation floating when it was the number that had moved.
+ *
+ * OFFSET_MINUTES and OFFSET_MINUTE at the SAME value keep the annotation
+ * level with the number it follows. Deliberately differing them is allowed -
+ * that is the point of separating them - but it is then a choice.
+ */
+#define OFFSET_SPLIT_HEAD 0  /* "twenty-", the first half of a split word */
 #define OFFSET_MINUTE   0  /* row 0   - the minute number       */
 #define OFFSET_MINUTES  0  /* row 1.5 - "minute" / "minutes"    */
 #define OFFSET_RELATION 0  /* row 1   - "past" / "to"           */

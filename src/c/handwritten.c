@@ -53,15 +53,43 @@ _Static_assert(DATE_BASELINE + (DATE_BOX_H - DATE_BOX_BASE) <= SCREEN_H,
 /* Rows and elements                                                   */
 /* ------------------------------------------------------------------ */
 
+/*
+ * The nudge sliders act per ROW, so anything that needs to be nudged
+ * independently needs its own row - which is why the two halves of a split
+ * minute word are separate rows rather than one.
+ *
+ * They used to share ROW_MINUTE. Pulling "twenty-" down away from the top of
+ * the screen therefore pulled "one" down with it, and the inline "minutes"
+ * - which is pinned to "one"'s BASELINE at build time but takes ROW_MINUTES'
+ * offset at draw time - stayed where it was. The result read as "minutes"
+ * floating, when it was the number that had moved.
+ */
 typedef enum {
-  ROW_MINUTE = 0,   /* the minute number, or the first half of a split one */
-  ROW_MINUTES,      /* "minute" / "minutes"                                */
-  ROW_RELATION,     /* "past" / "to"                                       */
-  ROW_HOUR,         /* the hour word                                       */
-  ROW_SOLO,         /* midnight / midday standing alone                    */
+  ROW_MINUTE = 0,   /* the minute number, or the SECOND half of a split one */
+  ROW_MINUTES,      /* "minute" / "minutes"                                 */
+  ROW_RELATION,     /* "past" / "to"                                        */
+  ROW_HOUR,         /* the hour word                                        */
+  ROW_SOLO,         /* midnight / midday standing alone                     */
   ROW_DATE,
+
+  /*
+   * The FIRST half of a split minute word - "twenty-". Added after ROW_DATE
+   * rather than next to ROW_MINUTE because the offsets are persisted as a
+   * raw array and inserting into the middle would reinterpret every existing
+   * watch's saved settings. See Settings.
+   */
+  ROW_SPLIT_HEAD,
   ROW_COUNT
 } RowId;
+
+/*
+ * How many offsets the persisted settings blob holds. FROZEN at the six rows
+ * that existed when the struct was first written; ROW_SPLIT_HEAD's offset is
+ * appended to the end of Settings instead, so old blobs still load.
+ */
+#define OFFSET_ROWS 6
+_Static_assert(ROW_SPLIT_HEAD == OFFSET_ROWS,
+               "OFFSET_ROWS must cover exactly the rows stored in the array");
 
 #define MAX_ELEMENTS 16
 
@@ -94,10 +122,11 @@ typedef struct {
   GColor paper;
   GColor ink;
   bool show_date;
-  int8_t offset[ROW_COUNT];
-  uint8_t date_format;     /* index into kDateFormats  */
-  uint8_t minutes_mode;    /* index into kMinutesModes */
-  uint8_t stroke_weight;   /* level the bold outline renders at, dark ink only */
+  int8_t offset[OFFSET_ROWS];   /* frozen size - see OFFSET_ROWS */
+  uint8_t date_format;          /* index into kDateFormats  */
+  uint8_t minutes_mode;         /* index into kMinutesModes */
+  uint8_t stroke_weight;        /* outline level, dark ink only */
+  int8_t offset_split_head;     /* ROW_SPLIT_HEAD, appended not inserted */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -595,7 +624,10 @@ static void build_face(Face *f, struct tm *t) {
 
     int rel_idx;
     if (split) {
-      push(f, W_TWENTYDASH, ROW_MINUTE);
+      /* Two rows, not one: the head is nudged independently of the number
+       * it belongs to, so it can be pulled clear of the top of the screen
+       * without dragging the rest of the phrase with it. */
+      push(f, W_TWENTYDASH, ROW_SPLIT_HEAD);
       push(f, kOnes[mins - 21], ROW_MINUTE);
       rel_idx = 2;
     } else {
@@ -714,7 +746,10 @@ static void mark_changes(bool date_changed) {
 /* ------------------------------------------------------------------ */
 
 static int row_offset(uint8_t row) {
-  return (row < ROW_COUNT) ? s_settings.offset[row] : 0;
+  if (row == ROW_SPLIT_HEAD) {
+    return s_settings.offset_split_head;
+  }
+  return (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
 }
 
 /*
@@ -832,6 +867,7 @@ static void settings_defaults(void) {
   s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
   s_settings.offset[ROW_SOLO] = OFFSET_SOLO;
   s_settings.offset[ROW_DATE] = OFFSET_DATE;
+  s_settings.offset_split_head = OFFSET_SPLIT_HEAD;
 }
 
 static void settings_load(void) {
@@ -903,8 +939,14 @@ static int8_t clamp_offset(int32_t v) {
 
 static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
   Tuple *t = dict_find(it, key);
-  if (t) {
-    s_settings.offset[row] = clamp_offset(tuple_int(t));
+  if (!t) {
+    return;
+  }
+  const int8_t v = clamp_offset(tuple_int(t));
+  if (row == ROW_SPLIT_HEAD) {
+    s_settings.offset_split_head = v;
+  } else if (row < OFFSET_ROWS) {
+    s_settings.offset[row] = v;
   }
 }
 
@@ -934,6 +976,7 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
   read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);
   read_offset(it, MESSAGE_KEY_OffDate, ROW_DATE);
+  read_offset(it, MESSAGE_KEY_OffSplitHead, ROW_SPLIT_HEAD);
 
   persist_write_data(SETTINGS_KEY, &s_settings, sizeof(s_settings));
   window_set_background_color(s_window, s_settings.paper);

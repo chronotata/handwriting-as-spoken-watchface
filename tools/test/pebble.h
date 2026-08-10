@@ -172,6 +172,7 @@ void app_message_open(uint32_t in, uint32_t out);
 #define MESSAGE_KEY_DateFormat 10
 #define MESSAGE_KEY_MinutesText 11
 #define MESSAGE_KEY_StrokeWeight 12
+#define MESSAGE_KEY_OffSplitHead 13
 
 /* ---------------------------------------------------------------- */
 /* Tick service and event loop                                       */

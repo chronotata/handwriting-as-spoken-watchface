@@ -127,8 +127,9 @@ per-word-layer memory leak.
 
 | Row | Content | Indent |
 |---|---|---|
-| `ROW_MINUTE` | minute number, or first half of a split word | 0 |
-| middle (row/tag varies) | split word's second half, or `minutes` on its own line | 1 (when present) |
+| `ROW_SPLIT_HEAD` | first half of a split word — `twenty-` | 0 |
+| `ROW_MINUTE` | the minute number, or the **second** half of a split word | 0 or 1 |
+| `ROW_MINUTES` | `minute` / `minutes` — its own line, or inline beside a split number | 1 (when stacked) |
 | `ROW_RELATION` | `past` / `to` | **2, always** |
 | `ROW_HOUR` | the hour word | **3, always** |
 | `ROW_SOLO` | `midnight` / `midday` alone | 0 (centred *vertically*) |
@@ -138,6 +139,21 @@ Only the date line is centred horizontally. Everything else — including the
 solo `midnight`/`midday` — sits at the left margin and steps right by
 `INDENT`; "centred" for the solo row means vertically, in the space above
 the date.
+
+**The three rows above the relation are nudged separately**, because the
+sliders act per row and each of them wants a different lever: pulling
+`twenty-` clear of the top edge, setting the number's distance from
+*past*/*to*, and placing the annotation.
+
+They did not start that way. Both halves of a split word shared
+`ROW_MINUTE`, so nudging the head down moved the number with it, while the
+inline `minute(s)` — pinned to the number's **baseline** at build time but
+carrying its own row's offset at draw time — stayed put. On the watch it
+read as the annotation floating; it was the number that had moved. Measured
+from a photograph at 4.6px.
+
+Keeping `OffMinutes` equal to `OffMinute` holds the annotation on the
+number's line. Differing them is allowed and now means exactly what it says.
 
 **Relation and hour are pinned to indent 2/3 regardless of what's above
 them.** This was a deliberate late fix: indenting by *array position*
@@ -335,6 +351,7 @@ What it checks:
 | date | one fixed baseline for every month, ordinal raised, line centred |
 | date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
 | minutes modes | presence, absence and singular/plural of `minute(s)` asserted from the spec wording rather than from a copy of the predicate, plus the specific phrases the setting promises (*five minutes past five*, *quarter past one*) |
+| drawn offsets | every element moves by exactly its own row's offset — no row drags a neighbour, no slider fails to reach its row — swept over 25 offset combinations, plus the two halves of a split number never sharing a row |
 | palette | across five colour schemes including colour-on-colour: level 0 transparent, level 15 exactly the ink, the ramp monotonic, and the bold outline invisible on light ink but inked on dark |
 | settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range index falls back rather than indexing off `kDateFormats` or `kMinutesModes` |
 | memory | the reveal is played out frame by frame, so `prune_cache()` and the sub-bitmap slicing run for real under ASAN |

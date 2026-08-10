@@ -145,10 +145,17 @@ module.exports = [
           'past a slider cannot move it by accident. The box on the right ' +
           'takes a typed number.'
       },
+      offsetSlider('OffSplitHead', 'Split number, top half',
+                   '"twenty-" — only appears when the minute splits across ' +
+                   'two lines. Use this to pull it clear of the top edge ' +
+                   'without moving anything below it.'),
       offsetSlider('OffMinute', 'Minute number',
-                   'Top row - "quarter", "twenty-seven", "half"'),
-      offsetSlider('OffMinutes', '"minutes"',
-                   'The small annotation under the minute number'),
+                   'The number that sits above "past"/"to" — the whole ' +
+                   'word, or the second half when it splits'),
+      offsetSlider('OffMinutes', '"minute(s)"',
+                   'Set this to the SAME value as the minute number to keep ' +
+                   'the two level; differ them only if you want it ' +
+                   'deliberately off the line'),
       offsetSlider('OffRelation', '"past" / "to"',
                    'Middle row - the anchor the phrase hangs from'),
       offsetSlider('OffHour', 'Hour word',

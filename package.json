@@ -32,7 +32,8 @@
       "OffDate",
       "DateFormat",
       "MinutesText",
-      "StrokeWeight"
+      "StrokeWeight",
+      "OffSplitHead"
     ],
     "resources": {
       "media": [

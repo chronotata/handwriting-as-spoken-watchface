@@ -246,7 +246,7 @@ real hardware the same way `--emulator` does from the simulator.
 
 ## 8. Tuning without a rebuild
 
-Open the watchface's settings in the Pebble phone app. Six sliders — one
+Open the watchface's settings in the Pebble phone app. Seven sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
 and apply the moment you change them. No rebuild, no reinstall. The same
 page carries the colours, the date on/off toggle, the date format, whether
@@ -263,6 +263,14 @@ It changes how solidly the outline is inked, **not how far it extends** —
 the outer edge of the outline sets the apparent width either way, so Solid
 reads harder-edged rather than thicker. To make the strokes genuinely
 thicker, raise `BOLD_BLEND` in `tools/tune.py` and regenerate.
+
+Three of those sliders cover the rows above *past*/*to*, and they are
+separate on purpose: **Split number, top half** moves only `twenty-`, so it
+can be pulled clear of the screen edge on its own; **Minute number** moves
+the number itself, including the second half of a split word; and
+**"minute(s)"** places the annotation. Keep the last two at the same value
+and the annotation stays level with the number — differ them only if you
+want it deliberately off the line.
 
 For anything beyond a pixel nudge — spacing between two specific rows, or
 how large a word's ink reads relative to its neighbours — edit that word's
