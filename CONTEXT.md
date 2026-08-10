@@ -323,10 +323,27 @@ being tested. A test that cannot fail is worse than no test, because it is
 counted. `sweep_dates()` now also asserts that all seven weekdays actually
 appeared.
 
-Two things the suite does **not** cover: anything about how the words
+**The settings page has its own runner.** `tools/test/clay-slider.test.js`
+drives the real `src/pkjs/custom-clay.js` against a fake DOM — same
+principle, different fake. `run.sh` runs it when `node` is present and skips
+it with a note when it is not; node is not a build dependency and must not
+become one. It too has been checked against injected regressions: a missing
+thumb-travel correction, a value that is never restored, a forgotten
+`stopPropagation`, and a cancelled `touchstart`.
+
+The first version of that test did *not* catch the thumb-travel injection —
+its two extreme cases happened to fall inside the slop of both the right
+geometry and a naive one, so it agreed with either. Worth recording,
+because the test looked thorough and was not: fail-injection is what
+distinguishes the two, and this is the case where it earned its place.
+
+Three things the suite does **not** cover: anything about how the words
 actually look (colour, antialiasing, stroke weight — all of §2's palette
-work), and the vertical budget arithmetic, which lives in `tune.py` and the
-`_Static_assert`s instead. Hardware remains the final check.
+work); the vertical budget arithmetic, which lives in `tune.py` and the
+`_Static_assert`s instead; and anything about the settings page that a fake
+DOM cannot know — real event ordering in the phone's browser, where a finger
+actually lands, whether the page still scrolls. Hardware remains the final
+check.
 
 ---
 

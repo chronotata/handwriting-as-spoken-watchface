@@ -37,3 +37,12 @@ gcc -std=c11 -I. \
     -o "$OUT/harness" harness.c stub.c
 
 ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1 "$OUT/harness"
+
+# The settings page is JavaScript running in the phone's browser, so it needs
+# a different runner. Node is NOT a build dependency of this project and must
+# not become one - if it is absent, say so and carry on rather than failing.
+if command -v node >/dev/null 2>&1; then
+  node clay-slider.test.js
+else
+  echo "  clay slider          skipped (no node)"
+fi

@@ -114,7 +114,10 @@ module.exports = [
         type: 'text',
         defaultValue:
           'Nudge each row up or down. Negative moves a row up, positive ' +
-          'moves it down. Changes apply straight away.'
+          'moves it down. Changes apply straight away. <strong>Drag the ' +
+          'dot</strong> — tapping the track does nothing, so scrolling ' +
+          'past a slider cannot move it by accident. The box on the right ' +
+          'takes a typed number.'
       },
       offsetSlider('OffMinute', 'Minute number',
                    'Top row - "quarter", "twenty-seven", "half"'),

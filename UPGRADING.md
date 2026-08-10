@@ -181,7 +181,9 @@ tools/test/run.sh
 ```
 
 Needs `gcc` and nothing else — no Pebble SDK, so this runs anywhere and
-takes under a second. It compiles the real `handwritten.c` against a stub of
+takes under a second. If `node` happens to be installed it also runs the
+settings-page test (`clay-slider.test.js`); if not, it says so and carries
+on. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
 once per date format and minutes mode — about 684,000 assertions, under
 AddressSanitizer.
