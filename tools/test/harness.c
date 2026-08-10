@@ -436,6 +436,87 @@ static void check_minutes_mode(const Face *f, uint8_t mode, int h, int m) {
   }
 }
 
+/*
+ * The palette, which is where the emboldening lives.
+ *
+ * tune.py bakes a slightly bolder outline of each word into levels
+ * 1..BOLD_RING_TOP. tint() renders it as paper when the ink is lighter than
+ * the paper, and as ink when it is darker - that asymmetry IS the fix, so it
+ * is what gets asserted. The stub's bitmaps carry tune.py's own level
+ * encoding, so palette[i] comes back describing level i.
+ */
+static int ink_distance(GColor c, GColor paper) {
+  return abs(c.r - paper.r) + abs(c.g - paper.g) + abs(c.b - paper.b);
+}
+
+static void check_palette_for(GColor paper, GColor ink, bool dark_ink,
+                              const char *why) {
+  char buf[190];
+  s_settings.paper = paper;
+  s_settings.ink = ink;
+  drop_all_bitmaps();
+
+  GBitmap *b = bitmap_for(W_THREE);       /* loads and tints */
+  GColor *pal = gbitmap_get_palette(b);
+  const int full = ink_distance(ink, paper);
+
+  /* Level 0 is the transparent background, and 15 is the ink itself. Neither
+   * may drift, whatever else the weighting does. */
+  CHECK(pal[0].a == 0, "level 0 is not transparent", 0, 0, why);
+  snprintf(buf, sizeof(buf), "%s: level 15 argb %02x, ink %02x",
+           why, pal[15].argb, ink.argb);
+  CHECK(pal[15].argb == ink.argb, "level 15 is not exactly the ink", 0, 0, buf);
+
+  /* The word itself - levels above the outline - must climb steadily from
+   * paper to ink, or an antialiased edge would read as a ridge. */
+  for (int l = BOLD_RING_TOP + 2; l <= 15; l++) {
+    snprintf(buf, sizeof(buf), "%s: level %d is %d from paper, level %d is %d",
+             why, l, ink_distance(pal[l], paper), l - 1,
+             ink_distance(pal[l - 1], paper));
+    CHECK(ink_distance(pal[l], paper) >= ink_distance(pal[l - 1], paper),
+          "the paper-to-ink ramp is not monotonic", 0, 0, buf);
+  }
+
+  /* And the outline: invisible on light ink, inked on dark ink. */
+  for (int l = 1; l <= BOLD_RING_TOP; l++) {
+    const int d = (pal[l].a == 0) ? 0 : ink_distance(pal[l], paper);
+    snprintf(buf, sizeof(buf), "%s: outline level %d sits %d of %d toward ink",
+             why, l, d, full);
+    if (dark_ink) {
+      CHECK(d * 2 >= full, "the bold outline is not inked on dark ink",
+            0, 0, buf);
+    } else {
+      CHECK(d == 0, "the bold outline is visible on light ink", 0, 0, buf);
+    }
+  }
+
+  drop_all_bitmaps();
+}
+
+static void check_palette(void) {
+  const uint8_t weight = s_settings.stroke_weight;
+  s_settings.stroke_weight = DEFAULT_STROKE_WEIGHT;
+
+  check_palette_for(GColorBlack, GColorWhite, false, "white ink on black");
+  check_palette_for(GColorWhite, GColorBlack, true,  "black ink on white");
+  /* Colour on colour, which is why the test is luminance-based and not a
+   * black/white special case. */
+  check_palette_for(GColorFromHEX(0xFFFF00), GColorFromHEX(0x000055), true,
+                    "dark blue ink on yellow");
+  check_palette_for(GColorFromHEX(0x000055), GColorFromHEX(0xFFFF00), false,
+                    "yellow ink on dark blue");
+
+  /* Weight 0 must switch the emboldening off even on dark ink - that is the
+   * escape hatch if the compensation is ever wrong for someone's screen. */
+  s_settings.stroke_weight = 0;
+  check_palette_for(GColorWhite, GColorBlack, false,
+                    "black on white, stroke weight 0");
+
+  s_settings.stroke_weight = weight;
+  drop_all_bitmaps();
+  printf("  palette schemes      5\n");
+}
+
 /* ------------------------------------------------------------------ */
 /* Sweeps                                                              */
 /* ------------------------------------------------------------------ */
@@ -648,8 +729,22 @@ static void check_settings(void) {
     CHECK(clamp_minutes_mode(f) == f, "minutes mode clamp", 0, 0, "in range");
   }
 
+  CHECK(clamp_stroke_weight(-1) == DEFAULT_STROKE_WEIGHT, "stroke weight clamp",
+        0, 0, "negative");
+  CHECK(clamp_stroke_weight(STROKE_WEIGHT_MAX + 1) == DEFAULT_STROKE_WEIGHT,
+        "stroke weight clamp", 0, 0, "one past the end");
+  CHECK(clamp_stroke_weight(0) == 0, "stroke weight clamp", 0, 0, "0 is off");
+  CHECK(clamp_stroke_weight(STROKE_WEIGHT_MAX) == STROKE_WEIGHT_MAX,
+        "stroke weight clamp", 0, 0, "max");
+  /* A weight inside the outline's own levels would render the outline as
+   * another outline level, which tint() would then rewrite again. */
+  for (int v = 1; v <= BOLD_RING_TOP; v++) {
+    CHECK(clamp_stroke_weight(v) == 0, "stroke weight clamp", 0, 0,
+          "inside the outline levels");
+  }
+
   printf("  settings cases       %d\n",
-         (int)(sizeof(cases) / sizeof(cases[0])) + 6
+         (int)(sizeof(cases) / sizeof(cases[0])) + 10 + BOLD_RING_TOP
          + DATE_FORMAT_COUNT + MINUTES_MODE_COUNT);
 }
 
@@ -776,6 +871,7 @@ int main(void) {
   settings_defaults();
   check_wording();
   check_minutes_wording();
+  check_palette();
   check_settings();
 
   drop_all_bitmaps();

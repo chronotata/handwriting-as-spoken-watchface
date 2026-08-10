@@ -95,8 +95,9 @@ typedef struct {
   GColor ink;
   bool show_date;
   int8_t offset[ROW_COUNT];
-  uint8_t date_format;    /* index into kDateFormats  */
-  uint8_t minutes_mode;   /* index into kMinutesModes */
+  uint8_t date_format;     /* index into kDateFormats  */
+  uint8_t minutes_mode;    /* index into kMinutesModes */
+  uint8_t stroke_weight;   /* level the bold outline renders at, dark ink only */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -222,6 +223,15 @@ static uint8_t hour_word(int hour24, bool past) {
  * conversion and the SDK re-indexes the pixels to match, which destroys the
  * index-to-intensity mapping and renders every word invisible.
  */
+/*
+ * Rough relative luminance of a Pebble colour, 0..255. The weights are the
+ * usual perceptual ones; only the ORDER of two results is ever used, to ask
+ * which of ink and paper is the darker.
+ */
+static int luma(GColor c) {
+  return (54 * c.r + 182 * c.g + 18 * c.b) / 3;
+}
+
 static void tint(GBitmap *bmp) {
   GColor *pal = gbitmap_get_palette(bmp);
   if (!pal) {
@@ -234,6 +244,15 @@ static void tint(GBitmap *bmp) {
   const int ir = s_settings.ink.r * 85, ig = s_settings.ink.g * 85,
             ib = s_settings.ink.b * 85;
 
+  /*
+   * Dark ink on light paper is the case that needs the emboldening outline,
+   * because that is the direction the panel renders thin - light strokes
+   * bloom, dark ones do not. Decided from luminance rather than from a
+   * black/white test so that colour-on-colour schemes get it too.
+   */
+  const bool dark_ink = luma(s_settings.ink) < luma(s_settings.paper);
+  const int ring = dark_ink ? s_settings.stroke_weight : 0;
+
   for (int i = 0; i < 16; i++) {
     /*
      * Recover the intensity from the colour ALREADY in the palette rather than
@@ -241,7 +260,17 @@ static void tint(GBitmap *bmp) {
      * conversion. tune.py encodes level 0-15 as (level & 3) in red and
      * (level >> 2) in green, so this decodes it wherever the entry landed.
      */
-    const int lvl = pal[i].r + 4 * pal[i].g;
+    int lvl = pal[i].r + 4 * pal[i].g;
+
+    /*
+     * Levels 1..BOLD_RING_TOP are the bolder outline, not part of the word.
+     * On light ink they render as paper, which is exactly what those two
+     * levels did before they carried anything: invisible either way.
+     */
+    if (lvl > 0 && lvl <= BOLD_RING_TOP) {
+      lvl = ring;
+    }
+
     if (lvl <= 0) {
       pal[i] = GColorClear;
       continue;
@@ -796,6 +825,7 @@ static void settings_defaults(void) {
   s_settings.show_date = true;
   s_settings.date_format = DEFAULT_DATE_FORMAT;
   s_settings.minutes_mode = DEFAULT_MINUTES_MODE;
+  s_settings.stroke_weight = DEFAULT_STROKE_WEIGHT;
   s_settings.offset[ROW_MINUTE] = OFFSET_MINUTE;
   s_settings.offset[ROW_MINUTES] = OFFSET_MINUTES;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
@@ -852,6 +882,19 @@ static uint8_t clamp_minutes_mode(int32_t v) {
   return (v >= 0 && v < MINUTES_MODE_COUNT) ? (uint8_t)v : DEFAULT_MINUTES_MODE;
 }
 
+/* Anything above BOLD_RING_TOP is a valid level for the outline to sit at;
+ * 0 turns it off. Out of range falls back rather than producing a palette
+ * entry for a level that does not exist. */
+static uint8_t clamp_stroke_weight(int32_t v) {
+  if (v < 0 || v > STROKE_WEIGHT_MAX) {
+    return DEFAULT_STROKE_WEIGHT;
+  }
+  if (v > 0 && v <= BOLD_RING_TOP) {
+    return 0;   /* would render the outline as another outline level */
+  }
+  return (uint8_t)v;
+}
+
 static int8_t clamp_offset(int32_t v) {
   if (v < OFFSET_MIN) v = OFFSET_MIN;
   if (v > OFFSET_MAX) v = OFFSET_MAX;
@@ -881,6 +924,9 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   }
   if ((t = dict_find(it, MESSAGE_KEY_MinutesText))) {
     s_settings.minutes_mode = clamp_minutes_mode(tuple_int(t));
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_StrokeWeight))) {
+    s_settings.stroke_weight = clamp_stroke_weight(tuple_int(t));
   }
   read_offset(it, MESSAGE_KEY_OffMinute, ROW_MINUTE);
   read_offset(it, MESSAGE_KEY_OffMinutes, ROW_MINUTES);

@@ -31,7 +31,8 @@
       "OffSolo",
       "OffDate",
       "DateFormat",
-      "MinutesText"
+      "MinutesText",
+      "StrokeWeight"
     ],
     "resources": {
       "media": [

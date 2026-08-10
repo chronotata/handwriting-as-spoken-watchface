@@ -49,6 +49,32 @@ module.exports = [
         defaultValue: 'FFFFFF',
         label: 'Ink',
         sunlight: true
+      },
+      // Only does anything when the ink is darker than the paper. Light
+      // strokes bloom on this screen and dark ones do not, so dark-on-light
+      // measured 19.7% thinner on the real watch; this puts a slightly
+      // bolder outline back. See BOLD_BLEND in tools/tune.py.
+      // A dropdown rather than a slider because the screen has four levels
+      // per channel, so the sixteen weights collapse to four visibly
+      // distinct ones for black on white: 0-2, 3-7, 8-12, 13-15. The values
+      // below sit in the middle of each band. A slider offered fifteen
+      // steps, twelve of which did nothing.
+      {
+        type: 'select',
+        messageKey: 'StrokeWeight',
+        label: 'Stroke weight',
+        description:
+          'Only applies when the ink is darker than the paper — dark text ' +
+          'renders about 20% thinner than light text on this screen. ' +
+          'Medium is the measured match; Solid is bolder but the edges go ' +
+          'crunchy.',
+        defaultValue: '10',
+        options: [
+          { label: 'Off', value: '0' },
+          { label: 'Light', value: '5' },
+          { label: 'Medium', value: '10' },
+          { label: 'Solid', value: '14' }
+        ]
       }
     ]
   },

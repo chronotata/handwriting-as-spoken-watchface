@@ -249,8 +249,20 @@ real hardware the same way `--emulator` does from the simulator.
 Open the watchface's settings in the Pebble phone app. Six sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
 and apply the moment you change them. No rebuild, no reinstall. The same
-page carries the colours, the date on/off toggle, the date format, and
-whether `minute(s)` is spoken.
+page carries the colours, the date on/off toggle, the date format, whether
+`minute(s)` is spoken, and the stroke weight.
+
+**Stroke weight** only does anything when the ink is darker than the paper.
+Dark strokes render about 20% thinner than light ones on this screen, so
+levels 1–2 of every word image carry a slightly bolder outline that gets
+inked in that direction only — `CONTEXT.md` §2 has the measurements. Four
+choices, because four levels per channel is all the screen has: Off, Light,
+Medium (the measured match, and the default) and Solid.
+
+It changes how solidly the outline is inked, **not how far it extends** —
+the outer edge of the outline sets the apparent width either way, so Solid
+reads harder-edged rather than thicker. To make the strokes genuinely
+thicker, raise `BOLD_BLEND` in `tools/tune.py` and regenerate.
 
 For anything beyond a pixel nudge — spacing between two specific rows, or
 how large a word's ink reads relative to its neighbours — edit that word's

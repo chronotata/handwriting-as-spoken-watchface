@@ -80,6 +80,41 @@ index position. Both choices exist because of two real bugs (§6) where a
 greyscale palette collapsed during SDK conversion, and where index order
 didn't survive it either.
 
+**Two weights in one image.** Levels 1–2 of every word carry a slightly
+bolder outline of that word; levels 3–15 are the word itself. The palette
+decides which you see — the outline renders as paper when the ink is lighter
+than the paper, and as ink when it is darker.
+
+This exists because **dark strokes render thinner than light ones on this
+panel**. Measured from photographs of the watch, black-on-white came out
+**19.7% thinner** than white-on-black (2.22 vs 2.75 device px on *three*,
+and the same 0.77–0.83 ratio on three other rows), worst where the strokes
+are thinnest. Light strokes bloom; dark ones do not.
+
+Two things it is worth knowing were ruled out first, both by measurement:
+
+- **The bitmaps are not at fault.** Where the ink lands is an exact mirror
+  between the two schemes — 82.6% full ink, 7.0% and 7.1% partial, 3.4%
+  invisible, identically. In sRGB value terms the difference is zero. It is
+  the panel and the eye, not the pipeline.
+- **Making every word bolder would not have helped.** It is a *ratio*: that
+  lifts both schemes and leaves the gap exactly where it was. Only a
+  polarity-dependent lever closes it, and the palette alone is worth at most
+  +5.7% — a quarter of what was needed.
+
+Levels 1–2 were free to take: they held the faintest edge of the word, which
+already rendered as plain paper in every colour scheme — 3.4% of the ink
+pixels doing nothing. Reusing them costs no extra images and no extra
+memory, and levels 3–15 keep their old meaning to the pixel, so
+**white-on-black is unchanged**. The outline is clipped to the word's
+existing canvas rather than its own, so not one word moved: every canvas
+size, baseline and family box is exactly as it was.
+
+Worth +15.8% across all 69 words, which targets the *nominal* width baked
+into the bitmaps rather than matching white-on-black — that scheme is itself
+running about 6% fat from bloom. `DEFAULT_STROKE_WEIGHT` sets how heavily
+the outline is inked, and the phone exposes it as a slider; 0 turns it off.
+
 **On-demand loading.** Bitmaps load lazily and are pruned to whatever's
 currently on screen (`prune_cache()`), avoiding the 2014 original's
 per-word-layer memory leak.
@@ -300,6 +335,7 @@ What it checks:
 | date | one fixed baseline for every month, ordinal raised, line centred |
 | date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
 | minutes modes | presence, absence and singular/plural of `minute(s)` asserted from the spec wording rather than from a copy of the predicate, plus the specific phrases the setting promises (*five minutes past five*, *quarter past one*) |
+| palette | across five colour schemes including colour-on-colour: level 0 transparent, level 15 exactly the ink, the ramp monotonic, and the bold outline invisible on light ink but inked on dark |
 | settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range index falls back rather than indexing off `kDateFormats` or `kMinutesModes` |
 | memory | the reveal is played out frame by frame, so `prune_cache()` and the sub-bitmap slicing run for real under ASAN |
 
@@ -311,7 +347,16 @@ stops freeing all produce failures. So do, since the date formats landed:
 an off-by-one `kWeekdays` index, a gap emitted before the first atom
 instead of only between atoms, `make_tm()` leaving `tm_wday` at zero, a
 "never" mode that wasn't, an "always" mode that said *quarter minutes past*,
-and a `minutes` that never went singular.
+a `minutes` that never went singular, an inverted ink/paper
+polarity test, a bold outline shown on light ink, and one never shown on
+dark ink.
+
+Two of those injections initially produced no failures at all — and no test
+output either, because removing the polarity test left `dark_ink` unused and
+`-Werror` stopped the build. A broken build is detection of a sort, but it
+is not the assertion firing, and reading "no FAIL lines" as "the test
+passed" would have been exactly the wrong conclusion. Injections have to
+compile to prove anything.
 Hold future changes to that standard — if a change cannot break a test,
 add the test that it would break.
 
@@ -336,6 +381,14 @@ its two extreme cases happened to fall inside the slop of both the right
 geometry and a naive one, so it agreed with either. Worth recording,
 because the test looked thorough and was not: fail-injection is what
 distinguishes the two, and this is the case where it earned its place.
+
+One limit of the palette checks is worth writing down. "Level 15 is exactly
+the ink" cannot detect a small drift, because levels 13–15 all quantise to
+the same colour on a screen with four levels per channel — pushing level 15
+down to 14 changes nothing observable, and the test rightly stays green. It
+only fires once the drift crosses a quantisation step. That is a property of
+the hardware rather than a gap in the test, but it means the assertion is
+weaker than it reads.
 
 Three things the suite does **not** cover: anything about how the words
 actually look (colour, antialiasing, stroke weight — all of §2's palette
@@ -464,6 +517,19 @@ build-time only, per §4); other Pebble platforms; v2 artwork.
 Both date formats are confirmed on hardware. The format machinery is built
 for more than two — `UPGRADING.md` §10 is the recipe — but no third format
 is planned.
+
+**Dark ink on light paper is better, not settled.** The emboldening outline
+(§2) at Medium reads "a little bit clearer" on the watch; Solid is bolder
+but the edges go crunchy, which is what a four-level screen does when an
+antialiased edge is pushed to full ink. So the current setting is a balance
+rather than a match, and the remaining thinness is unresolved.
+
+Deliberately left there for now. The obvious next lever is raising
+`BOLD_BLEND` past 0.26 toward 0.40, which targets white-on-black's apparent
+weight instead of the nominal one — but the whole question changes with v2
+(§7), because hand-drawn strokes will have their own weight and the
+rendered-font measurements stop applying. Worth revisiting then rather than
+tuning twice.
 
 **Two working copies.** The git folder is the only place anything is
 authored or generated: edits, `tune.py`, `run.sh`. A separate build folder

@@ -39,7 +39,7 @@ import sys
 from pathlib import Path
 
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
 except ImportError:
     sys.exit("Pillow is required:  "
              "pip install Pillow --break-system-packages")
@@ -72,6 +72,32 @@ PAD = 80
 # a hard threshold for crisper, more aliased ones.
 INK_LO = 70
 INK_HI = 150
+
+# Emboldening for dark ink on a light background.
+#
+# Measured from photographs of the real watch: black-on-white strokes come out
+# 19.7% thinner than white-on-black ones (2.22 vs 2.75 device px on "three",
+# and the same 0.77-0.83 ratio on three other rows). Light strokes bloom on
+# this panel and dark ones do not, and the effect is worst where the strokes
+# are thinnest.
+#
+# It cannot be fixed by making every word bolder, because it is a RATIO: doing
+# that lifts both schemes and leaves the gap exactly where it was. It cannot be
+# fixed from the palette either - that can only move where the perceived edge
+# sits among the levels, which is worth at most +5.7%, a quarter of the gap.
+#
+# So a second, slightly bolder outline is baked into LEVELS 1 AND 2, which the
+# light-on-dark palette renders as paper and the dark-on-light palette renders
+# as ink. Levels 3-15 are untouched, so white-on-black is pixel-for-pixel what
+# it has always been. Costs no extra images and no extra memory.
+#
+# The blend is a fraction of a one-supersample-pixel dilation, so 0.26 is about
+# 0.065 device px of extra outline on each side. That measured +15.8% across
+# all 69 words, which was the target: it matches the NOMINAL stroke width baked
+# into the bitmaps rather than matching white-on-black, since white-on-black is
+# itself running ~6% fat from bloom.
+BOLD_BLEND = 0.26
+RING_TOP = 2      # levels 1..RING_TOP carry the bolder outline
 
 ONES = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
         "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
@@ -149,22 +175,43 @@ def draw_word(d, xy, text, font, scale, base_font):
     d.text((x + adv * scale, y), b, font=font, fill=255, anchor="ls")
 
 
+def _downsample(big):
+    """Supersampled 8-bit coverage -> device resolution, contrast stretched."""
+    img = big.resize((PAD * 2 + 320, PAD * 2 + 140), Image.LANCZOS)
+    return img.point([0 if v < INK_LO else
+                      (255 if v > INK_HI else
+                       int(255 * (v - INK_LO) / (INK_HI - INK_LO)))
+                      for v in range(256)])
+
+
 def render_word(text, size):
-    """-> (image cropped tight to the ink, baseline offset from its top)"""
-    big = ImageFont.truetype(str(TTF), size * SS)
+    """-> (ink cropped tight, baseline offset from its top, bolder outline)
+
+    The third image is the same word grown by a fraction of a pixel, cropped
+    to the SAME box as the first. Clipping it to the normal word's box rather
+    than its own is deliberate: it keeps every canvas size, baseline and
+    family box exactly as it was, so adding the emboldening does not move a
+    single word on screen. The cost is that the outline is missing at the
+    glyph's outermost extremity, which is a few pixels per word.
+    """
+    big_font = ImageFont.truetype(str(TTF), size * SS)
     small = ImageFont.truetype(str(TTF), size)
-    img = Image.new("L", ((PAD * 2 + 320) * SS, (PAD * 2 + 140) * SS), 0)
-    draw_word(ImageDraw.Draw(img), (PAD * SS, (PAD + 70) * SS), text, big, SS,
-              small)
-    img = img.resize((PAD * 2 + 320, PAD * 2 + 140), Image.LANCZOS)
-    img = img.point([0 if v < INK_LO else
-                     (255 if v > INK_HI else
-                      int(255 * (v - INK_LO) / (INK_HI - INK_LO)))
-                     for v in range(256)])
+    big = Image.new("L", ((PAD * 2 + 320) * SS, (PAD * 2 + 140) * SS), 0)
+    draw_word(ImageDraw.Draw(big), (PAD * SS, (PAD + 70) * SS), text, big_font,
+              SS, small)
+
+    img = _downsample(big)
     box = img.point(lambda v: 255 if v > 12 else 0).getbbox()
     if box is None:
         sys.exit("nothing rendered for %r" % text)
-    return img.crop(box), (PAD + 70) - box[1]
+
+    if BOLD_BLEND > 0:
+        grown = big.filter(ImageFilter.MaxFilter(3))     # 1 supersample px
+        bold = _downsample(Image.blend(big, grown, BOLD_BLEND))
+    else:
+        bold = img
+
+    return img.crop(box), (PAD + 70) - box[1], bold.crop(box)
 
 
 # Pebble has 64 colours - two bits per channel - so the only greys that exist
@@ -193,7 +240,7 @@ def family_boxes(rendered):
     union of real ink extents is the tightest box that still holds every word.
     """
     box = {}
-    for _name, fam, _text, crop, baseline in rendered:
+    for _name, fam, _text, crop, baseline, _bold in rendered:
         asc, desc = baseline, crop.height - baseline
         a, d = box.get(fam, (0, 0))
         box[fam] = (max(a, asc), max(d, desc))
@@ -225,7 +272,7 @@ def check_fit(rendered, box, layout):
     rel_top = layout["REL_TOP"]
     date_ink_top = layout["DATE_BASELINE"] - box["DATE"][0]
 
-    asc = {t: b for _n, f, t, _c, b in rendered if f == "TIME"}
+    asc = {t: b for _n, f, t, _c, b, _bd in rendered if f == "TIME"}
 
     # Row 0 of a split phrase is always "twenty-"; its unused ascent is the
     # only slack at the top of the screen.
@@ -271,12 +318,12 @@ def write_test_header(rendered, box):
     out = ["/* GENERATED by tools/tune.py - do not edit. */",
            "/* Test scaffolding only. Not compiled into the watchface. */",
            "", "#pragma once", "#include <stdint.h>", ""]
-    for i, (name, _fam, _text, _crop, _base) in enumerate(rendered):
+    for i, (name, _fam, _text, _crop, _base, _bold) in enumerate(rendered):
         out.append("#define RESOURCE_ID_%s %d" % (name.upper(), i + 1))
     out += ["", "typedef struct { uint8_t asc, desc; } WordInk;", "",
             "/* Ink above and below the baseline, per word. */",
             "static const WordInk WORD_INK[] = {"]
-    for name, fam, text, crop, baseline in rendered:
+    for name, fam, text, crop, baseline, _bold in rendered:
         out.append("  {%d, %d},%s/* %s */"
                    % (baseline, crop.height - baseline,
                       " " * max(1, 10 - len(str(baseline))), text))
@@ -284,12 +331,34 @@ def write_test_header(rendered, box):
     TESTGEN.write_text("\n".join(out))
 
 
-def to_palette(img):
+def to_palette(img, bold=None):
     """Quantise to LEVELS levels. Index 0 is transparent; the C rewrites the
-    palette at load so ink and paper colours stay configurable."""
+    palette at load so ink and paper colours stay configurable.
+
+    LEVEL LAYOUT
+        0           transparent
+        1..RING_TOP the emboldening outline (see BOLD_BLEND). Paper for light
+                    ink on a dark background, ink for dark ink on a light one.
+        RING_TOP+1  the word itself, exactly as it has always been quantised.
+          ..15
+
+    Levels 1 and 2 used to hold the faintest edge of the word, and both
+    already rendered as plain paper in every colour scheme - 3.4% of the ink
+    pixels doing nothing at all. Reusing them for the outline is free, and
+    means levels 3-15 keep their old meaning to the pixel.
+    """
     q = img.point(lambda v: min(LEVELS - 1, v * LEVELS // 256))
+    data = list(q.getdata())
+    data = [0 if v <= RING_TOP else v for v in data]
+
+    if bold is not None:
+        grown = list(bold.getdata())
+        for i, v in enumerate(data):
+            if v == 0 and grown[i] > 0:
+                data[i] = 2 if grown[i] >= 128 else 1
+
     out = Image.new("P", q.size)
-    out.putdata(list(q.getdata()))
+    out.putdata(data)
     pal = []
     for i in range(LEVELS):
         pal += list(level_colour(i))
@@ -309,19 +378,20 @@ def main():
     # Pass 1: render tight, so the family boxes can be measured.
     rendered = []
     for name, fam, text in words():
-        crop, baseline = render_word(text, sizes[fam])
-        rendered.append((name, fam, text, crop, baseline))
+        crop, baseline, bold = render_word(text, sizes[fam])
+        rendered.append((name, fam, text, crop, baseline, bold))
 
     box = family_boxes(rendered)
     check_fit(rendered, box, layout)
 
     # Pass 2: pad every word onto its family box and write it out.
     rows, media, total = [], [], 0
-    for name, fam, text, crop, baseline in rendered:
+    for name, fam, text, crop, baseline, bold in rendered:
         img = pad_to_box(crop, baseline, box[fam])
+        ring = pad_to_box(bold, baseline, box[fam])
         stem = name.lower()
         path = IMGDIR / ("%s.png" % stem)
-        to_palette(img).save(path, transparency=0)
+        to_palette(img, ring).save(path, transparency=0)
         total += path.stat().st_size
         img.save(EXPORT / ("%s.png" % stem))   # template to draw over for v2
 
@@ -351,7 +421,7 @@ def main():
     out.append("   difference from TIME_BOX_BASE is the only slack at the top of the")
     out.append("   screen, so config.h's budget assertion needs it. */")
     out.append("#define SPLIT_HEAD_ASC %d"
-               % next(b for _n, f, t, _c, b in rendered
+               % next(b for _n, f, t, _c, b, _bd in rendered
                       if f == "TIME" and t == "twenty-"))
     out += ["",
             "typedef struct {",

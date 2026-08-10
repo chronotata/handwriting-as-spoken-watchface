@@ -117,6 +117,43 @@
                             /* descenders do not sit lower than those with */
 
 /* ---------------------------------------------------------------- */
+/* Stroke weight for dark ink on a light background                  */
+/* ---------------------------------------------------------------- */
+
+/*
+ * Levels 1..BOLD_RING_TOP of every word image hold a slightly bolder outline
+ * of that word - see the BOLD_BLEND note in tools/tune.py. Rendering it as
+ * paper gives the normal weight, rendering it as ink gives the bold one.
+ *
+ * Photographs of the real watch put black-on-white strokes 19.7% thinner
+ * than white-on-black ones, because light strokes bloom on this panel and
+ * dark ones do not. The outline is worth about +15.8%, which was chosen to
+ * match the NOMINAL width baked into the bitmaps rather than to match
+ * white-on-black - that scheme is itself running ~6% fat.
+ *
+ * DEFAULT_STROKE_WEIGHT is the LEVEL the outline is rendered at when the ink
+ * is darker than the paper, so it lands on the same paper-to-ink ramp as
+ * everything else. For black on white the four levels per channel collapse
+ * sixteen weights into four visibly different ones:
+ *
+ *      0-2     off - the outline stays invisible, as it does on dark paper
+ *      3-7     a third of the way to ink        ("Light" on the phone)
+ *      8-12    two thirds of the way            ("Medium", the default)
+ *      13-15   solid ink, hardest edge          ("Solid")
+ *
+ * The phone offers exactly those four, at 0 / 5 / 10 / 14. It used to be a
+ * fifteen-step slider, twelve steps of which changed nothing on screen.
+ *
+ * Note that the weight changes how solidly the outline is INKED, not how far
+ * it extends: the outer edge of the outline sets the apparent stroke width
+ * either way. Making the strokes genuinely thicker means raising BOLD_BLEND
+ * in tools/tune.py and regenerating.
+ */
+#define BOLD_RING_TOP 2
+#define DEFAULT_STROKE_WEIGHT 10
+#define STROKE_WEIGHT_MAX 15
+
+/* ---------------------------------------------------------------- */
 /* Animation                                                         */
 /* ---------------------------------------------------------------- */
 
