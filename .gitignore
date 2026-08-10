@@ -14,3 +14,7 @@ __pycache__/
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Local one-way sync helper (git folder -> build folder). Machine-specific
+# absolute paths are baked into it, so it is deliberately not shared.
+tools/sync.sh
