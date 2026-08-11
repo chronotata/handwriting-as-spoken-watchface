@@ -212,7 +212,45 @@ pebble emu-set-time --emulator emery 23:40   # regression check: must show "twen
 pebble emu-set-time --emulator emery 03:00   # the witching-hour easter egg
 pebble emu-set-time --emulator emery 12:00   # solo "midday"
 ```
-`pebble logs --emulator emery` shows live log output if anything looks off.
+`pebble logs --emulator emery` shows live log output if anything looks off,
+including anything `src/pkjs/` throws or logs.
+
+### 6.1 The settings page, without a phone
+
+```bash
+pebble emu-app-config --emulator emery
+```
+
+The app has to be installed and running in the emulator first. This fires
+the same `showConfiguration` event the phone sends; Clay builds the page and
+pebble-tool opens it in your desktop browser. Saving navigates to
+`pebblejs://close#…`, which pebble-tool intercepts and delivers to the
+watchface as an AppMessage — the identical path to the phone, so
+`tuple_int()`, the clamps and the persistence are all exercised for real.
+
+`pebble emu-app-config --help` lists the extra flags, including pointing at
+a local page instead of the generated one.
+
+Two things this catches better than a phone does:
+
+- **The mouse path through `src/pkjs/custom-clay.js`.** The drag-only slider
+  fix handles `pointerdown`, `touchstart` and `mousedown`, and a watch only
+  ever exercises touch — a desktop browser is the only place the
+  `mousedown` branch runs at all. Click the middle of a slider track and
+  confirm nothing moves, then drag the dot.
+- **The settings upgrade path.** `Settings` has been appended to four times
+  (`date_format`, `minutes_mode`, `stroke_weight`, `offset_split_head`),
+  each relying on `persist_read_data` filling a short blob and leaving the
+  rest at their defaults. Install an older build, set some colours and
+  offsets, install the current one, and check they survived with the new
+  fields at defaults. If the append-only discipline ever slips, this is how
+  you find out — and it is far more awkward to do on the watch.
+
+What it will **not** tell you is anything about the panel. The emulator
+renders an idealised display: no bloom on light-on-dark, no thinning on
+dark-on-light, so the stroke-weight work of §2 is invisible there and the
+four weights will look like four rather than the three-and-a-bit the real
+screen collapses them to. That stays a hardware question.
 
 ---
 
