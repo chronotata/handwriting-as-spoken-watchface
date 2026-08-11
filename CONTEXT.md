@@ -128,7 +128,9 @@ per-word-layer memory leak.
 | Row | Content | Indent |
 |---|---|---|
 | `ROW_SPLIT_HEAD` | first half of a split word — `twenty-` | 0 |
-| `ROW_MINUTE` | the minute number, or the **second** half of a split word | 0 or 1 |
+| `ROW_MINUTE` | the number **with** `minute(s)` stacked below it; also the o'clock top word and witching `the` | 0 |
+| `ROW_MINUTE_ALONE` | the number with **nothing** below it — `quarter`, `half`, any unannotated number | 0 |
+| `ROW_MINUTE_SPLIT` | the lower half of a split word, annotated or not | 1 |
 | `ROW_MINUTES_OWN` | `minute(s)` on a line of its own — :01–:20 | 1 |
 | `ROW_MINUTES_INLINE` | `minute(s)` riding beside a split number — :21–:29 | hangs off its host |
 | `ROW_RELATION` | `past` / `to` | **2, always** |
@@ -141,12 +143,16 @@ solo `midnight`/`midday` — sits at the left margin and steps right by
 `INDENT`; "centred" for the solo row means vertically, in the space above
 the date.
 
-**The four rows above the relation are nudged separately**, because the
-sliders act per row and each wants a different lever: pulling `twenty-`
-clear of the top edge, setting the number's distance from *past*/*to*,
-holding the inline annotation on the number's line, and placing the
-standalone annotation — which nothing else constrains, so its distance from
-*past*/*to* is pure taste.
+**Six rows above the relation are nudged separately.** The sliders act per
+row, so anything wanting its own placement needs its own row, and the minute
+number turned out to want three: with the annotation stacked under it the
+gap down to *past*/*to* is filled; with nothing under it the same gap is
+empty and reads as floating; and the lower half of a split word sits under
+`twenty-`, which balances it differently again.
+
+The pairing that matters: an inline `minute(s)` is pinned to
+`ROW_MINUTE_SPLIT`'s baseline, so `OFFSET_MINUTES` should match
+`OFFSET_MINUTE_SPLIT` — **not** `OFFSET_MINUTE` — to stay level.
 
 They did not start that way. Both halves of a split word shared
 `ROW_MINUTE`, so nudging the head down moved the number with it, while the
@@ -332,7 +338,7 @@ stub (`pebble.h`, `stub.c`) and sweeps its own `build_face()` over all 1440
 minutes of the day, every date of a leap year, and the asymmetric wording
 cases — **once per date format × minutes mode**, driven off
 `DATE_FORMAT_COUNT` and `MINUTES_MODE_COUNT` so a new setting value is swept
-without anyone remembering to widen a loop. Around 1.19 million assertions,
+without anyone remembering to widen a loop. Around 930,000 assertions,
 under a second.
 
 It is deliberately not a Python re-implementation. A model agrees with
@@ -371,8 +377,16 @@ instead of only between atoms, `make_tm()` leaving `tm_wday` at zero, a
 a `minutes` that never went singular, an inverted ink/paper
 polarity test, a bold outline shown on light ink, one never shown on dark
 ink, the two halves of a split number sharing a row again, a settings key
-routed to the wrong field, a key not read at all, and clamping dropped from
-the incoming message.
+routed to the wrong field, a key not read at all, clamping dropped from the
+incoming message, and each of the minute number's three cases folded back
+onto a shared lever.
+
+That last family is worth singling out. **Twice** a case was quietly put
+back on a shared row and the entire suite stayed green**,** because "every
+row moves by exactly its own offset" cannot see a word assigned to the wrong
+row — whichever row it is on, it moves by that row's offset, perfectly
+consistently. Consistency was never the property at risk; reachability was.
+The fix each time was to assert directly which lever a case answers to.
 
 Two of those injections initially produced no failures at all — and no test
 output either, because removing the polarity test left `dark_ink` unused and

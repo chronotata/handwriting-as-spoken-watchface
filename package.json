@@ -34,7 +34,9 @@
       "MinutesText",
       "StrokeWeight",
       "OffSplitHead",
-      "OffMinutesOwn"
+      "OffMinutesOwn",
+      "OffMinuteAlone",
+      "OffMinuteSplit"
     ],
     "resources": {
       "media": [

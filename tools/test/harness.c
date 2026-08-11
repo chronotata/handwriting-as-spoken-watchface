@@ -538,111 +538,152 @@ static int drawn_baseline(const Element *e) {
   return e->top + WORDS[e->word].base + row_offset(e->row);
 }
 
-static void set_offsets(int split_head, int minute, int minutes, int own) {
-  s_settings.offset_split_head = (int8_t)split_head;
-  s_settings.offset[ROW_MINUTE] = (int8_t)minute;
-  s_settings.offset[ROW_MINUTES_INLINE] = (int8_t)minutes;
-  s_settings.offset_minutes_own = (int8_t)own;
-}
-
 /*
  * Every element must move by EXACTLY its own row's offset - no more, which
  * would mean a row is dragging a neighbour with it, and no less, which would
  * mean a slider does not reach what it claims to.
  *
  * Stating it that way rather than "the annotation stays level with the
- * number" matters. The first version of this check only compared those two
- * with both offsets set alike, and the old shared-row behaviour passed it
- * cleanly: when the number and the annotation move together they stay level
- * whether or not the head is tangled up with them. It has to be phrased as
+ * number" matters. An early version only compared those two with both
+ * offsets set alike, and the old shared-row behaviour passed it cleanly:
+ * when the number and the annotation move together they stay level whether
+ * or not anything else is tangled up with them. It has to be phrased as
  * independence, or it does not test the thing that broke.
+ *
+ * Each row is given a DISTINCT offset, so any two rows wired to the same
+ * setting show up immediately rather than cancelling out.
  */
+typedef struct { uint8_t row; int off; } OffsetPlan;
+
+static void apply_plan(const OffsetPlan *plan, int n) {
+  for (int i = 0; i < n; i++) {
+    if (plan[i].row == ROW_SPLIT_HEAD) {
+      s_settings.offset_split_head = (int8_t)plan[i].off;
+    } else if (plan[i].row == ROW_MINUTES_OWN) {
+      s_settings.offset_minutes_own = (int8_t)plan[i].off;
+    } else if (plan[i].row == ROW_MINUTE_ALONE) {
+      s_settings.offset_minute_alone = (int8_t)plan[i].off;
+    } else if (plan[i].row == ROW_MINUTE_SPLIT) {
+      s_settings.offset_minute_split = (int8_t)plan[i].off;
+    } else {
+      s_settings.offset[plan[i].row] = (int8_t)plan[i].off;
+    }
+  }
+}
+
+static int plan_for(const OffsetPlan *plan, int n, uint8_t row) {
+  for (int i = 0; i < n; i++) {
+    if (plan[i].row == row) {
+      return plan[i].off;
+    }
+  }
+  return 0;
+}
+
 static void check_offset_independence(void) {
   char buf[220];
-  const int kNudge[] = {0, -8, 5, -15, 15};
+  /* Distinct values everywhere, except the inline annotation which is held
+   * equal to the split number it rides beside - that pairing is the one
+   * relationship the separation is supposed to preserve. */
+  static const OffsetPlan kPlans[][8] = {
+    {{ROW_SPLIT_HEAD, 0}, {ROW_MINUTE, 0}, {ROW_MINUTE_ALONE, 0},
+     {ROW_MINUTE_SPLIT, 0}, {ROW_MINUTES_INLINE, 0}, {ROW_MINUTES_OWN, 0},
+     {ROW_RELATION, 0}, {ROW_HOUR, 0}},
+    {{ROW_SPLIT_HEAD, 10}, {ROW_MINUTE, 3}, {ROW_MINUTE_ALONE, -6},
+     {ROW_MINUTE_SPLIT, 8}, {ROW_MINUTES_INLINE, 8}, {ROW_MINUTES_OWN, -2},
+     {ROW_RELATION, -3}, {ROW_HOUR, -12}},
+    {{ROW_SPLIT_HEAD, -15}, {ROW_MINUTE, 15}, {ROW_MINUTE_ALONE, 7},
+     {ROW_MINUTE_SPLIT, -9}, {ROW_MINUTES_INLINE, -9}, {ROW_MINUTES_OWN, 12},
+     {ROW_RELATION, 5}, {ROW_HOUR, -4}},
+    {{ROW_SPLIT_HEAD, 4}, {ROW_MINUTE, -11}, {ROW_MINUTE_ALONE, 14},
+     {ROW_MINUTE_SPLIT, 2}, {ROW_MINUTES_INLINE, 2}, {ROW_MINUTES_OWN, -15},
+     {ROW_RELATION, 0}, {ROW_HOUR, 9}}
+  };
+  const int kPlanCount = (int)(sizeof(kPlans) / sizeof(kPlans[0]));
+  const int kRows = 8;
   int inline_lines = 0;
 
-  for (size_t a = 0; a < sizeof(kNudge) / sizeof(kNudge[0]); a++) {
-    for (size_t b = 0; b < sizeof(kNudge) / sizeof(kNudge[0]); b++) {
-      const int head = kNudge[a], num = kNudge[b];
-      /* Deliberately NOT equal to `num`: if the two "minute(s)" cases
-       * were ever wired to the same offset again, holding them equal
-       * here would hide it. */
-      const int own = kNudge[(a + 2) % (sizeof(kNudge) / sizeof(kNudge[0]))];
-
+  for (int p = 0; p < kPlanCount; p++) {
+    for (int mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
       for (int t = 0; t < 1440; t++) {
         const int h = t / 60, m = t % 60;
         struct tm tm = make_tm(232, 21, 7, 2026, h, m);
 
-        set_offsets(0, 0, 0, 0);
+        settings_defaults();
+        s_settings.minutes_mode = (uint8_t)mode;
+        apply_plan(kPlans[0], kRows);          /* everything at zero */
         s_have_prev = false;
         refresh(&tm, true);
         const Face flat = s_face;
 
-        set_offsets(head, num, num, own);
+        settings_defaults();
+        s_settings.minutes_mode = (uint8_t)mode;
+        apply_plan(kPlans[p], kRows);
         s_have_prev = false;
         refresh(&tm, true);
 
-        /* Offsets are a draw-time concern, so the face itself must be
-         * identical - same words, same order, same computed tops. */
         CHECK(s_face.count == flat.count, "offsets changed the layout",
               h, m, "element count");
 
         for (int i = 0; i < s_face.count && i < flat.count; i++) {
           const Element *e = &s_face.items[i];
-          const int want_move = (e->row == ROW_SPLIT_HEAD) ? head
-                              : (e->row == ROW_MINUTE)     ? num
-                              : (e->row == ROW_MINUTES_INLINE) ? num
-                              : (e->row == ROW_MINUTES_OWN) ? own : 0;
+          const int want = plan_for(kPlans[p], kRows, e->row);
           const int moved = drawn_baseline(e)
                           - (flat.items[i].top + WORDS[flat.items[i].word].base);
           snprintf(buf, sizeof(buf),
-                   "head %+d number %+d: element %d (word %d, row %d) moved "
-                   "%d, its own offset is %d", head, num, i, e->word, e->row,
-                   moved, want_move);
-          CHECK(moved == want_move,
+                   "plan %d mode %d: element %d (word %d, row %d) moved %d, "
+                   "its own offset is %d", p, mode, i, e->word, e->row,
+                   moved, want);
+          CHECK(moved == want,
                 "a row did not move by exactly its own offset", h, m, buf);
         }
 
         /*
-         * The two halves of a split number must sit on DIFFERENT rows.
+         * WHICH LEVER EACH CASE ANSWERS TO.
          *
-         * Without this the whole separation can be undone and every other
-         * assertion here still passes: put the head back on ROW_MINUTE and
-         * it moves by ROW_MINUTE's offset, which the rule above accepts as
-         * perfectly consistent. Consistency was never the property that
-         * broke - reachability was. The head needs a slider that moves it
-         * and nothing else, and that is only true if it has its own row.
+         * This has to be asserted directly, and it is the part that keeps
+         * being learned the hard way. "Every row moves by its own offset"
+         * cannot see a word assigned to the wrong row: whichever row it is
+         * on, it moves by that row's offset, perfectly consistently. Both
+         * times a case was quietly folded back onto a shared lever - the
+         * split head, then the number - the whole suite stayed green.
+         * Consistency was never the property at risk. Reachability was.
          */
-        for (int i = 0; i < s_face.count; i++) {
-          if (s_face.items[i].word != W_TWENTYDASH) {
-            continue;
+        if (m != 0) {   /* o'clock, solo and witching are centred, not stacked */
+          bool split = false, has_own = false;
+          for (int i = 0; i < s_face.count; i++) {
+            if (s_face.items[i].word == W_TWENTYDASH)         split = true;
+            if (s_face.items[i].row  == ROW_MINUTES_OWN)      has_own = true;
           }
-          CHECK(s_face.items[i].row == ROW_SPLIT_HEAD,
-                "the split head is not on its own row", h, m,
-                "it cannot be nudged clear of the screen edge on its own");
-          if (i + 1 < s_face.count) {
-            snprintf(buf, sizeof(buf), "head row %d, number row %d",
-                     s_face.items[i].row, s_face.items[i + 1].row);
-            CHECK(s_face.items[i].row != s_face.items[i + 1].row,
-                  "both halves of a split number share one row", h, m, buf);
+          if (split) {
+            snprintf(buf, sizeof(buf), "head row %d, lower half row %d",
+                     s_face.items[0].row, s_face.items[1].row);
+            CHECK(s_face.items[0].row == ROW_SPLIT_HEAD,
+                  "the split head is not on its own row", h, m, buf);
+            CHECK(s_face.items[1].row == ROW_MINUTE_SPLIT,
+                  "the split's lower half is not on its own row", h, m, buf);
+          } else {
+            const uint8_t want = has_own ? ROW_MINUTE : ROW_MINUTE_ALONE;
+            snprintf(buf, sizeof(buf),
+                     "number is on row %d, expected %d (%s annotation below)",
+                     s_face.items[0].row, want, has_own ? "with" : "no");
+            CHECK(s_face.items[0].row == want,
+                  "the minute number is on the wrong lever", h, m, buf);
           }
         }
 
-        /* And the relationship the separation exists to protect: with the
-         * number and the annotation set alike, an inline "minute(s)" stays
-         * on the number's line. */
+        /* An inline "minute(s)" holds the line of the split number it sits
+         * beside, given the two are set alike. */
         const Element *host = NULL, *ann = NULL;
         for (int i = 0; i < s_face.count; i++) {
-          if (s_face.items[i].row == ROW_MINUTE)  host = &s_face.items[i];
+          if (s_face.items[i].row == ROW_MINUTE_SPLIT)  host = &s_face.items[i];
           if (s_face.items[i].row == ROW_MINUTES_INLINE) ann = &s_face.items[i];
         }
-        if (host && ann &&
-            baseline_of(ann) == baseline_of(host)) {   /* inline, not stacked */
+        if (host && ann) {
           inline_lines++;
           snprintf(buf, sizeof(buf),
-                   "head %+d number %+d: annotation baseline %d, number %d",
-                   head, num, drawn_baseline(ann), drawn_baseline(host));
+                   "plan %d: annotation baseline %d, number %d",
+                   p, drawn_baseline(ann), drawn_baseline(host));
           CHECK(drawn_baseline(ann) == drawn_baseline(host),
                 "\"minute(s)\" left the number's line once drawn", h, m, buf);
         }
@@ -650,13 +691,10 @@ static void check_offset_independence(void) {
     }
   }
 
-  set_offsets(OFFSET_SPLIT_HEAD, OFFSET_MINUTE, OFFSET_MINUTES,
-              OFFSET_MINUTES_OWN);
+  settings_defaults();
   s_have_prev = false;
-  printf("  drawn offsets        %d inline lines over %d offset pairs\n",
-         inline_lines,
-         (int)((sizeof(kNudge) / sizeof(kNudge[0])) *
-               (sizeof(kNudge) / sizeof(kNudge[0]))));
+  printf("  drawn offsets        %d inline lines over %d plans x %d modes\n",
+         inline_lines, kPlanCount, MINUTES_MODE_COUNT);
 }
 
 /*
@@ -685,39 +723,59 @@ static void send_setting_str(uint32_t key, const char *value) {
   stub_set_dict(NULL, 0);
 }
 
+/*
+ * Read every offset into one array, in the same order as kOffsets below.
+ * Comparing snapshots rather than testing against zero is deliberate: the
+ * compile-time defaults are no longer all zero, and an earlier version of
+ * this check used "non-zero means it changed", which quietly became a test
+ * that every default was zero.
+ */
+static void snapshot_offsets(int *out) {
+  out[0] = s_settings.offset_split_head;
+  out[1] = s_settings.offset[ROW_MINUTE];
+  out[2] = s_settings.offset_minute_alone;
+  out[3] = s_settings.offset_minute_split;
+  out[4] = s_settings.offset[ROW_MINUTES_INLINE];
+  out[5] = s_settings.offset_minutes_own;
+  out[6] = s_settings.offset[ROW_RELATION];
+  out[7] = s_settings.offset[ROW_HOUR];
+  out[8] = s_settings.offset[ROW_SOLO];
+  out[9] = s_settings.offset[ROW_DATE];
+}
+
 static void check_message_routing(void) {
-  char buf[160];
+  char buf[180];
   struct { uint32_t key; const char *name; } kOffsets[] = {
-    {MESSAGE_KEY_OffSplitHead,  "OffSplitHead"},
-    {MESSAGE_KEY_OffMinute,     "OffMinute"},
-    {MESSAGE_KEY_OffMinutes,    "OffMinutes"},
-    {MESSAGE_KEY_OffMinutesOwn, "OffMinutesOwn"},
-    {MESSAGE_KEY_OffRelation,   "OffRelation"},
-    {MESSAGE_KEY_OffHour,       "OffHour"},
-    {MESSAGE_KEY_OffSolo,       "OffSolo"},
-    {MESSAGE_KEY_OffDate,       "OffDate"}
+    {MESSAGE_KEY_OffSplitHead,   "OffSplitHead"},
+    {MESSAGE_KEY_OffMinute,      "OffMinute"},
+    {MESSAGE_KEY_OffMinuteAlone, "OffMinuteAlone"},
+    {MESSAGE_KEY_OffMinuteSplit, "OffMinuteSplit"},
+    {MESSAGE_KEY_OffMinutes,     "OffMinutes"},
+    {MESSAGE_KEY_OffMinutesOwn,  "OffMinutesOwn"},
+    {MESSAGE_KEY_OffRelation,    "OffRelation"},
+    {MESSAGE_KEY_OffHour,        "OffHour"},
+    {MESSAGE_KEY_OffSolo,        "OffSolo"},
+    {MESSAGE_KEY_OffDate,        "OffDate"}
   };
   const int n = (int)(sizeof(kOffsets) / sizeof(kOffsets[0]));
 
   for (int i = 0; i < n; i++) {
+    int before[10], after[10];
     settings_defaults();
-    send_setting(kOffsets[i].key, 7);
+    snapshot_offsets(before);
 
-    /* Exactly one offset may have moved, and it must be the right one. */
+    const int target = (before[i] == 7) ? -7 : 7;
+    send_setting(kOffsets[i].key, target);
+    snapshot_offsets(after);
+
     int moved = 0, which = -1;
-    const int values[] = {
-      s_settings.offset_split_head, s_settings.offset[ROW_MINUTE],
-      s_settings.offset[ROW_MINUTES_INLINE], s_settings.offset_minutes_own,
-      s_settings.offset[ROW_RELATION], s_settings.offset[ROW_HOUR],
-      s_settings.offset[ROW_SOLO], s_settings.offset[ROW_DATE]
-    };
     for (int j = 0; j < n; j++) {
-      if (values[j] != 0) { moved++; which = j; }
+      if (after[j] != before[j]) { moved++; which = j; }
     }
-    snprintf(buf, sizeof(buf), "%s set %d offsets, index %d",
-             kOffsets[i].name, moved, which);
-    CHECK(moved == 1 && which == i, "an offset key reached the wrong field",
-          0, 0, buf);
+    snprintf(buf, sizeof(buf), "%s moved %d offsets, index %d, value %d",
+             kOffsets[i].name, moved, which, after[i]);
+    CHECK(moved == 1 && which == i && after[i] == target,
+          "an offset key reached the wrong field", 0, 0, buf);
   }
 
   /* The other settings, and both tuple representations Clay can send. */

@@ -185,6 +185,8 @@ void app_message_open(uint32_t in, uint32_t out);
 #define MESSAGE_KEY_StrokeWeight 12
 #define MESSAGE_KEY_OffSplitHead 13
 #define MESSAGE_KEY_OffMinutesOwn 14
+#define MESSAGE_KEY_OffMinuteAlone 15
+#define MESSAGE_KEY_OffMinuteSplit 16
 
 /* ---------------------------------------------------------------- */
 /* Tick service and event loop                                       */

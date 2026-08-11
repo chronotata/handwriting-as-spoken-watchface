@@ -49,33 +49,60 @@
 /* ---------------------------------------------------------------- */
 
 /*
- * The three rows above "past"/"to" are nudged independently on purpose.
+ * The rows above "past"/"to" are nudged independently on purpose.
  *
- * A split minute word occupies two of them - "twenty-" then "one" - and they
- * used to share one offset, so pulling the head clear of the top of the
- * screen dragged the number down with it while the inline "minute(s)",
- * which is pinned to the number's baseline, stayed put. It read as the
- * annotation floating when it was the number that had moved.
- *
- * OFFSET_MINUTES and OFFSET_MINUTE at the SAME value keep the annotation
- * level with the number it follows. Deliberately differing them is allowed -
- * that is the point of separating them - but it is then a choice.
+ * They started as one offset. Pulling "twenty-" clear of the top of the
+ * screen dragged the number below it down too, while the inline "minute(s)",
+ * pinned to that number's baseline, stayed put - it read as the annotation
+ * floating when it was the number that had moved. Every split since has been
+ * for the same reason: two things that want different placement should not
+ * share a lever.
  */
-#define OFFSET_SPLIT_HEAD 0  /* "twenty-", the first half of a split word */
-/*
- * "minute(s)" gets TWO offsets because it appears in two quite different
- * places. Beside a split number (:21-:29) it has to hold that number's line,
- * so OFFSET_MINUTES normally matches OFFSET_MINUTE. On its own line (:01-:20)
- * nothing constrains it and its distance from "past"/"to" is pure taste, so
- * OFFSET_MINUTES_OWN is free.
- */
-#define OFFSET_MINUTE   0  /* row 0   - the minute number       */
-#define OFFSET_MINUTES  0  /* "minute(s)" beside a split number  */
-#define OFFSET_MINUTES_OWN 0 /* "minute(s)" on a line of its own   */
-#define OFFSET_RELATION 0  /* row 1   - "past" / "to"           */
-#define OFFSET_HOUR     0  /* row 2   - the hour word           */
-#define OFFSET_SOLO     0  /* solo midnight / midday            */
-#define OFFSET_DATE     0  /* the date line                     */
+ #define OFFSET_SPLIT_HEAD 15  /* "twenty-", the first half of a split word  */
+
+ /*
+  * The minute NUMBER has three levers, because it sits in three situations
+  * that want different things and share nothing but the word itself.
+  *
+  *   OFFSET_MINUTE         "three" with "minutes" stacked underneath it.
+  *                         The annotation fills the space down to "past".
+  *                         Also carries the o'clock top word and the
+  *                         witching hour's "the", both of which are centred
+  *                         rather than hung off REL_TOP - separate those out
+  *                         if they ever need their own placement.
+  *
+  *   OFFSET_MINUTE_ALONE   "quarter", "half", or a number with no
+  *                         annotation at all. Nothing sits between it and
+  *                         "past"/"to", so it reads as floating high with an
+  *                         empty gap beneath.
+  *
+  *   OFFSET_MINUTE_SPLIT   the lower half of a split word - the "one" of
+  *                         "twenty-one" - whether or not "minutes" rides
+  *                         beside it. Its right position does not depend on
+  *                         that, so both cases share one lever.
+  *
+  * The last two started as copies of OFFSET_MINUTE so that separating them
+  * moved nothing on screen; they are independent from here on.
+  */
+ #define OFFSET_MINUTE       3  /* number WITH "minute(s)" stacked below   */
+ #define OFFSET_MINUTE_ALONE 9  /* number with nothing below it            */
+ #define OFFSET_MINUTE_SPLIT 9  /* the lower half of a split word          */
+
+ /*
+  * "minute(s)" gets TWO offsets because it appears in two quite different
+  * places. Beside a split number (:21-:29) it has to hold that number's line,
+  * so OFFSET_MINUTES normally matches OFFSET_MINUTE_SPLIT - note SPLIT, since
+  * that is the row it actually sits beside. On its own line (:01-:20) nothing
+  * constrains it and its distance from "past"/"to" is pure taste, so
+  * OFFSET_MINUTES_OWN is free.
+  */
+ #define OFFSET_MINUTES      9  /* "minute(s)" beside a split number       */
+ #define OFFSET_MINUTES_OWN  0  /* "minute(s)" on a line of its own        */
+
+ #define OFFSET_RELATION -3  /* "past" / "to"                     */
+ #define OFFSET_HOUR    -9  /* the hour word                     */
+ #define OFFSET_SOLO      0  /* solo midnight / midday            */
+ #define OFFSET_DATE      0  /* the date line                     */
 
 #define OFFSET_MIN -15
 #define OFFSET_MAX  15

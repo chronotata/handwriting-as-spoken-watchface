@@ -149,14 +149,21 @@ module.exports = [
                    '"twenty-" — only appears when the minute splits across ' +
                    'two lines. Use this to pull it clear of the top edge ' +
                    'without moving anything below it.'),
-      offsetSlider('OffMinute', 'Minute number',
-                   'The number that sits above "past"/"to" — the whole ' +
-                   'word, or the second half when it splits'),
+      offsetSlider('OffMinute', 'Minute number, with "minute(s)" below',
+                   ':01–:20 when the annotation is shown — it fills the ' +
+                   'space down to "past"/"to"'),
+      offsetSlider('OffMinuteAlone', 'Minute number, alone',
+                   '"quarter", "half", or any number with no annotation. ' +
+                   'Nothing sits between it and "past"/"to", so the gap ' +
+                   'beneath is empty'),
+      offsetSlider('OffMinuteSplit', 'Split number, lower half',
+                   'the "one" of "twenty-one", with or without "minute(s)" ' +
+                   'beside it'),
       offsetSlider('OffMinutes', '"minute(s)" beside the number',
-                   ':21–:29, where it rides next to the second half of the ' +
-                   'split. Set this to the SAME value as the minute number ' +
-                   'to keep the two level; differ them only if you want it ' +
-                   'deliberately off the line'),
+                   ':21–:29, riding next to the split. Set this to the ' +
+                   'SAME value as "Split number, lower half" to keep the ' +
+                   'two level — that is the row it sits beside — and ' +
+                   'differ them only deliberately'),
       offsetSlider('OffMinutesOwn', '"minute(s)" on its own line',
                    ':01–:20, where it has a line to itself. Nothing holds ' +
                    'it to another word, so this is purely how close it sits ' +

@@ -88,6 +88,24 @@ typedef enum {
    * matter of taste.
    */
   ROW_MINUTES_OWN,
+
+  /*
+   * The minute number in the two situations that are NOT "number with
+   * minute(s) stacked below it". Split out because the three want different
+   * placement and share only the word:
+   *
+   *   ROW_MINUTE_ALONE  nothing sits between it and "past"/"to", so the gap
+   *                     beneath is empty and it reads as floating high.
+   *   ROW_MINUTE_SPLIT  the lower half of "twenty-one", with or without
+   *                     "minute(s)" beside it - its right position does not
+   *                     depend on that, so both cases share this row.
+   *
+   * ROW_MINUTE keeps the stacked case, and with it the o'clock top word and
+   * the witching hour's "the", which are centred rather than hung off
+   * REL_TOP and have never had a lever of their own.
+   */
+  ROW_MINUTE_ALONE,
+  ROW_MINUTE_SPLIT,
   ROW_COUNT
 } RowId;
 
@@ -137,6 +155,8 @@ typedef struct {
   uint8_t stroke_weight;        /* outline level, dark ink only */
   int8_t offset_split_head;     /* ROW_SPLIT_HEAD, appended not inserted */
   int8_t offset_minutes_own;    /* ROW_MINUTES_OWN, likewise             */
+  int8_t offset_minute_alone;   /* ROW_MINUTE_ALONE                      */
+  int8_t offset_minute_split;   /* ROW_MINUTE_SPLIT                      */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -638,7 +658,7 @@ static void build_face(Face *f, struct tm *t) {
        * it belongs to, so it can be pulled clear of the top of the screen
        * without dragging the rest of the phrase with it. */
       push(f, W_TWENTYDASH, ROW_SPLIT_HEAD);
-      push(f, kOnes[mins - 21], ROW_MINUTE);
+      push(f, kOnes[mins - 21], ROW_MINUTE_SPLIT);
       rel_idx = 2;
     } else {
       uint8_t head;
@@ -654,7 +674,10 @@ static void build_face(Face *f, struct tm *t) {
       } else {
         head = kOnes[mins - 1];
       }
-      push(f, head, ROW_MINUTE);
+      /* Which lever this row answers to depends on whether the annotation
+       * will sit beneath it - with nothing under it the gap down to
+       * "past"/"to" is empty and wants its own placement. */
+      push(f, head, show_mins ? ROW_MINUTE : ROW_MINUTE_ALONE);
       rel_idx = 1;
       if (show_mins) {
         /* Its own row for non-split words, so it never moves as the number
@@ -761,6 +784,12 @@ static int row_offset(uint8_t row) {
   }
   if (row == ROW_MINUTES_OWN) {
     return s_settings.offset_minutes_own;
+  }
+  if (row == ROW_MINUTE_ALONE) {
+    return s_settings.offset_minute_alone;
+  }
+  if (row == ROW_MINUTE_SPLIT) {
+    return s_settings.offset_minute_split;
   }
   return (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
 }
@@ -877,6 +906,8 @@ static void settings_defaults(void) {
   s_settings.offset[ROW_MINUTE] = OFFSET_MINUTE;
   s_settings.offset[ROW_MINUTES_INLINE] = OFFSET_MINUTES;
   s_settings.offset_minutes_own = OFFSET_MINUTES_OWN;
+  s_settings.offset_minute_alone = OFFSET_MINUTE_ALONE;
+  s_settings.offset_minute_split = OFFSET_MINUTE_SPLIT;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
   s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
   s_settings.offset[ROW_SOLO] = OFFSET_SOLO;
@@ -961,6 +992,10 @@ static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
     s_settings.offset_split_head = v;
   } else if (row == ROW_MINUTES_OWN) {
     s_settings.offset_minutes_own = v;
+  } else if (row == ROW_MINUTE_ALONE) {
+    s_settings.offset_minute_alone = v;
+  } else if (row == ROW_MINUTE_SPLIT) {
+    s_settings.offset_minute_split = v;
   } else if (row < OFFSET_ROWS) {
     s_settings.offset[row] = v;
   }
@@ -989,6 +1024,8 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   read_offset(it, MESSAGE_KEY_OffMinute, ROW_MINUTE);
   read_offset(it, MESSAGE_KEY_OffMinutes, ROW_MINUTES_INLINE);
   read_offset(it, MESSAGE_KEY_OffMinutesOwn, ROW_MINUTES_OWN);
+  read_offset(it, MESSAGE_KEY_OffMinuteAlone, ROW_MINUTE_ALONE);
+  read_offset(it, MESSAGE_KEY_OffMinuteSplit, ROW_MINUTE_SPLIT);
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
   read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);

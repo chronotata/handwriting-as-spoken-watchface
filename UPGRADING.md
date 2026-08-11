@@ -185,7 +185,7 @@ takes under a second. If `node` happens to be installed it also runs the
 settings-page test (`clay-slider.test.js`); if not, it says so and carries
 on. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
-once per date format and minutes mode — about 1.19 million assertions, under
+once per date format and minutes mode — about 930,000 assertions, under
 AddressSanitizer.
 
 Run it before every `pebble build`. It catches in a second what otherwise
@@ -311,7 +311,7 @@ real hardware the same way `--emulator` does from the simulator.
 
 ## 8. Tuning without a rebuild
 
-Open the watchface's settings in the Pebble phone app. Eight sliders — one
+Open the watchface's settings in the Pebble phone app. Ten sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
 and apply the moment you change them. No rebuild, no reinstall. The same
 page carries the colours, the date on/off toggle, the date format, whether
@@ -335,14 +335,16 @@ separate on purpose:
 | slider | moves |
 |---|---|
 | Split number, top half | only `twenty-`, so it can be pulled clear of the screen edge on its own |
-| Minute number | the number itself, including the second half of a split word |
-| "minute(s)" beside the number | :21–:29, riding next to the split's second half |
+| Minute number, with "minute(s)" below | :01–:20 when the annotation shows and fills the gap |
+| Minute number, alone | `quarter`, `half`, any unannotated number — nothing under it |
+| Split number, lower half | the `one` of `twenty-one`, annotated or not |
+| "minute(s)" beside the number | :21–:29, riding next to the split |
 | "minute(s)" on its own line | :01–:20, where nothing else holds it |
 
-Keep **"minute(s)" beside the number** at the same value as **Minute
-number** and the two stay level — differ them only if you want it
-deliberately off the line. The standalone one is unconstrained, so it is
-purely how close it sits to *past*/*to*.
+Keep **"minute(s)" beside the number** at the same value as **Split number,
+lower half** — that is the row it actually sits beside — and the two stay
+level. The standalone one is unconstrained, so it is purely how close it
+sits to *past*/*to*.
 
 For anything beyond a pixel nudge — spacing between two specific rows, or
 how large a word's ink reads relative to its neighbours — edit that word's
