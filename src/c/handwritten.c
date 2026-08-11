@@ -60,13 +60,13 @@ _Static_assert(DATE_BASELINE + (DATE_BOX_H - DATE_BOX_BASE) <= SCREEN_H,
  *
  * They used to share ROW_MINUTE. Pulling "twenty-" down away from the top of
  * the screen therefore pulled "one" down with it, and the inline "minutes"
- * - which is pinned to "one"'s BASELINE at build time but takes ROW_MINUTES'
+ * - which is pinned to "one"'s BASELINE at build time but takes ROW_MINUTES_INLINE'
  * offset at draw time - stayed where it was. The result read as "minutes"
  * floating, when it was the number that had moved.
  */
 typedef enum {
   ROW_MINUTE = 0,   /* the minute number, or the SECOND half of a split one */
-  ROW_MINUTES,      /* "minute" / "minutes"                                 */
+  ROW_MINUTES_INLINE, /* "minute(s)" riding beside a split number           */
   ROW_RELATION,     /* "past" / "to"                                        */
   ROW_HOUR,         /* the hour word                                        */
   ROW_SOLO,         /* midnight / midday standing alone                     */
@@ -79,6 +79,15 @@ typedef enum {
    * watch's saved settings. See Settings.
    */
   ROW_SPLIT_HEAD,
+
+  /*
+   * "minute(s)" when it has a LINE TO ITSELF, which is every minute from one
+   * to twenty. Separate from the inline case because the two want different
+   * things: the inline one has to track the number it sits beside, while
+   * this one is a row of its own and its distance from "past"/"to" is a
+   * matter of taste.
+   */
+  ROW_MINUTES_OWN,
   ROW_COUNT
 } RowId;
 
@@ -127,6 +136,7 @@ typedef struct {
   uint8_t minutes_mode;         /* index into kMinutesModes */
   uint8_t stroke_weight;        /* outline level, dark ink only */
   int8_t offset_split_head;     /* ROW_SPLIT_HEAD, appended not inserted */
+  int8_t offset_minutes_own;    /* ROW_MINUTES_OWN, likewise             */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -649,7 +659,7 @@ static void build_face(Face *f, struct tm *t) {
       if (show_mins) {
         /* Its own row for non-split words, so it never moves as the number
          * changes and is never redrawn. */
-        push(f, mins == 1 ? W_MINUTE : W_MINUTES, ROW_MINUTES);
+        push(f, mins == 1 ? W_MINUTE : W_MINUTES, ROW_MINUTES_OWN);
         rel_idx = 2;
       }
     }
@@ -694,7 +704,7 @@ static void build_face(Face *f, struct tm *t) {
       const Element *host = &f->items[1];
       Element e;
       e.word = mins == 1 ? W_MINUTE : W_MINUTES;
-      e.row = ROW_MINUTES;
+      e.row = ROW_MINUTES_INLINE;
       e.animate = false;
       const int after = host->x + WORDS[host->word].w + MIN_TRAIL;
       const int clamp = SCREEN_W - MARGIN - WORDS[e.word].w;
@@ -748,6 +758,9 @@ static void mark_changes(bool date_changed) {
 static int row_offset(uint8_t row) {
   if (row == ROW_SPLIT_HEAD) {
     return s_settings.offset_split_head;
+  }
+  if (row == ROW_MINUTES_OWN) {
+    return s_settings.offset_minutes_own;
   }
   return (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
 }
@@ -862,7 +875,8 @@ static void settings_defaults(void) {
   s_settings.minutes_mode = DEFAULT_MINUTES_MODE;
   s_settings.stroke_weight = DEFAULT_STROKE_WEIGHT;
   s_settings.offset[ROW_MINUTE] = OFFSET_MINUTE;
-  s_settings.offset[ROW_MINUTES] = OFFSET_MINUTES;
+  s_settings.offset[ROW_MINUTES_INLINE] = OFFSET_MINUTES;
+  s_settings.offset_minutes_own = OFFSET_MINUTES_OWN;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
   s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
   s_settings.offset[ROW_SOLO] = OFFSET_SOLO;
@@ -945,6 +959,8 @@ static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
   const int8_t v = clamp_offset(tuple_int(t));
   if (row == ROW_SPLIT_HEAD) {
     s_settings.offset_split_head = v;
+  } else if (row == ROW_MINUTES_OWN) {
+    s_settings.offset_minutes_own = v;
   } else if (row < OFFSET_ROWS) {
     s_settings.offset[row] = v;
   }
@@ -971,7 +987,8 @@ static void inbox_received(DictionaryIterator *it, void *context) {
     s_settings.stroke_weight = clamp_stroke_weight(tuple_int(t));
   }
   read_offset(it, MESSAGE_KEY_OffMinute, ROW_MINUTE);
-  read_offset(it, MESSAGE_KEY_OffMinutes, ROW_MINUTES);
+  read_offset(it, MESSAGE_KEY_OffMinutes, ROW_MINUTES_INLINE);
+  read_offset(it, MESSAGE_KEY_OffMinutesOwn, ROW_MINUTES_OWN);
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
   read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);

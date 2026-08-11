@@ -170,7 +170,7 @@ static void check_stacking(const Face *f, int h, int m) {
     if (e->row == ROW_DATE) {
       continue;
     }
-    if (prev && e->row == ROW_MINUTES && baseline_of(e) == baseline_of(prev)) {
+    if (prev && e->row == ROW_MINUTES_INLINE) {
       continue;   /* inline beside its host; leaves the stack chain alone */
     }
     if (prev) {
@@ -527,7 +527,8 @@ static void check_palette(void) {
  * shared one row, so nudging "twenty-" clear of the top of the screen moved
  * the number below it as well, while the inline "minute(s)" - pinned to that
  * number's baseline at build time but carrying its own row's offset - stayed
- * behind. Setting offset[ROW_MINUTES] = -5 by hand produced 683,874 checks
+ * behind. Setting offset[ROW_MINUTES_INLINE] = -5 by hand produced 683,874
+ * checks
  * and 0 failures.
  *
  * These checks close that gap. They are about the RELATIONSHIPS the offsets
@@ -537,10 +538,11 @@ static int drawn_baseline(const Element *e) {
   return e->top + WORDS[e->word].base + row_offset(e->row);
 }
 
-static void set_offsets(int split_head, int minute, int minutes) {
+static void set_offsets(int split_head, int minute, int minutes, int own) {
   s_settings.offset_split_head = (int8_t)split_head;
   s_settings.offset[ROW_MINUTE] = (int8_t)minute;
-  s_settings.offset[ROW_MINUTES] = (int8_t)minutes;
+  s_settings.offset[ROW_MINUTES_INLINE] = (int8_t)minutes;
+  s_settings.offset_minutes_own = (int8_t)own;
 }
 
 /*
@@ -563,17 +565,21 @@ static void check_offset_independence(void) {
   for (size_t a = 0; a < sizeof(kNudge) / sizeof(kNudge[0]); a++) {
     for (size_t b = 0; b < sizeof(kNudge) / sizeof(kNudge[0]); b++) {
       const int head = kNudge[a], num = kNudge[b];
+      /* Deliberately NOT equal to `num`: if the two "minute(s)" cases
+       * were ever wired to the same offset again, holding them equal
+       * here would hide it. */
+      const int own = kNudge[(a + 2) % (sizeof(kNudge) / sizeof(kNudge[0]))];
 
       for (int t = 0; t < 1440; t++) {
         const int h = t / 60, m = t % 60;
         struct tm tm = make_tm(232, 21, 7, 2026, h, m);
 
-        set_offsets(0, 0, 0);
+        set_offsets(0, 0, 0, 0);
         s_have_prev = false;
         refresh(&tm, true);
         const Face flat = s_face;
 
-        set_offsets(head, num, num);
+        set_offsets(head, num, num, own);
         s_have_prev = false;
         refresh(&tm, true);
 
@@ -586,7 +592,8 @@ static void check_offset_independence(void) {
           const Element *e = &s_face.items[i];
           const int want_move = (e->row == ROW_SPLIT_HEAD) ? head
                               : (e->row == ROW_MINUTE)     ? num
-                              : (e->row == ROW_MINUTES)    ? num : 0;
+                              : (e->row == ROW_MINUTES_INLINE) ? num
+                              : (e->row == ROW_MINUTES_OWN) ? own : 0;
           const int moved = drawn_baseline(e)
                           - (flat.items[i].top + WORDS[flat.items[i].word].base);
           snprintf(buf, sizeof(buf),
@@ -628,7 +635,7 @@ static void check_offset_independence(void) {
         const Element *host = NULL, *ann = NULL;
         for (int i = 0; i < s_face.count; i++) {
           if (s_face.items[i].row == ROW_MINUTE)  host = &s_face.items[i];
-          if (s_face.items[i].row == ROW_MINUTES) ann  = &s_face.items[i];
+          if (s_face.items[i].row == ROW_MINUTES_INLINE) ann = &s_face.items[i];
         }
         if (host && ann &&
             baseline_of(ann) == baseline_of(host)) {   /* inline, not stacked */
@@ -643,12 +650,103 @@ static void check_offset_independence(void) {
     }
   }
 
-  set_offsets(OFFSET_SPLIT_HEAD, OFFSET_MINUTE, OFFSET_MINUTES);
+  set_offsets(OFFSET_SPLIT_HEAD, OFFSET_MINUTE, OFFSET_MINUTES,
+              OFFSET_MINUTES_OWN);
   s_have_prev = false;
   printf("  drawn offsets        %d inline lines over %d offset pairs\n",
          inline_lines,
          (int)((sizeof(kNudge) / sizeof(kNudge[0])) *
                (sizeof(kNudge) / sizeof(kNudge[0]))));
+}
+
+/*
+ * Does a setting sent from the phone reach the field it names?
+ *
+ * Everything else here starts from s_settings already populated, which
+ * leaves the entire AppMessage path untested: a key could be read into the
+ * wrong field, or dropped on the floor, and every geometry assertion would
+ * still pass because the tests set the values directly. Deleting the write
+ * for one offset produced 1,186,049 checks and 0 failures.
+ *
+ * So this drives the real inbox_received() through a real dictionary, one
+ * key at a time, and asserts that the named field moved and no other did.
+ */
+static void send_setting(uint32_t key, int32_t value) {
+  const StubTupleSpec spec = {key, TUPLE_INT, value, NULL};
+  stub_set_dict(&spec, 1);
+  inbox_received(NULL, NULL);
+  stub_set_dict(NULL, 0);
+}
+
+static void send_setting_str(uint32_t key, const char *value) {
+  const StubTupleSpec spec = {key, TUPLE_CSTRING, 0, value};
+  stub_set_dict(&spec, 1);
+  inbox_received(NULL, NULL);
+  stub_set_dict(NULL, 0);
+}
+
+static void check_message_routing(void) {
+  char buf[160];
+  struct { uint32_t key; const char *name; } kOffsets[] = {
+    {MESSAGE_KEY_OffSplitHead,  "OffSplitHead"},
+    {MESSAGE_KEY_OffMinute,     "OffMinute"},
+    {MESSAGE_KEY_OffMinutes,    "OffMinutes"},
+    {MESSAGE_KEY_OffMinutesOwn, "OffMinutesOwn"},
+    {MESSAGE_KEY_OffRelation,   "OffRelation"},
+    {MESSAGE_KEY_OffHour,       "OffHour"},
+    {MESSAGE_KEY_OffSolo,       "OffSolo"},
+    {MESSAGE_KEY_OffDate,       "OffDate"}
+  };
+  const int n = (int)(sizeof(kOffsets) / sizeof(kOffsets[0]));
+
+  for (int i = 0; i < n; i++) {
+    settings_defaults();
+    send_setting(kOffsets[i].key, 7);
+
+    /* Exactly one offset may have moved, and it must be the right one. */
+    int moved = 0, which = -1;
+    const int values[] = {
+      s_settings.offset_split_head, s_settings.offset[ROW_MINUTE],
+      s_settings.offset[ROW_MINUTES_INLINE], s_settings.offset_minutes_own,
+      s_settings.offset[ROW_RELATION], s_settings.offset[ROW_HOUR],
+      s_settings.offset[ROW_SOLO], s_settings.offset[ROW_DATE]
+    };
+    for (int j = 0; j < n; j++) {
+      if (values[j] != 0) { moved++; which = j; }
+    }
+    snprintf(buf, sizeof(buf), "%s set %d offsets, index %d",
+             kOffsets[i].name, moved, which);
+    CHECK(moved == 1 && which == i, "an offset key reached the wrong field",
+          0, 0, buf);
+  }
+
+  /* The other settings, and both tuple representations Clay can send. */
+  settings_defaults();
+  send_setting_str(MESSAGE_KEY_DateFormat, "1");
+  CHECK(s_settings.date_format == 1, "DateFormat did not arrive", 0, 0,
+        "as a cstring, which is how Clay's select sends it");
+
+  settings_defaults();
+  send_setting(MESSAGE_KEY_MinutesText, 2);
+  CHECK(s_settings.minutes_mode == 2, "MinutesText did not arrive", 0, 0, "");
+
+  settings_defaults();
+  send_setting(MESSAGE_KEY_StrokeWeight, 14);
+  CHECK(s_settings.stroke_weight == 14, "StrokeWeight did not arrive", 0, 0, "");
+
+  settings_defaults();
+  send_setting(MESSAGE_KEY_ShowDate, 0);
+  CHECK(!s_settings.show_date, "ShowDate did not arrive", 0, 0, "");
+
+  /* Out of range must still be clamped on the way in. */
+  settings_defaults();
+  send_setting(MESSAGE_KEY_OffHour, 999);
+  CHECK(s_settings.offset[ROW_HOUR] == OFFSET_MAX, "an offset was not clamped",
+        0, 0, "999 should land on OFFSET_MAX");
+
+  settings_defaults();
+  drop_all_bitmaps();
+  printf("  message routing      %d keys\n", n + 5);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1007,6 +1105,7 @@ int main(void) {
   check_minutes_wording();
   check_palette();
   check_offset_independence();
+  check_message_routing();
   check_settings();
 
   drop_all_bitmaps();

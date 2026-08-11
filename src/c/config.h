@@ -62,8 +62,16 @@
  * that is the point of separating them - but it is then a choice.
  */
 #define OFFSET_SPLIT_HEAD 0  /* "twenty-", the first half of a split word */
+/*
+ * "minute(s)" gets TWO offsets because it appears in two quite different
+ * places. Beside a split number (:21-:29) it has to hold that number's line,
+ * so OFFSET_MINUTES normally matches OFFSET_MINUTE. On its own line (:01-:20)
+ * nothing constrains it and its distance from "past"/"to" is pure taste, so
+ * OFFSET_MINUTES_OWN is free.
+ */
 #define OFFSET_MINUTE   0  /* row 0   - the minute number       */
-#define OFFSET_MINUTES  0  /* row 1.5 - "minute" / "minutes"    */
+#define OFFSET_MINUTES  0  /* "minute(s)" beside a split number  */
+#define OFFSET_MINUTES_OWN 0 /* "minute(s)" on a line of its own   */
 #define OFFSET_RELATION 0  /* row 1   - "past" / "to"           */
 #define OFFSET_HOUR     0  /* row 2   - the hour word           */
 #define OFFSET_SOLO     0  /* solo midnight / midday            */

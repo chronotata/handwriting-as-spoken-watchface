@@ -185,7 +185,7 @@ takes under a second. If `node` happens to be installed it also runs the
 settings-page test (`clay-slider.test.js`); if not, it says so and carries
 on. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
-once per date format and minutes mode — about 684,000 assertions, under
+once per date format and minutes mode — about 1.19 million assertions, under
 AddressSanitizer.
 
 Run it before every `pebble build`. It catches in a second what otherwise
@@ -214,6 +214,33 @@ pebble emu-set-time --emulator emery 12:00   # solo "midday"
 ```
 `pebble logs --emulator emery` shows live log output if anything looks off,
 including anything `src/pkjs/` throws or logs.
+
+**If `install` reports `App install failed.`** and the emulator's progress
+bar stalls about halfway, the emulator's stored flash image is corrupt:
+
+```bash
+pebble kill
+pebble wipe
+```
+
+Nothing else fixes it — not rebuilding, not `pebble clean`, not restarting
+the computer, because the bad state lives in the emulator's own storage
+rather than in the build or the process. The error message is unhelpfully
+generic and there is no `--debug` flag to prise more out of it, so reach for
+`wipe` early rather than late.
+
+The quickest way to tell whether a failure is yours or the emulator's is to
+build a throwaway project and install that:
+
+```bash
+cd /tmp && pebble new-project hello && cd hello
+pebble build && pebble install --emulator emery
+```
+
+If hello-world fails too, stop looking at your own code.
+
+Note that `wipe` also clears any settings saved into the emulator, so the
+upgrade check in §6.1 starts from scratch afterwards.
 
 ### 6.1 The settings page, without a phone
 
@@ -284,7 +311,7 @@ real hardware the same way `--emulator` does from the simulator.
 
 ## 8. Tuning without a rebuild
 
-Open the watchface's settings in the Pebble phone app. Seven sliders — one
+Open the watchface's settings in the Pebble phone app. Eight sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
 and apply the moment you change them. No rebuild, no reinstall. The same
 page carries the colours, the date on/off toggle, the date format, whether
@@ -302,13 +329,20 @@ the outer edge of the outline sets the apparent width either way, so Solid
 reads harder-edged rather than thicker. To make the strokes genuinely
 thicker, raise `BOLD_BLEND` in `tools/tune.py` and regenerate.
 
-Three of those sliders cover the rows above *past*/*to*, and they are
-separate on purpose: **Split number, top half** moves only `twenty-`, so it
-can be pulled clear of the screen edge on its own; **Minute number** moves
-the number itself, including the second half of a split word; and
-**"minute(s)"** places the annotation. Keep the last two at the same value
-and the annotation stays level with the number — differ them only if you
-want it deliberately off the line.
+Four of those sliders cover the rows above *past*/*to*, and they are
+separate on purpose:
+
+| slider | moves |
+|---|---|
+| Split number, top half | only `twenty-`, so it can be pulled clear of the screen edge on its own |
+| Minute number | the number itself, including the second half of a split word |
+| "minute(s)" beside the number | :21–:29, riding next to the split's second half |
+| "minute(s)" on its own line | :01–:20, where nothing else holds it |
+
+Keep **"minute(s)" beside the number** at the same value as **Minute
+number** and the two stay level — differ them only if you want it
+deliberately off the line. The standalone one is unconstrained, so it is
+purely how close it sits to *past*/*to*.
 
 For anything beyond a pixel nudge — spacing between two specific rows, or
 how large a word's ink reads relative to its neighbours — edit that word's

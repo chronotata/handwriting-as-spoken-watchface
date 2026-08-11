@@ -129,7 +129,8 @@ per-word-layer memory leak.
 |---|---|---|
 | `ROW_SPLIT_HEAD` | first half of a split word — `twenty-` | 0 |
 | `ROW_MINUTE` | the minute number, or the **second** half of a split word | 0 or 1 |
-| `ROW_MINUTES` | `minute` / `minutes` — its own line, or inline beside a split number | 1 (when stacked) |
+| `ROW_MINUTES_OWN` | `minute(s)` on a line of its own — :01–:20 | 1 |
+| `ROW_MINUTES_INLINE` | `minute(s)` riding beside a split number — :21–:29 | hangs off its host |
 | `ROW_RELATION` | `past` / `to` | **2, always** |
 | `ROW_HOUR` | the hour word | **3, always** |
 | `ROW_SOLO` | `midnight` / `midday` alone | 0 (centred *vertically*) |
@@ -140,10 +141,12 @@ solo `midnight`/`midday` — sits at the left margin and steps right by
 `INDENT`; "centred" for the solo row means vertically, in the space above
 the date.
 
-**The three rows above the relation are nudged separately**, because the
-sliders act per row and each of them wants a different lever: pulling
-`twenty-` clear of the top edge, setting the number's distance from
-*past*/*to*, and placing the annotation.
+**The four rows above the relation are nudged separately**, because the
+sliders act per row and each wants a different lever: pulling `twenty-`
+clear of the top edge, setting the number's distance from *past*/*to*,
+holding the inline annotation on the number's line, and placing the
+standalone annotation — which nothing else constrains, so its distance from
+*past*/*to* is pure taste.
 
 They did not start that way. Both halves of a split word shared
 `ROW_MINUTE`, so nudging the head down moved the number with it, while the
@@ -329,8 +332,8 @@ stub (`pebble.h`, `stub.c`) and sweeps its own `build_face()` over all 1440
 minutes of the day, every date of a leap year, and the asymmetric wording
 cases — **once per date format × minutes mode**, driven off
 `DATE_FORMAT_COUNT` and `MINUTES_MODE_COUNT` so a new setting value is swept
-without anyone remembering to widen a loop. Around 684,000 assertions, under
-a second.
+without anyone remembering to widen a loop. Around 1.19 million assertions,
+under a second.
 
 It is deliberately not a Python re-implementation. A model agrees with
 itself, not with the watch: the `kOnes[19]` out-of-bounds read at
@@ -351,6 +354,7 @@ What it checks:
 | date | one fixed baseline for every month, ordinal raised, line centred |
 | date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
 | minutes modes | presence, absence and singular/plural of `minute(s)` asserted from the spec wording rather than from a copy of the predicate, plus the specific phrases the setting promises (*five minutes past five*, *quarter past one*) |
+| message routing | each settings key drives the field it names and no other, both tuple types, clamping applied on the way in |
 | drawn offsets | every element moves by exactly its own row's offset — no row drags a neighbour, no slider fails to reach its row — swept over 25 offset combinations, plus the two halves of a split number never sharing a row |
 | palette | across five colour schemes including colour-on-colour: level 0 transparent, level 15 exactly the ink, the ramp monotonic, and the bold outline invisible on light ink but inked on dark |
 | settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range index falls back rather than indexing off `kDateFormats` or `kMinutesModes` |
@@ -365,8 +369,10 @@ an off-by-one `kWeekdays` index, a gap emitted before the first atom
 instead of only between atoms, `make_tm()` leaving `tm_wday` at zero, a
 "never" mode that wasn't, an "always" mode that said *quarter minutes past*,
 a `minutes` that never went singular, an inverted ink/paper
-polarity test, a bold outline shown on light ink, and one never shown on
-dark ink.
+polarity test, a bold outline shown on light ink, one never shown on dark
+ink, the two halves of a split number sharing a row again, a settings key
+routed to the wrong field, a key not read at all, and clamping dropped from
+the incoming message.
 
 Two of those injections initially produced no failures at all — and no test
 output either, because removing the polarity test left `dark_ink` unused and

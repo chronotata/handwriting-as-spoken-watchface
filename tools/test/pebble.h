@@ -157,6 +157,17 @@ typedef struct {
 } Tuple;
 typedef struct DictionaryIterator DictionaryIterator;
 Tuple *dict_find(DictionaryIterator *iter, uint32_t key);
+
+/* Lets the tests hand inbox_received() a real dictionary. Without this the
+ * whole settings path - which key writes which field - is never executed,
+ * and a setting can be silently dropped with every other test still green. */
+typedef struct {
+  uint32_t key;
+  TupleType type;
+  int32_t int32;
+  const char *cstring;
+} StubTupleSpec;
+void stub_set_dict(const StubTupleSpec *specs, int count);
 void app_message_register_inbox_received(void (*cb)(DictionaryIterator *, void *));
 void app_message_open(uint32_t in, uint32_t out);
 
@@ -173,6 +184,7 @@ void app_message_open(uint32_t in, uint32_t out);
 #define MESSAGE_KEY_MinutesText 11
 #define MESSAGE_KEY_StrokeWeight 12
 #define MESSAGE_KEY_OffSplitHead 13
+#define MESSAGE_KEY_OffMinutesOwn 14
 
 /* ---------------------------------------------------------------- */
 /* Tick service and event loop                                       */

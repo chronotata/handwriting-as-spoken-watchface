@@ -152,10 +152,15 @@ module.exports = [
       offsetSlider('OffMinute', 'Minute number',
                    'The number that sits above "past"/"to" — the whole ' +
                    'word, or the second half when it splits'),
-      offsetSlider('OffMinutes', '"minute(s)"',
-                   'Set this to the SAME value as the minute number to keep ' +
-                   'the two level; differ them only if you want it ' +
+      offsetSlider('OffMinutes', '"minute(s)" beside the number',
+                   ':21–:29, where it rides next to the second half of the ' +
+                   'split. Set this to the SAME value as the minute number ' +
+                   'to keep the two level; differ them only if you want it ' +
                    'deliberately off the line'),
+      offsetSlider('OffMinutesOwn', '"minute(s)" on its own line',
+                   ':01–:20, where it has a line to itself. Nothing holds ' +
+                   'it to another word, so this is purely how close it sits ' +
+                   'to "past"/"to"'),
       offsetSlider('OffRelation', '"past" / "to"',
                    'Middle row - the anchor the phrase hangs from'),
       offsetSlider('OffHour', 'Hour word',

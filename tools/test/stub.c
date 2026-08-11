@@ -101,8 +101,32 @@ int persist_write_data(uint32_t key, const void *buf, size_t size) {
   return (int)s_persist_len;
 }
 
+#define STUB_DICT_MAX 8
+static StubTupleSpec s_specs[STUB_DICT_MAX];
+static Tuple s_tuples[STUB_DICT_MAX];
+static int s_spec_count;
+
+void stub_set_dict(const StubTupleSpec *specs, int count) {
+  if (count > STUB_DICT_MAX) { count = STUB_DICT_MAX; }
+  s_spec_count = count;
+  for (int i = 0; i < count; i++) {
+    s_specs[i] = specs[i];
+    s_tuples[i].type = specs[i].type;
+    if (specs[i].type == TUPLE_CSTRING) {
+      s_tuples[i].value->cstring = specs[i].cstring;
+    } else {
+      s_tuples[i].value->int32 = specs[i].int32;
+    }
+  }
+}
+
 Tuple *dict_find(DictionaryIterator *iter, uint32_t key) {
-  (void)iter; (void)key;
+  (void)iter;
+  for (int i = 0; i < s_spec_count; i++) {
+    if (s_specs[i].key == key) {
+      return &s_tuples[i];
+    }
+  }
   return NULL;
 }
 void app_message_register_inbox_received(
