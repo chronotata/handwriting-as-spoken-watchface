@@ -25,9 +25,11 @@
 /* Maximum recommended size is 48.                                   */
 /* ---------------------------------------------------------------- */
 
-#define FONT_SIZE_TIME 40  /* minute number, past/to, hour word */
-#define FONT_SIZE_SOLO 46  /* midnight / midday standing alone  */
-#define FONT_SIZE_MINS 25  /* the small "minute(s)" annotation  */
+#define FONT_SIZE_TIME 44  /* minute number, past/to, hour word */
+#define FONT_SIZE_SOLO 50  /* on the hour: the lone midnight/midday, */
+                           /* and every "<n> o' clock" and the witching */
+                           /* hour, which have the screen to themselves */
+#define FONT_SIZE_MINS 27  /* the small "minute(s)" annotation  */
 #define FONT_SIZE_DATE 24  /* day number and year               */
 #define FONT_SIZE_ORD  15  /* the superscript st/nd/rd/th       */
 
@@ -58,7 +60,7 @@
  * for the same reason: two things that want different placement should not
  * share a lever.
  */
- #define OFFSET_SPLIT_HEAD 15  /* "twenty-", the first half of a split word  */
+#define OFFSET_SPLIT_HEAD 8  /* "twenty-", the first half of a split word  */
 
  /*
   * The minute NUMBER has three levers, because it sits in three situations
@@ -84,9 +86,9 @@
   * The last two started as copies of OFFSET_MINUTE so that separating them
   * moved nothing on screen; they are independent from here on.
   */
- #define OFFSET_MINUTE       3  /* number WITH "minute(s)" stacked below   */
- #define OFFSET_MINUTE_ALONE 9  /* number with nothing below it            */
- #define OFFSET_MINUTE_SPLIT 9  /* the lower half of a split word          */
+#define OFFSET_MINUTE 0  /* number WITH "minute(s)" stacked below   */
+#define OFFSET_MINUTE_ALONE 7  /* number with nothing below it            */
+#define OFFSET_MINUTE_SPLIT 6  /* the lower half of a split word          */
 
  /*
   * "minute(s)" gets TWO offsets because it appears in two quite different
@@ -96,13 +98,13 @@
   * constrains it and its distance from "past"/"to" is pure taste, so
   * OFFSET_MINUTES_OWN is free.
   */
- #define OFFSET_MINUTES      9  /* "minute(s)" beside a split number       */
- #define OFFSET_MINUTES_OWN  0  /* "minute(s)" on a line of its own        */
+#define OFFSET_MINUTES 6  /* "minute(s)" beside a split number       */
+#define OFFSET_MINUTES_OWN 0  /* "minute(s)" on a line of its own        */
 
- #define OFFSET_RELATION -3  /* "past" / "to"                     */
- #define OFFSET_HOUR    -9  /* the hour word                     */
- #define OFFSET_SOLO      0  /* solo midnight / midday            */
- #define OFFSET_DATE      0  /* the date line                     */
+#define OFFSET_RELATION 0  /* "past" / "to"                     */
+#define OFFSET_HOUR -9  /* the hour word                     */
+#define OFFSET_SOLO      0  /* solo midnight / midday            */
+#define OFFSET_DATE      0  /* the date line                     */
 
 #define OFFSET_MIN -15
 #define OFFSET_MAX  15
@@ -114,7 +116,7 @@
 #define MARGIN 10       /* left and right screen margin              */
 #define INDENT 9        /* staircase step per row                    */
 
-#define ROW_GAP 4       /* gap between stacked CANVASES.                      */
+#define ROW_GAP -1      /* gap between stacked CANVASES.                      */
                         /*                                                    */
                         /* Canvas heights are uniform per size family, so the  */
                         /* row pitch is constant (TIME_BOX_H + ROW_GAP) and    */
@@ -122,16 +124,28 @@
                         /* what stops a word's neighbours moving when it is    */
                         /* replaced by a different word.                       */
                         /*                                                    */
-                        /* This is therefore the MINIMUM visible ink gap, not  */
-                        /* the actual one: it is what you see when a full      */
-                        /* descender sits directly above a full ascender       */
-                        /* ("eight o' clock"). Everywhere else the gap opens   */
-                        /* up by whatever ink the two words do not use - up to */
-                        /* ROW_GAP + 31 for "to" above "one".                  */
+                        /* NEGATIVE on purpose: the canvases overlap, so a    */
+                        /* descender may reach past the line below's ascender. */
+                        /* Script faces read better interwoven than stacked    */
+                        /* clear of each other, and the space it buys is what  */
+                        /* let the fonts grow. It is no longer a floor on the  */
+                        /* visible ink gap - INK_OVERLAP_MAX_PCT is.           */
                         /*                                                    */
                         /* Raising this pushes the worst-case phrase into the  */
                         /* date; tools/tune.py checks and refuses to generate. */
 #define MIN_TRAIL 6     /* horizontal gap before an inline "minutes" */
+
+/*
+ * How far a descender may reach past the ascender of the line below, as a
+ * percentage of that ascender. ROW_GAP is negative, so rows DO interweave;
+ * this is what keeps that deliberate rather than accidental.
+ *
+ * The companion rule, checked alongside it, is that no ink may reach into
+ * the neighbouring line's x-height - a descender dropping level with the
+ * lowercase bodies below it reads as a collision however the arithmetic is
+ * phrased.
+ */
+#define INK_OVERLAP_MAX_PCT 25
 
 /*
  * Fixed canvas top for the relation row ("past" / "to").
@@ -141,7 +155,7 @@
  * the rows above float, upward into the space reserved for the tallest case
  * ("twenty-" / "eight" / "past" / "midnight" at :28).
  */
-#define REL_TOP 96
+#define REL_TOP 100
 
 #define DATE_SPACE 7        /* gap before the month, and before the year   */
 #define DATE_TOP_LIMIT 194  /* time rows must stay above this (the date's  */

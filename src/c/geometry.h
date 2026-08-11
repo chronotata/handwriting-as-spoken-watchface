@@ -12,12 +12,12 @@
 #define GEOMETRY_HAS_WEEKDAYS 1
 
 /* Family boxes: ascent + descent, and the shared baseline offset. */
-#define TIME_BOX_H 47
-#define TIME_BOX_BASE 31
-#define SOLO_BOX_H 52
-#define SOLO_BOX_BASE 34
-#define MINS_BOX_H 15
-#define MINS_BOX_BASE 15
+#define TIME_BOX_H 51
+#define TIME_BOX_BASE 34
+#define SOLO_BOX_H 58
+#define SOLO_BOX_BASE 39
+#define MINS_BOX_H 16
+#define MINS_BOX_BASE 16
 #define DATE_BOX_H 28
 #define DATE_BOX_BASE 19
 #define ORD_BOX_H 11
@@ -26,7 +26,7 @@
 /* Ink ascent of "twenty-", the top row of the tallest phrase. The
    difference from TIME_BOX_BASE is the only slack at the top of the
    screen, so config.h's budget assertion needs it. */
-#define SPLIT_HEAD_ASC 23
+#define SPLIT_HEAD_ASC 26
 
 typedef struct {
   uint32_t res;   /* resource id            */
@@ -63,10 +63,6 @@ typedef enum {
   W_MIDNIGHT,        /* midnight */
   W_MIDDAY,          /* midday */
   W_NOON,            /* noon */
-  W_THE,             /* the */
-  W_WITCHING,        /* witching */
-  W_HOUR,            /* hour */
-  W_OCLOCK,          /* o'|clock */
   W_MINUTE,          /* minute */
   W_MINUTES,         /* minutes */
   W_SOLO_MIDNIGHT,   /* midnight */
@@ -104,46 +100,57 @@ typedef enum {
   W_DOW_THU,         /* Thu. */
   W_DOW_FRI,         /* Fri. */
   W_DOW_SAT,         /* Sat. */
+  W_SOLO_ONE,        /* one */
+  W_SOLO_TWO,        /* two */
+  W_SOLO_THREE,      /* three */
+  W_SOLO_FOUR,       /* four */
+  W_SOLO_FIVE,       /* five */
+  W_SOLO_SIX,        /* six */
+  W_SOLO_SEVEN,      /* seven */
+  W_SOLO_EIGHT,      /* eight */
+  W_SOLO_NINE,       /* nine */
+  W_SOLO_TEN,        /* ten */
+  W_SOLO_ELEVEN,     /* eleven */
+  W_SOLO_OCLOCK,     /* o'|clock */
+  W_SOLO_THE,        /* the */
+  W_SOLO_WITCHING,   /* witching */
+  W_SOLO_HOUR,       /* hour */
   W_COUNT
 } WordId;
 
 static const WordGeom WORDS[W_COUNT] = {
-  {RESOURCE_ID_W_ONE, 47, 47, 31},
-  {RESOURCE_ID_W_TWO, 50, 47, 31},
-  {RESOURCE_ID_W_THREE, 75, 47, 31},
-  {RESOURCE_ID_W_FOUR, 59, 47, 31},
-  {RESOURCE_ID_W_FIVE, 55, 47, 31},
-  {RESOURCE_ID_W_SIX, 41, 47, 31},
-  {RESOURCE_ID_W_SEVEN, 77, 47, 31},
-  {RESOURCE_ID_W_EIGHT, 74, 47, 31},
-  {RESOURCE_ID_W_NINE, 63, 47, 31},
-  {RESOURCE_ID_W_TEN, 46, 47, 31},
-  {RESOURCE_ID_W_ELEVEN, 90, 47, 31},
-  {RESOURCE_ID_W_TWELVE, 93, 47, 31},
-  {RESOURCE_ID_W_THIRTEEN, 117, 47, 31},
-  {RESOURCE_ID_W_FOURTEEN, 120, 47, 31},
-  {RESOURCE_ID_W_FIFTEEN, 100, 47, 31},
-  {RESOURCE_ID_W_SIXTEEN, 103, 47, 31},
-  {RESOURCE_ID_W_SEVENTEEN, 139, 47, 31},
-  {RESOURCE_ID_W_EIGHTEEN, 123, 47, 31},
-  {RESOURCE_ID_W_NINETEEN, 125, 47, 31},
-  {RESOURCE_ID_W_TWENTY, 101, 47, 31},
-  {RESOURCE_ID_W_TWENTYDASH, 110, 47, 31},
-  {RESOURCE_ID_W_QUARTER, 110, 47, 31},
-  {RESOURCE_ID_W_HALF, 67, 47, 31},
-  {RESOURCE_ID_W_PAST, 68, 47, 31},
-  {RESOURCE_ID_W_TO, 26, 47, 31},
-  {RESOURCE_ID_W_MIDNIGHT, 139, 47, 31},
-  {RESOURCE_ID_W_MIDDAY, 120, 47, 31},
-  {RESOURCE_ID_W_NOON, 63, 47, 31},
-  {RESOURCE_ID_W_THE, 46, 47, 31},
-  {RESOURCE_ID_W_WITCHING, 127, 47, 31},
-  {RESOURCE_ID_W_HOUR, 62, 47, 31},
-  {RESOURCE_ID_W_OCLOCK, 98, 47, 31},
-  {RESOURCE_ID_W_MINUTE, 65, 15, 15},
-  {RESOURCE_ID_W_MINUTES, 73, 15, 15},
-  {RESOURCE_ID_W_SOLO_MIDNIGHT, 160, 52, 34},
-  {RESOURCE_ID_W_SOLO_MIDDAY, 138, 52, 34},
+  {RESOURCE_ID_W_ONE, 52, 51, 34},
+  {RESOURCE_ID_W_TWO, 55, 51, 34},
+  {RESOURCE_ID_W_THREE, 83, 51, 34},
+  {RESOURCE_ID_W_FOUR, 64, 51, 34},
+  {RESOURCE_ID_W_FIVE, 60, 51, 34},
+  {RESOURCE_ID_W_SIX, 45, 51, 34},
+  {RESOURCE_ID_W_SEVEN, 85, 51, 34},
+  {RESOURCE_ID_W_EIGHT, 82, 51, 34},
+  {RESOURCE_ID_W_NINE, 69, 51, 34},
+  {RESOURCE_ID_W_TEN, 51, 51, 34},
+  {RESOURCE_ID_W_ELEVEN, 99, 51, 34},
+  {RESOURCE_ID_W_TWELVE, 103, 51, 34},
+  {RESOURCE_ID_W_THIRTEEN, 129, 51, 34},
+  {RESOURCE_ID_W_FOURTEEN, 132, 51, 34},
+  {RESOURCE_ID_W_FIFTEEN, 110, 51, 34},
+  {RESOURCE_ID_W_SIXTEEN, 114, 51, 34},
+  {RESOURCE_ID_W_SEVENTEEN, 153, 51, 34},
+  {RESOURCE_ID_W_EIGHTEEN, 135, 51, 34},
+  {RESOURCE_ID_W_NINETEEN, 137, 51, 34},
+  {RESOURCE_ID_W_TWENTY, 111, 51, 34},
+  {RESOURCE_ID_W_TWENTYDASH, 122, 51, 34},
+  {RESOURCE_ID_W_QUARTER, 121, 51, 34},
+  {RESOURCE_ID_W_HALF, 73, 51, 34},
+  {RESOURCE_ID_W_PAST, 74, 51, 34},
+  {RESOURCE_ID_W_TO, 29, 51, 34},
+  {RESOURCE_ID_W_MIDNIGHT, 154, 51, 34},
+  {RESOURCE_ID_W_MIDDAY, 132, 51, 34},
+  {RESOURCE_ID_W_NOON, 69, 51, 34},
+  {RESOURCE_ID_W_MINUTE, 70, 16, 16},
+  {RESOURCE_ID_W_MINUTES, 79, 16, 16},
+  {RESOURCE_ID_W_SOLO_MIDNIGHT, 174, 58, 39},
+  {RESOURCE_ID_W_SOLO_MIDDAY, 150, 58, 39},
   {RESOURCE_ID_W_D0, 11, 28, 19},
   {RESOURCE_ID_W_D1, 6, 28, 19},
   {RESOURCE_ID_W_D2, 12, 28, 19},
@@ -177,4 +184,19 @@ static const WordGeom WORDS[W_COUNT] = {
   {RESOURCE_ID_W_DOW_THU, 36, 28, 19},
   {RESOURCE_ID_W_DOW_FRI, 32, 28, 19},
   {RESOURCE_ID_W_DOW_SAT, 37, 28, 19},
+  {RESOURCE_ID_W_SOLO_ONE, 59, 58, 39},
+  {RESOURCE_ID_W_SOLO_TWO, 63, 58, 39},
+  {RESOURCE_ID_W_SOLO_THREE, 94, 58, 39},
+  {RESOURCE_ID_W_SOLO_FOUR, 73, 58, 39},
+  {RESOURCE_ID_W_SOLO_FIVE, 68, 58, 39},
+  {RESOURCE_ID_W_SOLO_SIX, 52, 58, 39},
+  {RESOURCE_ID_W_SOLO_SEVEN, 96, 58, 39},
+  {RESOURCE_ID_W_SOLO_EIGHT, 93, 58, 39},
+  {RESOURCE_ID_W_SOLO_NINE, 79, 58, 39},
+  {RESOURCE_ID_W_SOLO_TEN, 58, 58, 39},
+  {RESOURCE_ID_W_SOLO_ELEVEN, 112, 58, 39},
+  {RESOURCE_ID_W_SOLO_OCLOCK, 122, 58, 39},
+  {RESOURCE_ID_W_SOLO_THE, 57, 58, 39},
+  {RESOURCE_ID_W_SOLO_WITCHING, 158, 58, 39},
+  {RESOURCE_ID_W_SOLO_HOUR, 78, 58, 39},
 };

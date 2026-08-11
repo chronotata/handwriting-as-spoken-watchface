@@ -65,6 +65,22 @@ static int ink_bottom_of(const Element *e) {
 }
 
 /*
+ * The same three, WHERE THE WORD IS DRAWN. Bounds used to be checked without
+ * the row offsets, which measured a layout nobody sees: with OFFSET_HOUR at
+ * -9 the hour row was reported colliding with the date while sitting 9px
+ * clear of it on screen.
+ */
+static int drawn_baseline_of(const Element *e) {
+  return baseline_of(e) + row_offset(e->row);
+}
+static int drawn_ink_top(const Element *e) {
+  return drawn_baseline_of(e) - WORD_INK[e->word].asc;
+}
+static int drawn_ink_bottom(const Element *e) {
+  return drawn_baseline_of(e) + WORD_INK[e->word].desc;
+}
+
+/*
  * Sakamoto's algorithm. 0 = Sunday, matching struct tm's tm_wday.
  *
  * Done arithmetically rather than through mktime() so the sweep stays
@@ -105,11 +121,11 @@ static struct tm make_tm(int yday, int mday, int mon, int year, int h, int m) {
  * family box and legitimately hang past the top of the screen (the tallest
  * phrase starts at y = -6), but the letters inside must not. */
 static void check_bounds(const Face *f, int h, int m) {
-  char buf[160];
+  char buf[170];
   int date_ink_top = SCREEN_H;
   for (int i = 0; i < f->count; i++) {
     if (f->items[i].row == ROW_DATE) {
-      int t = ink_top_of(&f->items[i]);
+      int t = drawn_ink_top(&f->items[i]);
       if (t < date_ink_top) date_ink_top = t;
     }
   }
@@ -122,14 +138,14 @@ static void check_bounds(const Face *f, int h, int m) {
     CHECK(e->x >= 0 && e->x + g->w <= SCREEN_W, "off screen horizontally", h, m, buf);
 
     snprintf(buf, sizeof(buf), "element %d (word %d) ink %d..%d", i, e->word,
-             ink_top_of(e), ink_bottom_of(e));
-    CHECK(ink_top_of(e) >= 0, "ink clipped at top", h, m, buf);
-    CHECK(ink_bottom_of(e) <= SCREEN_H, "ink clipped at bottom", h, m, buf);
+             drawn_ink_top(e), drawn_ink_bottom(e));
+    CHECK(drawn_ink_top(e) >= 0, "ink clipped at top", h, m, buf);
+    CHECK(drawn_ink_bottom(e) <= SCREEN_H, "ink clipped at bottom", h, m, buf);
 
     if (e->row != ROW_DATE) {
       snprintf(buf, sizeof(buf), "element %d ink bottom %d, date ink top %d",
-               i, ink_bottom_of(e), date_ink_top);
-      CHECK(ink_bottom_of(e) < date_ink_top, "time row collides with date", h, m, buf);
+               i, drawn_ink_bottom(e), date_ink_top);
+      CHECK(drawn_ink_bottom(e) < date_ink_top, "time row collides with date", h, m, buf);
     }
   }
 }
@@ -518,6 +534,102 @@ static void check_palette(void) {
 }
 
 /*
+ * On the hour, every word is set in the SOLO family.
+ *
+ * Asserted directly because no geometric rule can see it: a smaller word
+ * centred on the screen is a perfectly legal layout, so swapping the SOLO
+ * table back for the TIME one breaks nothing measurable and every other
+ * check stays green. Which table a case draws from is a decision, and
+ * decisions have to be stated. Canvas height stands in for the family - the
+ * whole point of the family box is that it is uniform.
+ */
+static void check_hour_family(const Face *f, int h, int m) {
+  char buf[140];
+  if (m != 0) {
+    return;
+  }
+  for (int i = 0; i < f->count; i++) {
+    const Element *e = &f->items[i];
+    if (e->row == ROW_DATE) {
+      continue;
+    }
+    snprintf(buf, sizeof(buf), "word %d has canvas height %d, SOLO_BOX_H is %d",
+             e->word, WORDS[e->word].h, SOLO_BOX_H);
+    CHECK(WORDS[e->word].h == SOLO_BOX_H,
+          "an on-the-hour word is not set in the SOLO family", h, m, buf);
+    CHECK(e->row == ROW_SOLO,
+          "an on-the-hour word is not on ROW_SOLO", h, m,
+          "the centred layouts move as one block");
+  }
+}
+
+/*
+ * INK OVERLAP between stacked rows.
+ *
+ * ROW_GAP is negative: the canvases overlap on purpose, because a script face
+ * reads better interwoven than stacked clear. That trades away the property
+ * ROW_GAP used to guarantee - that it was a floor on the visible ink gap - so
+ * something has to take over, or "interwoven" quietly becomes "collided".
+ *
+ * Two rules, both from the eye rather than the arithmetic:
+ *   - a descender may reach at most INK_OVERLAP_MAX_PCT of the way past the
+ *     ascender below it;
+ *   - no ink may reach into the neighbouring line's x-height, where the
+ *     lowercase bodies are. That is what actually reads as a collision.
+ *
+ * Checked on the DRAWN positions, since the offsets are what set the real
+ * gaps, and over every minute rather than the handful of phrases that were
+ * eyeballed in a mock-up - the worst pair is a deep descender above a tall
+ * ascender, which need not occur in any phrase anyone happened to look at.
+ */
+/* Per-word, but the value is its FAMILY's x-height - "minutes" is set at a
+ * different size from the number above it, and judging it by the number's
+ * x-height flagged a layout that is perfectly fine. */
+static int x_height_of(uint8_t word) { return WORD_XHEIGHT[word]; }
+
+static void check_ink_overlap(const Face *f, int h, int m) {
+  char buf[220];
+  const Element *prev = NULL;
+  for (int i = 0; i < f->count; i++) {
+    const Element *e = &f->items[i];
+    if (e->row == ROW_DATE || e->row == ROW_MINUTES_INLINE) {
+      continue;        /* the date is its own line; the inline annotation
+                        * shares a baseline rather than stacking */
+    }
+    if (prev) {
+      const int upper_bottom = drawn_ink_bottom(prev);
+      const int lower_base = drawn_baseline_of(e);
+      const int lower_asc = WORD_INK[e->word].asc;
+      const int lower_top = lower_base - lower_asc;
+      const int overlap = upper_bottom - lower_top;
+      const int limit = (lower_asc * INK_OVERLAP_MAX_PCT) / 100;
+
+      snprintf(buf, sizeof(buf),
+               "word %d descends to %d, word %d rises to %d: overlap %d of a "
+               "%d ascender (limit %d)", prev->word, upper_bottom, e->word,
+               lower_top, overlap, lower_asc, limit);
+      CHECK(overlap <= limit, "rows interweave too deeply", h, m, buf);
+
+      /* and neither may reach the other's x-height band */
+      const int lower_xtop = lower_base - x_height_of(e->word);
+      snprintf(buf, sizeof(buf),
+               "word %d descends to %d, the x-height below starts at %d",
+               prev->word, upper_bottom, lower_xtop);
+      CHECK(upper_bottom < lower_xtop, "a descender reaches the x-height "
+            "of the line below", h, m, buf);
+
+      const int upper_base = drawn_baseline_of(prev);
+      snprintf(buf, sizeof(buf),
+               "word %d rises to %d, the baseline above is %d",
+               e->word, lower_top, upper_base);
+      CHECK(lower_top > upper_base, "an ascender reaches the baseline of the "
+            "line above", h, m, buf);
+    }
+    prev = e;
+  }
+}
+
+/*
  * WHERE THE WORDS ARE ACTUALLY DRAWN, offsets included.
  *
  * Everything above this point asserts on e->top, which is the layout as
@@ -871,6 +983,8 @@ static void sweep_minutes(uint8_t fmt, uint8_t mode) {
       check_weekday_format(&s_face, &tm, h, m);
     }
     check_minutes_mode(&s_face, mode, h, m);
+    check_ink_overlap(&s_face, h, m);
+    check_hour_family(&s_face, h, m);
 
     for (int i = 0; i < s_face.count; i++) {
       const Element *e = &s_face.items[i];
@@ -1101,7 +1215,7 @@ static void check_wording(void) {
   struct { int h, m; uint8_t want; const char *why; } cases[] = {
     {0,  0,  W_SOLO_MIDNIGHT, "midnight alone"},
     {12, 0,  W_SOLO_MIDDAY,   "midday alone"},
-    {3,  0,  W_WITCHING,      "the witching hour"},
+    {3,  0,  W_SOLO_WITCHING, "the witching hour"},
     {12, 10, W_NOON,          "ten past noon"},
     {11, 50, W_TWELVE,        "ten to twelve"},
     {23, 50, W_MIDNIGHT,      "ten to midnight"},

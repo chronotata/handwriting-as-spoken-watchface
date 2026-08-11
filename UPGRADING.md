@@ -136,7 +136,7 @@ pip install Pillow --break-system-packages   # if not already present
 python3 tools/tune.py
 ```
 
-This renders all 69 words the face can show into `resources/images/`,
+This renders all 80 words the face can show into `resources/images/`,
 writes `src/c/geometry.h` and `tools/test/generated.h`, and updates the
 bitmap resource list in `package.json`. **Re-run this any time you change a
 `FONT_SIZE_*` in `config.h`** — image, geometry, and manifest all have to
@@ -157,7 +157,7 @@ Both mean the same thing — run `tune.py`. They exist because a stale
 the table and the images it indexes is not something a build would
 otherwise notice.
 
-It also writes `handwriting-templates/` — the same 69 words as plain PNGs
+It also writes `handwriting-templates/` — the same 80 words as plain PNGs
 at their exact final sizes, for tracing over with real handwriting later.
 
 `tune.py` checks the vertical budget before it writes anything, and stops
@@ -185,7 +185,7 @@ takes under a second. If `node` happens to be installed it also runs the
 settings-page test (`clay-slider.test.js`); if not, it says so and carries
 on. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
-once per date format and minutes mode — about 930,000 assertions, under
+once per date format and minutes mode — about 1.0 million assertions, under
 AddressSanitizer.
 
 Run it before every `pebble build`. It catches in a second what otherwise

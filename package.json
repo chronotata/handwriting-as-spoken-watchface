@@ -238,34 +238,6 @@
         },
         {
           "type": "bitmap",
-          "name": "W_THE",
-          "file": "images/w_the.png",
-          "memoryFormat": "4BitPalette",
-          "storageFormat": "pbi"
-        },
-        {
-          "type": "bitmap",
-          "name": "W_WITCHING",
-          "file": "images/w_witching.png",
-          "memoryFormat": "4BitPalette",
-          "storageFormat": "pbi"
-        },
-        {
-          "type": "bitmap",
-          "name": "W_HOUR",
-          "file": "images/w_hour.png",
-          "memoryFormat": "4BitPalette",
-          "storageFormat": "pbi"
-        },
-        {
-          "type": "bitmap",
-          "name": "W_OCLOCK",
-          "file": "images/w_oclock.png",
-          "memoryFormat": "4BitPalette",
-          "storageFormat": "pbi"
-        },
-        {
-          "type": "bitmap",
           "name": "W_MINUTE",
           "file": "images/w_minute.png",
           "memoryFormat": "4BitPalette",
@@ -520,6 +492,111 @@
           "type": "bitmap",
           "name": "W_DOW_SAT",
           "file": "images/w_dow_sat.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_ONE",
+          "file": "images/w_solo_one.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_TWO",
+          "file": "images/w_solo_two.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_THREE",
+          "file": "images/w_solo_three.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_FOUR",
+          "file": "images/w_solo_four.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_FIVE",
+          "file": "images/w_solo_five.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_SIX",
+          "file": "images/w_solo_six.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_SEVEN",
+          "file": "images/w_solo_seven.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_EIGHT",
+          "file": "images/w_solo_eight.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_NINE",
+          "file": "images/w_solo_nine.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_TEN",
+          "file": "images/w_solo_ten.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_ELEVEN",
+          "file": "images/w_solo_eleven.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_OCLOCK",
+          "file": "images/w_solo_oclock.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_THE",
+          "file": "images/w_solo_the.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_WITCHING",
+          "file": "images/w_solo_witching.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_SOLO_HOUR",
+          "file": "images/w_solo_hour.png",
           "memoryFormat": "4BitPalette",
           "storageFormat": "pbi"
         }

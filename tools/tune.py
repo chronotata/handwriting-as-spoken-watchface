@@ -116,10 +116,8 @@ def words():
     out = [("W_" + w.upper(), "TIME", w) for w in ONES]
     out.append(("W_TWENTY", "TIME", "twenty"))
     out.append(("W_TWENTYDASH", "TIME", "twenty-"))
-    for w in ("quarter", "half", "past", "to", "midnight", "midday", "noon",
-              "the", "witching", "hour"):
+    for w in ("quarter", "half", "past", "to", "midnight", "midday", "noon"):
         out.append(("W_" + w.upper(), "TIME", w))
-    out.append(("W_OCLOCK", "TIME", "o'|clock"))
     out.append(("W_MINUTE", "MINS", "minute"))
     out.append(("W_MINUTES", "MINS", "minutes"))
     out.append(("W_SOLO_MIDNIGHT", "SOLO", "midnight"))
@@ -131,6 +129,15 @@ def words():
     # adding anywhere earlier would renumber every word after it and churn
     # geometry.h and package.json for no reason.
     out += [("W_DOW_" + d[:3].upper(), "DATE", d) for d in WEEKDAYS]
+    # On the hour there is no minute to speak, so the phrase is two or three
+    # short words with the whole screen to themselves. They are rendered in
+    # the SOLO family for that reason - the same size the lone "midnight"
+    # has always used - which is why one..eleven appear twice, once as a
+    # minute number and once as an hour.
+    out += [("W_SOLO_" + w.upper(), "SOLO", w) for w in ONES[:11]]
+    out.append(("W_SOLO_OCLOCK", "SOLO", "o'|clock"))
+    for w in ("the", "witching", "hour"):
+        out.append(("W_SOLO_" + w.upper(), "SOLO", w))
     return out
 
 
@@ -138,7 +145,7 @@ def read_sizes():
     text = CONFIG.read_text()
     out = {}
     for key in ("TIME", "SOLO", "MINS", "DATE", "ORD"):
-        m = re.search(r"^#define\s+FONT_SIZE_%s\s+(\d+)" % key, text, re.M)
+        m = re.search(r"^\s*#define\s+FONT_SIZE_%s\s+(\d+)" % key, text, re.M)
         if not m:
             sys.exit("could not find FONT_SIZE_%s in config.h" % key)
         out[key] = int(m.group(1))
@@ -149,8 +156,9 @@ def read_layout():
     """The layout constants needed for the vertical budget check."""
     text = CONFIG.read_text()
     out = {}
-    for key in ("ROW_GAP", "REL_TOP", "DATE_BASELINE", "SCREEN_H"):
-        m = re.search(r"^#define\s+%s\s+(-?\d+)" % key, text, re.M)
+    for key in ("ROW_GAP", "REL_TOP", "DATE_BASELINE", "SCREEN_H",
+                "OFFSET_SPLIT_HEAD", "OFFSET_HOUR"):
+        m = re.search(r"^\s*#define\s+%s\s+(-?\d+)" % key, text, re.M)
         if not m:
             sys.exit("could not find %s in config.h" % key)
         out[key] = int(m.group(1))
@@ -276,10 +284,16 @@ def check_fit(rendered, box, layout):
 
     # Row 0 of a split phrase is always "twenty-"; its unused ascent is the
     # only slack at the top of the screen.
-    top_canvas = rel_top - 2 * (H + G)
+    # The row offsets are applied at DRAW time, so the budget has to include
+    # them or it measures a layout nobody ever sees. Leaving them out made
+    # this refuse a configuration that fits perfectly well on screen: the
+    # hour row is drawn OFFSET_HOUR above where the bare stack puts it.
+    # Only the two extreme rows bound the phrase, so only their offsets
+    # appear here.
+    top_canvas = rel_top - 2 * (H + G) + layout["OFFSET_SPLIT_HEAD"]
     ink_top = top_canvas + (A - asc["twenty-"])
     # The hour row's descent is fully used by "midnight", so no slack below.
-    ink_bottom = rel_top + 2 * H + G
+    ink_bottom = rel_top + 2 * H + G + layout["OFFSET_HOUR"]
 
     problems = []
     if ink_top < 0:
@@ -328,6 +342,24 @@ def write_test_header(rendered, box):
                    % (baseline, crop.height - baseline,
                       " " * max(1, 10 - len(str(baseline))), text))
     out += ["};", ""]
+
+    # x-height per family, so the harness can tell a descender reaching into
+    # the lowercase bodies below it from one merely passing an ascender. It
+    # has to be per FAMILY: "minutes" is set at a different size from the
+    # number above it, and using the number's x-height for it produced
+    # failures on a layout that is actually fine.
+    sizes = read_sizes()
+    xh = {}
+    for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD"):
+        # "on" has neither an ascender nor a descender, so its ink height is
+        # the x-height outright.
+        xh[fam] = render_word("on", sizes[fam])[0].height
+    out += ["/* x-height of each word's family - the lowercase body height. */",
+            "static const uint8_t WORD_XHEIGHT[] = {"]
+    for name, fam, text, _c, _b, _bold in rendered:
+        out.append("  %d,%s/* %-9s %s */" % (xh[fam], " " * 3, fam, text))
+    out += ["};", ""]
+
     TESTGEN.write_text("\n".join(out))
 
 
@@ -438,6 +470,19 @@ def main():
     out += ["};", ""]
     GEOM.write_text("\n".join(out))
 
+    # Words can leave the list as well as join it - "o' clock" and friends
+    # moved from TIME to SOLO under new names - and a file this script no
+    # longer writes would otherwise sit in the folder forever, get committed,
+    # and eventually be wired up again by someone reading the directory
+    # rather than the word list.
+    wanted = {("%s.png" % name.lower()) for name, _f, _t in words()}
+    orphans = 0
+    for folder in (IMGDIR, EXPORT):
+        for stale in sorted(folder.glob("w_*.png")):
+            if stale.name not in wanted:
+                stale.unlink()
+                orphans += 1
+
     pkg = json.loads(PACKAGE.read_text())
     pkg["pebble"]["resources"]["media"] = media
     PACKAGE.write_text(json.dumps(pkg, indent=2) + "\n")
@@ -449,6 +494,9 @@ def main():
     print("wrote src/c/geometry.h and package.json")
     print("wrote %d templates -> handwriting-templates/  (draw over these for v2)"
           % len(rows))
+    if orphans:
+        print("removed %d file(s) for words that are no longer in the list"
+              % orphans)
     print("widest  %-12r %3dpx" % (widest[4], widest[1]))
     print("family boxes  " + "  ".join(
         "%s %dpx/base %d" % (f, box[f][0] + box[f][1], box[f][0])

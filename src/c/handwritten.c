@@ -35,12 +35,16 @@
  * The tallest phrase is a split minute word - four TIME rows, "twenty-" /
  * "eight" / "past" / "midnight" at :28 - anchored by the relation row at
  * REL_TOP. The hour row's canvas bottom must clear the date's ascenders.
+ *
+ * The row offsets belong in here: they are applied at draw time, so a budget
+ * that ignores them measures a layout nobody sees. Only the two extreme rows
+ * bound the phrase, so only their offsets appear.
  */
-_Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP
+_Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP + OFFSET_HOUR
                  < DATE_BASELINE - DATE_BOX_BASE,
                "hour row overlaps the date: lower REL_TOP or ROW_GAP, "
                "or raise DATE_BASELINE");
-_Static_assert(REL_TOP - 2 * (TIME_BOX_H + ROW_GAP)
+_Static_assert(REL_TOP - 2 * (TIME_BOX_H + ROW_GAP) + OFFSET_SPLIT_HEAD
                  + (TIME_BOX_BASE - SPLIT_HEAD_ASC) >= 0,
                "top row is clipped by the top of the screen: raise REL_TOP, "
                "or lower ROW_GAP or FONT_SIZE_TIME");
@@ -197,6 +201,17 @@ static const uint8_t kDigits[10] = {
  * list is in the same order for the same reason; the two must not drift. */
 static const uint8_t kWeekdays[7] = {
   W_DOW_SUN, W_DOW_MON, W_DOW_TUE, W_DOW_WED, W_DOW_THU, W_DOW_FRI, W_DOW_SAT
+};
+
+/*
+ * On the hour the phrase is two or three short words with the whole screen to
+ * itself, so it is set in the SOLO family - the size the lone "midnight" has
+ * always used. Indexed 1..11; twelve and midnight never reach here, because
+ * 00:00 and 12:00 take the solo branch instead.
+ */
+static const uint8_t kSoloOnes[11] = {
+  W_SOLO_ONE, W_SOLO_TWO, W_SOLO_THREE, W_SOLO_FOUR, W_SOLO_FIVE, W_SOLO_SIX,
+  W_SOLO_SEVEN, W_SOLO_EIGHT, W_SOLO_NINE, W_SOLO_TEN, W_SOLO_ELEVEN
 };
 
 static uint8_t ordinal_word(int day) {
@@ -620,10 +635,16 @@ static void build_face(Face *f, struct tm *t) {
   const int h = t->tm_hour;
   const int m = t->tm_min;
 
+  /*
+   * The three CENTRED layouts. All of them are set in the SOLO family and
+   * carry ROW_SOLO, so the one offset moves each of them as a block - they
+   * hang off the middle of the screen rather than off REL_TOP, and the
+   * levers that place the stacked phrase have nothing to say about them.
+   */
   if (h == WITCHING_HOUR && m == 0) {
-    push(f, W_THE, ROW_MINUTE);
-    push(f, W_WITCHING, ROW_RELATION);
-    push(f, W_HOUR, ROW_HOUR);
+    push(f, W_SOLO_THE, ROW_SOLO);
+    push(f, W_SOLO_WITCHING, ROW_SOLO);
+    push(f, W_SOLO_HOUR, ROW_SOLO);
     indent_rows(f, 0, 2);
     centre(f, 0, 2);
   } else if (m == 0 && (h == 0 || h == 12)) {
@@ -631,8 +652,8 @@ static void build_face(Face *f, struct tm *t) {
     indent_rows(f, 0, 0);
     centre(f, 0, 0);
   } else if (m == 0) {
-    push(f, hour_word(h, true), ROW_MINUTE);
-    push(f, W_OCLOCK, ROW_HOUR);
+    push(f, kSoloOnes[h % 12 - 1], ROW_SOLO);
+    push(f, W_SOLO_OCLOCK, ROW_SOLO);
     indent_rows(f, 0, 1);
     centre(f, 0, 1);
   } else {

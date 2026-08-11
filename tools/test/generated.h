@@ -32,88 +32,95 @@
 #define RESOURCE_ID_W_MIDNIGHT 26
 #define RESOURCE_ID_W_MIDDAY 27
 #define RESOURCE_ID_W_NOON 28
-#define RESOURCE_ID_W_THE 29
-#define RESOURCE_ID_W_WITCHING 30
-#define RESOURCE_ID_W_HOUR 31
-#define RESOURCE_ID_W_OCLOCK 32
-#define RESOURCE_ID_W_MINUTE 33
-#define RESOURCE_ID_W_MINUTES 34
-#define RESOURCE_ID_W_SOLO_MIDNIGHT 35
-#define RESOURCE_ID_W_SOLO_MIDDAY 36
-#define RESOURCE_ID_W_D0 37
-#define RESOURCE_ID_W_D1 38
-#define RESOURCE_ID_W_D2 39
-#define RESOURCE_ID_W_D3 40
-#define RESOURCE_ID_W_D4 41
-#define RESOURCE_ID_W_D5 42
-#define RESOURCE_ID_W_D6 43
-#define RESOURCE_ID_W_D7 44
-#define RESOURCE_ID_W_D8 45
-#define RESOURCE_ID_W_D9 46
-#define RESOURCE_ID_W_MON1 47
-#define RESOURCE_ID_W_MON2 48
-#define RESOURCE_ID_W_MON3 49
-#define RESOURCE_ID_W_MON4 50
-#define RESOURCE_ID_W_MON5 51
-#define RESOURCE_ID_W_MON6 52
-#define RESOURCE_ID_W_MON7 53
-#define RESOURCE_ID_W_MON8 54
-#define RESOURCE_ID_W_MON9 55
-#define RESOURCE_ID_W_MON10 56
-#define RESOURCE_ID_W_MON11 57
-#define RESOURCE_ID_W_MON12 58
-#define RESOURCE_ID_W_ST 59
-#define RESOURCE_ID_W_ND 60
-#define RESOURCE_ID_W_RD 61
-#define RESOURCE_ID_W_TH 62
-#define RESOURCE_ID_W_DOW_SUN 63
-#define RESOURCE_ID_W_DOW_MON 64
-#define RESOURCE_ID_W_DOW_TUE 65
-#define RESOURCE_ID_W_DOW_WED 66
-#define RESOURCE_ID_W_DOW_THU 67
-#define RESOURCE_ID_W_DOW_FRI 68
-#define RESOURCE_ID_W_DOW_SAT 69
+#define RESOURCE_ID_W_MINUTE 29
+#define RESOURCE_ID_W_MINUTES 30
+#define RESOURCE_ID_W_SOLO_MIDNIGHT 31
+#define RESOURCE_ID_W_SOLO_MIDDAY 32
+#define RESOURCE_ID_W_D0 33
+#define RESOURCE_ID_W_D1 34
+#define RESOURCE_ID_W_D2 35
+#define RESOURCE_ID_W_D3 36
+#define RESOURCE_ID_W_D4 37
+#define RESOURCE_ID_W_D5 38
+#define RESOURCE_ID_W_D6 39
+#define RESOURCE_ID_W_D7 40
+#define RESOURCE_ID_W_D8 41
+#define RESOURCE_ID_W_D9 42
+#define RESOURCE_ID_W_MON1 43
+#define RESOURCE_ID_W_MON2 44
+#define RESOURCE_ID_W_MON3 45
+#define RESOURCE_ID_W_MON4 46
+#define RESOURCE_ID_W_MON5 47
+#define RESOURCE_ID_W_MON6 48
+#define RESOURCE_ID_W_MON7 49
+#define RESOURCE_ID_W_MON8 50
+#define RESOURCE_ID_W_MON9 51
+#define RESOURCE_ID_W_MON10 52
+#define RESOURCE_ID_W_MON11 53
+#define RESOURCE_ID_W_MON12 54
+#define RESOURCE_ID_W_ST 55
+#define RESOURCE_ID_W_ND 56
+#define RESOURCE_ID_W_RD 57
+#define RESOURCE_ID_W_TH 58
+#define RESOURCE_ID_W_DOW_SUN 59
+#define RESOURCE_ID_W_DOW_MON 60
+#define RESOURCE_ID_W_DOW_TUE 61
+#define RESOURCE_ID_W_DOW_WED 62
+#define RESOURCE_ID_W_DOW_THU 63
+#define RESOURCE_ID_W_DOW_FRI 64
+#define RESOURCE_ID_W_DOW_SAT 65
+#define RESOURCE_ID_W_SOLO_ONE 66
+#define RESOURCE_ID_W_SOLO_TWO 67
+#define RESOURCE_ID_W_SOLO_THREE 68
+#define RESOURCE_ID_W_SOLO_FOUR 69
+#define RESOURCE_ID_W_SOLO_FIVE 70
+#define RESOURCE_ID_W_SOLO_SIX 71
+#define RESOURCE_ID_W_SOLO_SEVEN 72
+#define RESOURCE_ID_W_SOLO_EIGHT 73
+#define RESOURCE_ID_W_SOLO_NINE 74
+#define RESOURCE_ID_W_SOLO_TEN 75
+#define RESOURCE_ID_W_SOLO_ELEVEN 76
+#define RESOURCE_ID_W_SOLO_OCLOCK 77
+#define RESOURCE_ID_W_SOLO_THE 78
+#define RESOURCE_ID_W_SOLO_WITCHING 79
+#define RESOURCE_ID_W_SOLO_HOUR 80
 
 typedef struct { uint8_t asc, desc; } WordInk;
 
 /* Ink above and below the baseline, per word. */
 static const WordInk WORD_INK[] = {
-  {16, 0},        /* one */
-  {23, 0},        /* two */
-  {29, 1},        /* three */
-  {31, 11},        /* four */
-  {31, 11},        /* five */
-  {21, 1},        /* six */
-  {16, 0},        /* seven */
-  {29, 16},        /* eight */
-  {21, 0},        /* nine */
-  {23, 0},        /* ten */
-  {31, 1},        /* eleven */
-  {31, 1},        /* twelve */
-  {29, 1},        /* thirteen */
-  {31, 11},        /* fourteen */
-  {31, 11},        /* fifteen */
-  {23, 1},        /* sixteen */
-  {23, 0},        /* seventeen */
-  {29, 16},        /* eighteen */
-  {23, 0},        /* nineteen */
-  {23, 15},        /* twenty */
-  {23, 15},        /* twenty- */
-  {23, 14},        /* quarter */
-  {31, 11},        /* half */
-  {23, 14},        /* past */
-  {23, 0},        /* to */
-  {30, 16},        /* midnight */
-  {30, 15},        /* midday */
-  {16, 0},        /* noon */
-  {29, 1},        /* the */
-  {29, 16},        /* witching */
-  {29, 1},        /* hour */
-  {31, 1},        /* o'|clock */
-  {15, 0},        /* minute */
-  {15, 0},        /* minutes */
-  {34, 18},        /* midnight */
-  {34, 17},        /* midday */
+  {18, 0},        /* one */
+  {26, 0},        /* two */
+  {32, 1},        /* three */
+  {34, 12},        /* four */
+  {34, 12},        /* five */
+  {23, 1},        /* six */
+  {18, 0},        /* seven */
+  {32, 17},        /* eight */
+  {23, 0},        /* nine */
+  {26, 0},        /* ten */
+  {34, 1},        /* eleven */
+  {34, 1},        /* twelve */
+  {32, 1},        /* thirteen */
+  {34, 12},        /* fourteen */
+  {34, 12},        /* fifteen */
+  {26, 1},        /* sixteen */
+  {26, 0},        /* seventeen */
+  {32, 17},        /* eighteen */
+  {26, 0},        /* nineteen */
+  {26, 16},        /* twenty */
+  {26, 16},        /* twenty- */
+  {26, 15},        /* quarter */
+  {34, 12},        /* half */
+  {26, 15},        /* past */
+  {26, 0},        /* to */
+  {33, 17},        /* midnight */
+  {33, 16},        /* midday */
+  {18, 0},        /* noon */
+  {16, 0},        /* minute */
+  {16, 0},        /* minutes */
+  {37, 19},        /* midnight */
+  {37, 18},        /* midday */
   {12, 0},        /* 0 */
   {12, 0},        /* 1 */
   {12, 0},        /* 2 */
@@ -147,4 +154,103 @@ static const WordInk WORD_INK[] = {
   {17, 1},        /* Thu. */
   {15, 3},        /* Fri. */
   {15, 5},        /* Sat. */
+  {20, 1},        /* one */
+  {29, 0},        /* two */
+  {36, 1},        /* three */
+  {39, 13},        /* four */
+  {39, 13},        /* five */
+  {27, 1},        /* six */
+  {20, 0},        /* seven */
+  {36, 19},        /* eight */
+  {27, 0},        /* nine */
+  {29, 0},        /* ten */
+  {39, 1},        /* eleven */
+  {39, 1},        /* o'|clock */
+  {36, 1},        /* the */
+  {36, 19},        /* witching */
+  {36, 1},        /* hour */
+};
+
+/* x-height of each word's family - the lowercase body height. */
+static const uint8_t WORD_XHEIGHT[] = {
+  18,   /* TIME      one */
+  18,   /* TIME      two */
+  18,   /* TIME      three */
+  18,   /* TIME      four */
+  18,   /* TIME      five */
+  18,   /* TIME      six */
+  18,   /* TIME      seven */
+  18,   /* TIME      eight */
+  18,   /* TIME      nine */
+  18,   /* TIME      ten */
+  18,   /* TIME      eleven */
+  18,   /* TIME      twelve */
+  18,   /* TIME      thirteen */
+  18,   /* TIME      fourteen */
+  18,   /* TIME      fifteen */
+  18,   /* TIME      sixteen */
+  18,   /* TIME      seventeen */
+  18,   /* TIME      eighteen */
+  18,   /* TIME      nineteen */
+  18,   /* TIME      twenty */
+  18,   /* TIME      twenty- */
+  18,   /* TIME      quarter */
+  18,   /* TIME      half */
+  18,   /* TIME      past */
+  18,   /* TIME      to */
+  18,   /* TIME      midnight */
+  18,   /* TIME      midday */
+  18,   /* TIME      noon */
+  11,   /* MINS      minute */
+  11,   /* MINS      minutes */
+  21,   /* SOLO      midnight */
+  21,   /* SOLO      midday */
+  10,   /* DATE      0 */
+  10,   /* DATE      1 */
+  10,   /* DATE      2 */
+  10,   /* DATE      3 */
+  10,   /* DATE      4 */
+  10,   /* DATE      5 */
+  10,   /* DATE      6 */
+  10,   /* DATE      7 */
+  10,   /* DATE      8 */
+  10,   /* DATE      9 */
+  10,   /* DATE      Jan. */
+  10,   /* DATE      Feb. */
+  10,   /* DATE      Mar. */
+  10,   /* DATE      Apr. */
+  10,   /* DATE      May */
+  10,   /* DATE      Jun. */
+  10,   /* DATE      Jul. */
+  10,   /* DATE      Aug. */
+  10,   /* DATE      Sep. */
+  10,   /* DATE      Oct. */
+  10,   /* DATE      Nov. */
+  10,   /* DATE      Dec. */
+  6,   /* ORD       st */
+  6,   /* ORD       nd */
+  6,   /* ORD       rd */
+  6,   /* ORD       th */
+  10,   /* DATE      Sun. */
+  10,   /* DATE      Mon. */
+  10,   /* DATE      Tue. */
+  10,   /* DATE      Wed. */
+  10,   /* DATE      Thu. */
+  10,   /* DATE      Fri. */
+  10,   /* DATE      Sat. */
+  21,   /* SOLO      one */
+  21,   /* SOLO      two */
+  21,   /* SOLO      three */
+  21,   /* SOLO      four */
+  21,   /* SOLO      five */
+  21,   /* SOLO      six */
+  21,   /* SOLO      seven */
+  21,   /* SOLO      eight */
+  21,   /* SOLO      nine */
+  21,   /* SOLO      ten */
+  21,   /* SOLO      eleven */
+  21,   /* SOLO      o'|clock */
+  21,   /* SOLO      the */
+  21,   /* SOLO      witching */
+  21,   /* SOLO      hour */
 };

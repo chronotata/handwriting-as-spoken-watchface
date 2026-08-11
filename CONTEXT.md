@@ -25,7 +25,7 @@ native to the Pebble Time 2 (Emery, 200×228):
 ## 2. Architecture: pre-rendered word bitmaps
 
 Words are **images, not font text.** `tools/tune.py` renders every word the
-face can ever show — 69 of them — to individual PNGs at build-configuration
+face can ever show — 80 of them — to individual PNGs at build-configuration
 time; `handwritten.c` only ever blits rectangles of those images.
 
 **Why not a font:** three consecutive attempts to mask *unrevealed* text
@@ -43,13 +43,17 @@ ascender line to descender line — with the baseline at the same offset in
 all of them. Widths stay tight to each word's own ink. `tune.py` measures
 the boxes and emits them as `TIME_BOX_H` / `TIME_BOX_BASE` and so on.
 
-The consequence is a **constant row pitch** (`TIME_BOX_H + ROW_GAP`, 51px).
+The consequence is a **constant row pitch** (`TIME_BOX_H + ROW_GAP`, 50px).
 A word's neighbours cannot move when it is replaced by a different word,
 and baselines land on the same lines all day — the stacked layout uses
 y = 25 / 76 / 127 / 178, always. See §3.2 for why that matters.
 
 Families are the five *size* families (`TIME`, `SOLO`, `MINS`, `DATE`,
-`ORD`), not roles. Role-based families were considered and rejected because
+`ORD`), not roles. `SOLO` covers everything that appears **on the hour** —
+the lone `midnight`/`midday`, every *"\<n\> o' clock"*, and the witching
+hour — because those phrases are two or three short words with the whole
+screen to themselves. That is why `one`..`eleven` are rendered twice, once
+as a minute number and once as an hour. Role-based families were considered and rejected because
 roles overlap: *four* is both a minute word and an hour word, so role
 families would need two rendered copies of every shared word. `TIME`
 contains every role group, so unifying it unifies all of them for free.
@@ -57,6 +61,21 @@ contains every role group, so unifying it unifies all of them for free.
 Font metrics are deliberately not used to size the box. A script face's
 declared ascent and descent are far larger than anything it actually draws,
 and padding to them would waste around 20px a row this layout cannot spare.
+
+**`ROW_GAP` is negative: the rows interweave on purpose.** A script face
+reads better with a descender passing the ascender below it than with every
+line held clear, and the space that buys is what let the fonts grow — `TIME`
+40 → 44, `MINS` 25 → 27, `SOLO` 46 → 50, measured off a mock-up rather than
+guessed.
+
+What it costs is the guarantee `ROW_GAP` used to carry. It is no longer a
+floor on the visible ink gap, so `INK_OVERLAP_MAX_PCT` takes over: a
+descender may reach at most 25% of the way past the ascender below it, and
+no ink may enter the neighbouring line's x-height, where the lowercase
+bodies are. Both are swept over every minute rather than eyeballed on the
+handful of phrases in a mock-up — the worst pair is the deepest descender
+above the tallest ascender, which need not occur in any phrase anyone
+happened to look at.
 
 **This reverses the original tight-canvas decision, on purpose.** Tight
 canvases made every visual ink gap exactly `ROW_GAP`; that is now gone.
@@ -110,7 +129,7 @@ memory, and levels 3–15 keep their old meaning to the pixel, so
 existing canvas rather than its own, so not one word moved: every canvas
 size, baseline and family box is exactly as it was.
 
-Worth +15.8% across all 69 words, which targets the *nominal* width baked
+Worth +15.8% across all 80 words, which targets the *nominal* width baked
 into the bitmaps rather than matching white-on-black — that scheme is itself
 running about 6% fat from bloom. `DEFAULT_STROKE_WEIGHT` sets how heavily
 the outline is inked, and the phone exposes it as a slider; 0 turns it off.
@@ -361,6 +380,8 @@ What it checks:
 | date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
 | minutes modes | presence, absence and singular/plural of `minute(s)` asserted from the spec wording rather than from a copy of the predicate, plus the specific phrases the setting promises (*five minutes past five*, *quarter past one*) |
 | message routing | each settings key drives the field it names and no other, both tuple types, clamping applied on the way in |
+| ink overlap | no descender passes more than `INK_OVERLAP_MAX_PCT` of the ascender below it, none reaches the neighbouring x-height, and no ascender reaches the baseline above — on drawn positions, every minute |
+| on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
 | drawn offsets | every element moves by exactly its own row's offset — no row drags a neighbour, no slider fails to reach its row — swept over 25 offset combinations, plus the two halves of a split number never sharing a row |
 | palette | across five colour schemes including colour-on-colour: level 0 transparent, level 15 exactly the ink, the ramp monotonic, and the bold outline invisible on light ink but inked on dark |
 | settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range index falls back rather than indexing off `kDateFormats` or `kMinutesModes` |
@@ -378,8 +399,18 @@ a `minutes` that never went singular, an inverted ink/paper
 polarity test, a bold outline shown on light ink, one never shown on dark
 ink, the two halves of a split number sharing a row again, a settings key
 routed to the wrong field, a key not read at all, clamping dropped from the
-incoming message, and each of the minute number's three cases folded back
-onto a shared lever.
+incoming message, each of the minute number's three cases folded back
+onto a shared lever, rows crammed past the overlap rule, the hour row shoved
+into the date, the split head pushed off the top of the screen, and the
+on-the-hour words reverted to `TIME` size.
+
+**The budget checks were measuring a layout nobody sees.** `check_fit`,
+both `_Static_assert`s and `check_bounds` all worked on the computed
+positions, before the row offsets are applied. With `OFFSET_HOUR` at −9 that
+reported the hour row colliding with the date while it sat 9px clear of it
+on screen, and it refused a font size that fits perfectly well. All four now
+work on drawn positions. The offsets are part of the layout, not a
+decoration applied afterwards.
 
 That last family is worth singling out. **Twice** a case was quietly put
 back on a shared row and the entire suite stayed green**,** because "every
