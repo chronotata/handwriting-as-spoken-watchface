@@ -38,7 +38,9 @@
       "OffMinuteAlone",
       "OffMinuteSplit",
       "Rounding",
-      "OffHedge"
+      "OffHedge",
+      "OffHedgeSolo",
+      "OffBlock"
     ],
     "resources": {
       "media": [

@@ -39,7 +39,7 @@ word at a time, rather than reading digits off a clock face.
 - **A handwriting-style reveal animation** — words appear to be written on,
   left to right, and only the parts of the display that actually changed
   redraw on each minute tick.
-- **Ten live tuning sliders** in the watch's settings — nudge any row up or
+- **Twelve live tuning sliders** in the watch's settings — nudge any row up or
   down by eye, directly on the watch, no rebuild required. Tapping a slider
   track does nothing, so scrolling past one can't move it by accident.
 - **Paper and ink colours** configurable from the same page, with a stroke

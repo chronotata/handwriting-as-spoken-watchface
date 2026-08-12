@@ -42,6 +42,33 @@
 module.exports = function() {
   var clayConfig = this;
 
+  /*
+   * The block lever and the two hedge sliders only do anything in the
+   * spoken reading mode, so
+   * they are greyed out otherwise rather than sitting there inviting a
+   * change that has no effect. Driven off the Rounding select and updated
+   * live, so it tracks the choice without a save-and-reopen.
+   */
+  clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
+    var rounding = clayConfig.getItemByMessageKey('Rounding');
+    var dependents = ['OffBlock', 'OffHedge', 'OffHedgeSolo'];
+
+    function sync() {
+      /* Clay hands a select's value back as a string. */
+      var spoken = String(rounding.get()) === '2';
+      dependents.forEach(function (key) {
+        var item = clayConfig.getItemByMessageKey(key);
+        if (!item) { return; }
+        if (spoken) { item.enable(); } else { item.disable(); }
+      });
+    }
+
+    if (rounding) {
+      rounding.on('change', sync);
+      sync();
+    }
+  });
+
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
     /* AFTER_BUILD can fire again if the page is rebuilt; the listeners are
      * delegated to `document` and only ever need attaching once. */

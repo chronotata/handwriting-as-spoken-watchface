@@ -63,7 +63,31 @@
  * for the same reason: two things that want different placement should not
  * share a lever.
  */
-#define OFFSET_HEDGE 0  /* "just gone" / "nearly", above the minute word */
+/*
+ * The hedge has TWO offsets, because the two places it appears are not the
+ * same problem. Stacked, it occupies the row the minute number would
+ * otherwise have - a full row slot filled by small text - so how close it
+ * sits to the phrase is worth its own lever. Centred, it hangs off the
+ * middle of the screen with the o'clock wording and is a different balance
+ * entirely.
+ */
+#define OFFSET_HEDGE 0       /* stacked: above the minute number  */
+#define OFFSET_HEDGE_SOLO 0  /* centred: above the o'clock wording */
+
+/*
+ * Moves the whole spoken phrase as one - minute number, "past"/"to" and the
+ * hour word together, plus the split head and the "minute(s)" annotation.
+ * Everything that hangs off REL_TOP.
+ *
+ * It does NOT move the hedge, the date, or the centred layouts. Those are
+ * anchored elsewhere, and the point of this lever is to shift the phrase
+ * relative to them.
+ *
+ * Applies ONLY in the spoken reading mode. The other two layouts are
+ * already balanced and must not shift: this lever exists to rebalance the
+ * phrase against the hedge row, which only the spoken mode has.
+ */
+#define OFFSET_BLOCK 0
 #define OFFSET_SPLIT_HEAD 8  /* "twenty-", the first half of a split word  */
 
  /*

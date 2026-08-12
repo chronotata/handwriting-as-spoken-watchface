@@ -167,7 +167,7 @@ def read_layout():
     text = CONFIG.read_text()
     out = {}
     for key in ("ROW_GAP", "REL_TOP", "DATE_BASELINE", "SCREEN_H",
-                "OFFSET_SPLIT_HEAD", "OFFSET_HOUR"):
+                "OFFSET_SPLIT_HEAD", "OFFSET_HOUR", "OFFSET_BLOCK"):
         m = re.search(r"^\s*#define\s+%s\s+(-?\d+)" % key, text, re.M)
         if not m:
             sys.exit("could not find %s in config.h" % key)
@@ -303,7 +303,11 @@ def check_fit(rendered, box, layout):
     top_canvas = rel_top - 2 * (H + G) + layout["OFFSET_SPLIT_HEAD"]
     ink_top = top_canvas + (A - asc["twenty-"])
     # The hour row's descent is fully used by "midnight", so no slack below.
-    ink_bottom = rel_top + 2 * H + G + layout["OFFSET_HOUR"]
+    # The block lever only applies in the spoken mode, so it can only make
+    # the bottom worse, never better - hence max(0, ...) rather than adding
+    # it outright, which would excuse the other two modes a collision.
+    ink_bottom = (rel_top + 2 * H + G + layout["OFFSET_HOUR"]
+                  + max(0, layout["OFFSET_BLOCK"]))
 
     problems = []
     if ink_top < 0:

@@ -44,6 +44,13 @@ _Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP + OFFSET_HOUR
                  < DATE_BASELINE - DATE_BOX_BASE,
                "hour row overlaps the date: lower REL_TOP or ROW_GAP, "
                "or raise DATE_BASELINE");
+/* The same row again with the block lever, which only the spoken mode
+ * applies. Asserted separately rather than folded into the line above,
+ * because a NEGATIVE block would otherwise make that check too lenient for
+ * the two modes the lever does not touch. */
+_Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP + OFFSET_HOUR + OFFSET_BLOCK
+                 < DATE_BASELINE - DATE_BOX_BASE,
+               "the block lever pushes the hour row into the date");
 _Static_assert(REL_TOP - 2 * (TIME_BOX_H + ROW_GAP) + OFFSET_SPLIT_HEAD
                  + (TIME_BOX_BASE - SPLIT_HEAD_ASC) >= 0,
                "top row is clipped by the top of the screen: raise REL_TOP, "
@@ -119,6 +126,14 @@ typedef enum {
    * end exactly on the right edge.
    */
   ROW_HEDGE,
+
+  /*
+   * The hedge in the CENTRED layouts, separate from the stacked one. Same
+   * word, but one sits in a row slot the minute number would otherwise fill
+   * and the other hangs off the middle of the screen with the o'clock
+   * wording - different balance, different lever.
+   */
+  ROW_HEDGE_SOLO,
   ROW_COUNT
 } RowId;
 
@@ -172,6 +187,8 @@ typedef struct {
   int8_t offset_minute_split;   /* ROW_MINUTE_SPLIT                      */
   int8_t offset_hedge;          /* ROW_HEDGE                             */
   uint8_t rounding;             /* index into kRoundingModes             */
+  int8_t offset_hedge_solo;     /* ROW_HEDGE_SOLO                        */
+  int8_t offset_block;          /* the whole phrase, as one              */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -727,7 +744,7 @@ static void build_face(Face *f, struct tm *t) {
   const int first = has_hedge ? 1 : 0;   /* index of the first real word */
 
   if (witching) {
-    if (has_hedge) push(f, hedge, ROW_HEDGE);
+    if (has_hedge) push(f, hedge, ROW_HEDGE_SOLO);
     push(f, W_SOLO_THE, ROW_SOLO);
     push(f, W_SOLO_WITCHING, ROW_SOLO);
     push(f, W_SOLO_HOUR, ROW_SOLO);
@@ -735,13 +752,13 @@ static void build_face(Face *f, struct tm *t) {
     if (has_hedge) f->items[0].x = MARGIN;
     centre(f, 0, f->count - 1);
   } else if (m == 0 && (h == 0 || h == 12)) {
-    if (has_hedge) push(f, hedge, ROW_HEDGE);
+    if (has_hedge) push(f, hedge, ROW_HEDGE_SOLO);
     push(f, h == 0 ? W_SOLO_MIDNIGHT : W_SOLO_MIDDAY, ROW_SOLO);
     indent_rows(f, first, first);
     if (has_hedge) f->items[0].x = MARGIN;
     centre(f, 0, f->count - 1);
   } else if (m == 0) {
-    if (has_hedge) push(f, hedge, ROW_HEDGE);
+    if (has_hedge) push(f, hedge, ROW_HEDGE_SOLO);
     push(f, kSoloOnes[h % 12 - 1], ROW_SOLO);
     push(f, W_SOLO_OCLOCK, ROW_SOLO);
     indent_rows(f, first, first + 1);
@@ -906,23 +923,58 @@ static void mark_changes(bool date_changed) {
 /* Drawing                                                             */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Is this row part of the phrase that hangs off REL_TOP? Those move together
+ * when the block lever is used; the hedge, the date and the centred layouts
+ * are anchored elsewhere and deliberately stay put.
+ */
+/*
+ * The block lever only applies in the SPOKEN reading mode. The other two
+ * layouts are already tuned and must not move: this lever exists to
+ * rebalance the phrase against the hedge row, which only the spoken mode
+ * has.
+ */
+static int block_offset(void) {
+  return (s_settings.rounding == ROUND_SPOKEN) ? s_settings.offset_block : 0;
+}
+
+static bool in_phrase_block(uint8_t row) {
+  switch (row) {
+    case ROW_SPLIT_HEAD:
+    case ROW_MINUTE:
+    case ROW_MINUTE_ALONE:
+    case ROW_MINUTE_SPLIT:
+    case ROW_MINUTES_OWN:
+    case ROW_MINUTES_INLINE:
+    case ROW_RELATION:
+    case ROW_HOUR:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static int row_offset(uint8_t row) {
   if (row == ROW_SPLIT_HEAD) {
-    return s_settings.offset_split_head;
+    return s_settings.offset_split_head + block_offset();
   }
   if (row == ROW_MINUTES_OWN) {
-    return s_settings.offset_minutes_own;
+    return s_settings.offset_minutes_own + block_offset();
   }
   if (row == ROW_MINUTE_ALONE) {
-    return s_settings.offset_minute_alone;
+    return s_settings.offset_minute_alone + block_offset();
   }
   if (row == ROW_MINUTE_SPLIT) {
-    return s_settings.offset_minute_split;
+    return s_settings.offset_minute_split + block_offset();
   }
   if (row == ROW_HEDGE) {
     return s_settings.offset_hedge;
   }
-  return (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
+  if (row == ROW_HEDGE_SOLO) {
+    return s_settings.offset_hedge_solo;
+  }
+  const int own = (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
+  return own + (in_phrase_block(row) ? block_offset() : 0);
 }
 
 /*
@@ -1040,6 +1092,8 @@ static void settings_defaults(void) {
   s_settings.offset_minute_alone = OFFSET_MINUTE_ALONE;
   s_settings.offset_minute_split = OFFSET_MINUTE_SPLIT;
   s_settings.offset_hedge = OFFSET_HEDGE;
+  s_settings.offset_hedge_solo = OFFSET_HEDGE_SOLO;
+  s_settings.offset_block = OFFSET_BLOCK;
   s_settings.rounding = DEFAULT_ROUNDING;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
   s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
@@ -1135,6 +1189,8 @@ static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
     s_settings.offset_minute_split = v;
   } else if (row == ROW_HEDGE) {
     s_settings.offset_hedge = v;
+  } else if (row == ROW_HEDGE_SOLO) {
+    s_settings.offset_hedge_solo = v;
   } else if (row < OFFSET_ROWS) {
     s_settings.offset[row] = v;
   }
@@ -1169,6 +1225,10 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   read_offset(it, MESSAGE_KEY_OffMinuteAlone, ROW_MINUTE_ALONE);
   read_offset(it, MESSAGE_KEY_OffMinuteSplit, ROW_MINUTE_SPLIT);
   read_offset(it, MESSAGE_KEY_OffHedge, ROW_HEDGE);
+  read_offset(it, MESSAGE_KEY_OffHedgeSolo, ROW_HEDGE_SOLO);
+  if ((t = dict_find(it, MESSAGE_KEY_OffBlock))) {
+    s_settings.offset_block = clamp_offset(tuple_int(t));
+  }
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
   read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);

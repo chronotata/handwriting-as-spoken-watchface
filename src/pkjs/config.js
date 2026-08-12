@@ -166,8 +166,18 @@ module.exports = [
           'past a slider cannot move it by accident. The box on the right ' +
           'takes a typed number.'
       },
+      offsetSlider('OffBlock', 'Whole phrase',
+                   'Moves the minute, "past"/"to" and the hour together, ' +
+                   'leaving the hedge, the date and the on-the-hour wording ' +
+                   'where they are. Only applies to "nearest five, spoken" ' +
+                   '— the other two layouts are untouched.'),
       offsetSlider('OffHedge', '"just gone" / "nearly"',
-                   'The small word above the minute, in the spoken mode'),
+                   'The small word above the minute. Greyed out unless the ' +
+                   'reading mode is "nearest five, spoken".'),
+      offsetSlider('OffHedgeSolo', '"just gone" / "nearly", on the hour',
+                   'The same word above the o\'clock wording, which is a ' +
+                   'different balance. Greyed out unless the reading mode ' +
+                   'is "nearest five, spoken".'),
       offsetSlider('OffSplitHead', 'Split number, top half',
                    '"twenty-" — only appears when the minute splits across ' +
                    'two lines. Use this to pull it clear of the top edge ' +

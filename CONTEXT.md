@@ -152,6 +152,8 @@ per-word-layer memory leak.
 
 | Row | Content | Indent |
 |---|---|---|
+| `ROW_HEDGE` | `just gone` / `nearly`, above the stacked phrase | flat, same x as the word below |
+| `ROW_HEDGE_SOLO` | the same word above the on-the-hour wording | flat |
 | `ROW_SPLIT_HEAD` | first half of a split word — `twenty-` | 0 |
 | `ROW_MINUTE` | the number **with** `minute(s)` stacked below it; also the o'clock top word and witching `the` | 0 |
 | `ROW_MINUTE_ALONE` | the number with **nothing** below it — `quarter`, `half`, any unannotated number | 0 |
@@ -394,7 +396,7 @@ stub (`pebble.h`, `stub.c`) and sweeps its own `build_face()` over all 1440
 minutes of the day, every date of a leap year, and the asymmetric wording
 cases — **once per date format × minutes mode**, driven off
 `DATE_FORMAT_COUNT` and `MINUTES_MODE_COUNT` so a new setting value is swept
-without anyone remembering to widen a loop. Around 2.5 million assertions,
+without anyone remembering to widen a loop. Around 3.2 million assertions,
 under a second.
 
 It is deliberately not a Python re-implementation. A model agrees with
@@ -417,6 +419,7 @@ What it checks:
 | date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
 | minutes modes | presence, absence and singular/plural of `minute(s)` asserted from the spec wording rather than from a copy of the predicate, plus the specific phrases the setting promises (*five minutes past five*, *quarter past one*) |
 | message routing | each settings key drives the field it names and no other, both tuple types, clamping applied on the way in |
+| block lever | in the spoken mode every row that hangs off `REL_TOP` shifts by exactly it, and the hedge, the date and the centred layouts do not move; in the other two reading modes **nothing** moves — with the membership written out by hand in the test rather than read from the code |
 | ink overlap | no descender passes more than `INK_OVERLAP_MAX_PCT` of the ascender below it, none reaches the neighbouring x-height, and no ascender reaches the baseline above — on drawn positions, every minute |
 | on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
 | rounding | the spoken minute is always a multiple of five and never more than two minutes from the real one, and the hedge agrees with the direction it moved |
@@ -443,8 +446,19 @@ onto a shared lever, rows crammed past the overlap rule, the hour row shoved
 into the date, the split head pushed off the top of the screen, the
 on-the-hour words reverted to `TIME` size, the rounding direction inverted,
 rounding to the nearest ten, the hedge taking an indent step, the hedge
-leaking into the plain rounded mode, and `twenty-five` set on one line in
-every mode.
+leaking into the plain rounded mode, `twenty-five` set on one line in
+every mode, the block lever dragging the date or skipping the hour row, the
+two hedge levers wired to one field, and the centred layouts using the
+stacked hedge row.
+
+**Two tests that could not fail, both found by injection.** The block
+lever's check computed what it expected by calling `in_phrase_block()` — the
+function under test — so adding the date to the phrase, or dropping the hour
+row from it, both stayed green. The membership is now written out by hand in
+the harness, with a separate assertion that the two agree, so a change to
+the real one has to be argued for against the list. Separately, that same
+check compared a *drawn* baseline against an *unoffset* one, folding every
+row's own offset into the delta and failing 20,000 correct faces.
 
 **The budget checks were measuring a layout nobody sees.** `check_fit`,
 both `_Static_assert`s and `check_bounds` all worked on the computed

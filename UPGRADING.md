@@ -185,7 +185,7 @@ takes under a second. If `node` happens to be installed it also runs the
 settings-page test (`clay-slider.test.js`); if not, it says so and carries
 on. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
-once per date format, minutes mode and reading mode — about 2.5 million
+once per date format, minutes mode and reading mode — about 3.2 million
 assertions, under
 AddressSanitizer.
 
@@ -312,7 +312,7 @@ real hardware the same way `--emulator` does from the simulator.
 
 ## 8. Tuning without a rebuild
 
-Open the watchface's settings in the Pebble phone app. Ten sliders — one
+Open the watchface's settings in the Pebble phone app. Twelve sliders — one
 per row — nudge that row up (negative) or down (positive) by up to 15px,
 and apply the moment you change them. No rebuild, no reinstall. The same
 page carries the colours, the date on/off toggle, the date format, whether
@@ -325,6 +325,12 @@ inked in that direction only — `CONTEXT.md` §2 has the measurements. Four
 choices, because four levels per channel is all the screen has: Off, Light,
 Medium (the measured match, and the default) and Solid.
 
+**Whole phrase** and the two hedge sliders are **greyed out** unless the
+reading mode is
+"nearest five, spoken" — `src/pkjs/custom-clay.js` disables them off the
+Rounding select and updates live, so they track the choice without a
+save-and-reopen.
+
 It changes how solidly the outline is inked, **not how far it extends** —
 the outer edge of the outline sets the apparent width either way, so Solid
 reads harder-edged rather than thicker. To make the strokes genuinely
@@ -335,7 +341,9 @@ separate on purpose:
 
 | slider | moves |
 |---|---|
-| "just gone" / "nearly" | the hedge above the minute, spoken mode only |
+| Whole phrase | the minute, "past"/"to" and the hour together — not the hedge, date or on-the-hour wording. **Spoken mode only** |
+| "just gone" / "nearly" | the hedge above the stacked phrase, spoken mode only |
+| "just gone" / "nearly", on the hour | the same word above the o'clock wording |
 |---|---|
 | Split number, top half | only `twenty-`, so it can be pulled clear of the screen edge on its own |
 | Minute number, with "minute(s)" below | :01–:20 when the annotation shows and fills the gap |

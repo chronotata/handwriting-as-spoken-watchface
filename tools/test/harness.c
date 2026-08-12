@@ -541,6 +541,100 @@ static void check_palette(void) {
 }
 
 /*
+ * THE BLOCK LEVER moves the phrase and nothing else.
+ *
+ * It is the one offset that touches many rows at once, so the rule it has to
+ * obey is a relationship rather than a position: every row that hangs off
+ * REL_TOP shifts by exactly it, and the hedge, the date and the centred
+ * layouts do not move at all. Those are anchored elsewhere, and holding them
+ * still is the entire point - the lever exists to shift the phrase
+ * RELATIVE to them.
+ *
+ * It applies ONLY in the spoken reading mode: the other two layouts are
+ * already balanced and must not shift, so the same slider set to the same
+ * value has to move nothing at all in those. That is asserted here too,
+ * since "moves the phrase" and "moves the phrase only sometimes" are
+ * different rules and only one of them is the one wanted.
+ *
+ * The membership below is written out BY HAND rather than asking
+ * in_phrase_block(). Calling the function under test to work out what it
+ * should have done makes the check a tautology: the first version did
+ * exactly that, and adding the date to the phrase, or dropping the hour row
+ * from it, both stayed green. Listing the rows here means a change to the
+ * real one has to be argued for against this one.
+ */
+static bool expected_in_block(uint8_t row) {
+  return row == ROW_SPLIT_HEAD || row == ROW_MINUTE ||
+         row == ROW_MINUTE_ALONE || row == ROW_MINUTE_SPLIT ||
+         row == ROW_MINUTES_OWN || row == ROW_MINUTES_INLINE ||
+         row == ROW_RELATION || row == ROW_HOUR;
+}
+
+static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
+                               uint8_t rnd) {
+  char buf[210];
+  static const int kShifts[] = {-11, 6, 15};
+  struct tm tm = make_tm(232, 21, 7, 2026, h, m);
+
+  for (size_t s = 0; s < sizeof(kShifts) / sizeof(kShifts[0]); s++) {
+    settings_defaults();
+    s_settings.date_format = fmt;
+    s_settings.minutes_mode = mode;
+    s_settings.rounding = rnd;
+    s_settings.offset_block = 0;
+    s_have_prev = false;
+    refresh(&tm, true);
+    const Face flat = s_face;
+
+    /* Record where the flat pass DRAWS each row, not where it computes it.
+     * The rows carry their own non-zero defaults, and comparing a drawn
+     * baseline against an unoffset one folds those in as if the block lever
+     * had caused them - which is exactly the false failure this first
+     * produced, every row off by its own offset. */
+    int flat_drawn[MAX_ELEMENTS];
+    for (int i = 0; i < flat.count; i++) {
+      flat_drawn[i] = drawn_baseline_of(&flat.items[i]);
+    }
+
+    settings_defaults();
+    s_settings.date_format = fmt;
+    s_settings.minutes_mode = mode;
+    s_settings.rounding = rnd;
+    s_settings.offset_block = (int8_t)kShifts[s];
+    s_have_prev = false;
+    refresh(&tm, true);
+
+    CHECK(s_face.count == flat.count, "the block lever changed the layout",
+          h, m, "element count");
+
+    for (int i = 0; i < s_face.count && i < flat.count; i++) {
+      const Element *e = &s_face.items[i];
+      /* scoped to the spoken mode - see above */
+      const int want = (rnd == ROUND_SPOKEN && expected_in_block(e->row))
+                       ? kShifts[s] : 0;
+      const int moved = drawn_baseline_of(e) - flat_drawn[i];
+      snprintf(buf, sizeof(buf),
+               "block %+d: element %d (word %d, row %d) moved %d, expected %d",
+               kShifts[s], i, e->word, e->row, moved, want);
+      CHECK(moved == want, "the block lever moved the wrong rows", h, m, buf);
+    }
+  }
+
+  for (uint8_t row = 0; row < ROW_COUNT; row++) {
+    snprintf(buf, sizeof(buf), "row %d: code says %d, the test expects %d",
+             row, in_phrase_block(row), expected_in_block(row));
+    CHECK(in_phrase_block(row) == expected_in_block(row),
+          "the phrase-block membership drifted from what the tests expect",
+          h, m, buf);
+  }
+
+  settings_defaults();
+  s_settings.date_format = fmt;
+  s_settings.minutes_mode = mode;
+  s_settings.rounding = rnd;
+}
+
+/*
  * ROUNDING, stated from the rule rather than from the code.
  *
  * The face may only ever speak a multiple of five once rounding is on, the
@@ -605,7 +699,7 @@ static void check_hedge_placement(const Face *f, int h, int m) {
   int hedges = 0;
   for (int i = 0; i < f->count; i++) {
     const Element *e = &f->items[i];
-    if (e->row != ROW_HEDGE) {
+    if (e->row != ROW_HEDGE && e->row != ROW_HEDGE_SOLO) {
       continue;
     }
     hedges++;
@@ -619,6 +713,13 @@ static void check_hedge_placement(const Face *f, int h, int m) {
             "the hedge took an indent step from the word it qualifies",
             h, m, buf);
     }
+    /* The stacked and centred hedges answer to different levers. */
+    const bool centred = (i + 1 < f->count &&
+                          f->items[i + 1].row == ROW_SOLO);
+    snprintf(buf, sizeof(buf), "hedge row %d, next row %d", e->row,
+             (i + 1 < f->count) ? f->items[i + 1].row : -1);
+    CHECK(e->row == (centred ? ROW_HEDGE_SOLO : ROW_HEDGE),
+          "the hedge is on the wrong lever for its layout", h, m, buf);
   }
   CHECK(hedges <= 1, "more than one hedge", h, m, "");
   if (s_settings.rounding != ROUND_SPOKEN) {
@@ -643,7 +744,8 @@ static void check_hour_family(const Face *f, int h, int m) {
   }
   for (int i = 0; i < f->count; i++) {
     const Element *e = &f->items[i];
-    if (e->row == ROW_DATE || e->row == ROW_HEDGE) {
+    if (e->row == ROW_DATE || e->row == ROW_HEDGE ||
+        e->row == ROW_HEDGE_SOLO) {
       continue;
     }
     snprintf(buf, sizeof(buf), "word %d has canvas height %d, SOLO_BOX_H is %d",
@@ -770,6 +872,10 @@ static void apply_plan(const OffsetPlan *plan, int n) {
       s_settings.offset_minute_alone = (int8_t)plan[i].off;
     } else if (plan[i].row == ROW_MINUTE_SPLIT) {
       s_settings.offset_minute_split = (int8_t)plan[i].off;
+    } else if (plan[i].row == ROW_HEDGE) {
+      s_settings.offset_hedge = (int8_t)plan[i].off;
+    } else if (plan[i].row == ROW_HEDGE_SOLO) {
+      s_settings.offset_hedge_solo = (int8_t)plan[i].off;
     } else {
       s_settings.offset[plan[i].row] = (int8_t)plan[i].off;
     }
@@ -790,32 +896,37 @@ static void check_offset_independence(void) {
   /* Distinct values everywhere, except the inline annotation which is held
    * equal to the split number it rides beside - that pairing is the one
    * relationship the separation is supposed to preserve. */
-  static const OffsetPlan kPlans[][8] = {
+  static const OffsetPlan kPlans[][10] = {
     {{ROW_SPLIT_HEAD, 0}, {ROW_MINUTE, 0}, {ROW_MINUTE_ALONE, 0},
      {ROW_MINUTE_SPLIT, 0}, {ROW_MINUTES_INLINE, 0}, {ROW_MINUTES_OWN, 0},
-     {ROW_RELATION, 0}, {ROW_HOUR, 0}},
+     {ROW_RELATION, 0}, {ROW_HOUR, 0}, {ROW_HEDGE, 0}, {ROW_HEDGE_SOLO, 0}},
     {{ROW_SPLIT_HEAD, 10}, {ROW_MINUTE, 3}, {ROW_MINUTE_ALONE, -6},
      {ROW_MINUTE_SPLIT, 8}, {ROW_MINUTES_INLINE, 8}, {ROW_MINUTES_OWN, -2},
-     {ROW_RELATION, -3}, {ROW_HOUR, -12}},
+     {ROW_RELATION, -3}, {ROW_HOUR, -12}, {ROW_HEDGE, 4}, {ROW_HEDGE_SOLO, -7}},
     {{ROW_SPLIT_HEAD, -15}, {ROW_MINUTE, 15}, {ROW_MINUTE_ALONE, 7},
      {ROW_MINUTE_SPLIT, -9}, {ROW_MINUTES_INLINE, -9}, {ROW_MINUTES_OWN, 12},
-     {ROW_RELATION, 5}, {ROW_HOUR, -4}},
+     {ROW_RELATION, 5}, {ROW_HOUR, -4}, {ROW_HEDGE, -13}, {ROW_HEDGE_SOLO, 10}},
     {{ROW_SPLIT_HEAD, 4}, {ROW_MINUTE, -11}, {ROW_MINUTE_ALONE, 14},
      {ROW_MINUTE_SPLIT, 2}, {ROW_MINUTES_INLINE, 2}, {ROW_MINUTES_OWN, -15},
-     {ROW_RELATION, 0}, {ROW_HOUR, 9}}
+     {ROW_RELATION, 0}, {ROW_HOUR, 9}, {ROW_HEDGE, 11}, {ROW_HEDGE_SOLO, -2}}
   };
   const int kPlanCount = (int)(sizeof(kPlans) / sizeof(kPlans[0]));
-  const int kRows = 8;
+  const int kRows = 10;
   int inline_lines = 0;
 
   for (int p = 0; p < kPlanCount; p++) {
     for (int mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
+     /* The hedge rows only exist in the spoken mode, so the reading mode has
+      * to vary here or the two hedge levers are never exercised at all -
+      * wiring them to the same field passed everything otherwise. */
+     for (int rnd = 0; rnd < ROUNDING_COUNT; rnd++) {
       for (int t = 0; t < 1440; t++) {
         const int h = t / 60, m = t % 60;
         struct tm tm = make_tm(232, 21, 7, 2026, h, m);
 
         settings_defaults();
         s_settings.minutes_mode = (uint8_t)mode;
+        s_settings.rounding = (uint8_t)rnd;
         apply_plan(kPlans[0], kRows);          /* everything at zero */
         s_have_prev = false;
         refresh(&tm, true);
@@ -823,6 +934,7 @@ static void check_offset_independence(void) {
 
         settings_defaults();
         s_settings.minutes_mode = (uint8_t)mode;
+        s_settings.rounding = (uint8_t)rnd;
         apply_plan(kPlans[p], kRows);
         s_have_prev = false;
         refresh(&tm, true);
@@ -854,25 +966,41 @@ static void check_offset_independence(void) {
          * split head, then the number - the whole suite stayed green.
          * Consistency was never the property at risk. Reachability was.
          */
-        if (m != 0) {   /* o'clock, solo and witching are centred, not stacked */
+        /*
+         * Whether the phrase is stacked at all depends on the SPOKEN minute,
+         * not the wall-clock one: with rounding on, :01 speaks as midnight
+         * and takes the centred layout, which has no stacked minute row to
+         * be on any lever. Testing m != 0 flagged 25 correct faces.
+         *
+         * And the first element is the hedge when there is one, so the row
+         * to inspect is the first non-hedge one.
+         */
+        int sh = h, sm = m;
+        uint8_t sp_hedge;
+        round_clock(&sh, &sm, &sp_hedge);
+        if (sm != 0) {
           bool split = false, has_own = false;
+          int base = 0;
           for (int i = 0; i < s_face.count; i++) {
             if (s_face.items[i].word == W_TWENTYDASH)         split = true;
             if (s_face.items[i].row  == ROW_MINUTES_OWN)      has_own = true;
           }
+          if (s_face.count > 0 && s_face.items[0].row == ROW_HEDGE) {
+            base = 1;
+          }
           if (split) {
             snprintf(buf, sizeof(buf), "head row %d, lower half row %d",
-                     s_face.items[0].row, s_face.items[1].row);
-            CHECK(s_face.items[0].row == ROW_SPLIT_HEAD,
+                     s_face.items[base].row, s_face.items[base + 1].row);
+            CHECK(s_face.items[base].row == ROW_SPLIT_HEAD,
                   "the split head is not on its own row", h, m, buf);
-            CHECK(s_face.items[1].row == ROW_MINUTE_SPLIT,
+            CHECK(s_face.items[base + 1].row == ROW_MINUTE_SPLIT,
                   "the split's lower half is not on its own row", h, m, buf);
           } else {
             const uint8_t want = has_own ? ROW_MINUTE : ROW_MINUTE_ALONE;
             snprintf(buf, sizeof(buf),
                      "number is on row %d, expected %d (%s annotation below)",
-                     s_face.items[0].row, want, has_own ? "with" : "no");
-            CHECK(s_face.items[0].row == want,
+                     s_face.items[base].row, want, has_own ? "with" : "no");
+            CHECK(s_face.items[base].row == want,
                   "the minute number is on the wrong lever", h, m, buf);
           }
         }
@@ -893,6 +1021,7 @@ static void check_offset_independence(void) {
                 "\"minute(s)\" left the number's line once drawn", h, m, buf);
         }
       }
+     }
     }
   }
 
@@ -941,12 +1070,14 @@ static void snapshot_offsets(int *out) {
   out[2] = s_settings.offset_minute_alone;
   out[3] = s_settings.offset_minute_split;
   out[4] = s_settings.offset_hedge;
-  out[5] = s_settings.offset[ROW_MINUTES_INLINE];
-  out[6] = s_settings.offset_minutes_own;
-  out[7] = s_settings.offset[ROW_RELATION];
-  out[8] = s_settings.offset[ROW_HOUR];
-  out[9] = s_settings.offset[ROW_SOLO];
-  out[10] = s_settings.offset[ROW_DATE];
+  out[5] = s_settings.offset_hedge_solo;
+  out[6] = s_settings.offset_block;
+  out[7] = s_settings.offset[ROW_MINUTES_INLINE];
+  out[8] = s_settings.offset_minutes_own;
+  out[9] = s_settings.offset[ROW_RELATION];
+  out[10] = s_settings.offset[ROW_HOUR];
+  out[11] = s_settings.offset[ROW_SOLO];
+  out[12] = s_settings.offset[ROW_DATE];
 }
 
 static void check_message_routing(void) {
@@ -957,6 +1088,8 @@ static void check_message_routing(void) {
     {MESSAGE_KEY_OffMinuteAlone, "OffMinuteAlone"},
     {MESSAGE_KEY_OffMinuteSplit, "OffMinuteSplit"},
     {MESSAGE_KEY_OffHedge,       "OffHedge"},
+    {MESSAGE_KEY_OffHedgeSolo,   "OffHedgeSolo"},
+    {MESSAGE_KEY_OffBlock,       "OffBlock"},
     {MESSAGE_KEY_OffMinutes,     "OffMinutes"},
     {MESSAGE_KEY_OffMinutesOwn,  "OffMinutesOwn"},
     {MESSAGE_KEY_OffRelation,    "OffRelation"},
@@ -967,7 +1100,7 @@ static void check_message_routing(void) {
   const int n = (int)(sizeof(kOffsets) / sizeof(kOffsets[0]));
 
   for (int i = 0; i < n; i++) {
-    int before[11], after[11];
+    int before[13], after[13];
     settings_defaults();
     snapshot_offsets(before);
 
@@ -1087,6 +1220,9 @@ static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding) {
     check_hour_family(&s_face, h, m);
     check_rounding(h, m);
     check_hedge_placement(&s_face, h, m);
+    if (m % 7 == 0) {   /* every minute would be 3x the sweep */
+      check_block_offset(h, m, fmt, mode, rounding);
+    }
 
     for (int i = 0; i < s_face.count; i++) {
       const Element *e = &s_face.items[i];
