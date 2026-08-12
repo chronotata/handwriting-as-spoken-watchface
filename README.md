@@ -29,21 +29,43 @@ word at a time, rather than reading digits off a clock face.
 - **Traditional time-telling** — *past*/*to* the hour, *quarter*,
   *half*, *midnight*/*midday*/*noon* used the way people actually say them
   (not simply mirroring the 12/24-hour setting)
-- **A date line** — `21st Aug. 2026`, always centred, ordinal correctly
-  superscript.
+- **Three ways to read the minute** — the exact minute, the nearest five
+  the way an analogue dial is usually read aloud, or the nearest five with
+  *just gone* / *nearly* saying which way it rounded.
+- **Three ways to say `minute(s)`** — only when the minute isn't a round
+  five, never, or after any number (but never *"quarter minutes past"*).
+- **A date line** in two formats — `21st Aug. 2026` or `Mon. 21st Aug.` —
+  always centred, ordinal correctly superscript.
 - **A handwriting-style reveal animation** — words appear to be written on,
   left to right, and only the parts of the display that actually changed
   redraw on each minute tick.
-- **Six live tuning sliders** in the watch's settings — nudge any row up or
-  down by eye, directly on the watch, no rebuild required.
-- Paper and ink colours are configurable from the same settings page.
+- **Ten live tuning sliders** in the watch's settings — nudge any row up or
+  down by eye, directly on the watch, no rebuild required. Tapping a slider
+  track does nothing, so scrolling past one can't move it by accident.
+- **Paper and ink colours** configurable from the same page, with a stroke
+  weight that compensates for dark text rendering thinner than light text
+  on this panel.
 
 ## Status
 
-**v1.1 — working end to end.** Builds clean, and has been installed and
-confirmed correct on both the Pebble emulator and a real Pebble Time 2.
-Emery (Pebble Time 2, 200×228) is the only target platform for now; other
-Pebble hardware is deferred.
+**v1.2 — feature complete for the rendered typeface.** Builds clean, and
+has been installed and confirmed correct on both the Pebble emulator and a
+real Pebble Time 2. Emery (Pebble Time 2, 200×228) is the only target
+platform for now; other Pebble hardware is deferred.
+
+Added since v1.1:
+
+- **Two date formats** — `10th Aug. 2026` or `Mon. 10th Aug.`
+- **Three ways to say `minute(s)`** — only on non-fives, never, or after
+  any number
+- **Three ways to read the minute** — the exact minute, the nearest five,
+  or the nearest five with *just gone* / *nearly* saying which way it went
+- **Larger type throughout**, with rows deliberately interwoven rather than
+  held clear, and everything on the hour set in the large wording
+- **Stroke-weight compensation** for dark ink on a light background, which
+  renders about 20% thinner on this panel
+- **Ten independent nudge sliders**, and a settings page whose sliders can
+  no longer be moved by brushing past them
 
 Treat this as the stable point to branch further changes from.
 

@@ -1,10 +1,16 @@
 # Handwritten (British) — Project Context
 
-Status: **built, installed, and confirmed working on both the emulator and
-real Pebble Time 2 hardware**, including the uniform family boxes (§2, §3.2)
-and the selectable date formats (§3.4) — both of which were arithmetic and a
-layout sweep only until they were seen on the watch. This
-document describes what shipped and why. For the blow-by-blow of how it got here — three failed masking schemes,
+Status: **v1.2 — feature complete for the rendered typeface.** Built,
+installed and confirmed working on both the emulator and real Pebble Time 2
+hardware, including the uniform family boxes (§2, §3.2) and the selectable
+date formats (§3.4) — both of which were arithmetic and a layout sweep only
+until they were seen on the watch.
+
+The last round of work — the larger type, the SOLO wording on the hour, and
+the three ways of reading the minute — passes the full sweep but is newer
+than the last hardware confirmation. Update this line once it has been worn.
+
+This document describes what shipped and why. For the blow-by-blow of how it got here — three failed masking schemes,
 the font-vs-bitmap decision, the split-line layout exploration — see the
 project's chat history; it isn't repeated here.
 
@@ -48,8 +54,8 @@ A word's neighbours cannot move when it is replaced by a different word,
 and baselines land on the same lines all day — the stacked layout uses
 y = 25 / 76 / 127 / 178, always. See §3.2 for why that matters.
 
-Families are the five *size* families (`TIME`, `SOLO`, `MINS`, `DATE`,
-`ORD`), not roles. `SOLO` covers everything that appears **on the hour** —
+Families are the six *size* families (`TIME`, `SOLO`, `MINS`, `DATE`,
+`ORD`, `HEDGE`), not roles. `SOLO` covers everything that appears **on the hour** —
 the lone `midnight`/`midday`, every *"\<n\> o' clock"*, and the witching
 hour — because those phrases are two or three short words with the whole
 screen to themselves. That is why `one`..`eleven` are rendered twice, once
