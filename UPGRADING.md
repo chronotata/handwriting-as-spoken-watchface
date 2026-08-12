@@ -136,7 +136,7 @@ pip install Pillow --break-system-packages   # if not already present
 python3 tools/tune.py
 ```
 
-This renders all 80 words the face can show into `resources/images/`,
+This renders all 83 words the face can show into `resources/images/`,
 writes `src/c/geometry.h` and `tools/test/generated.h`, and updates the
 bitmap resource list in `package.json`. **Re-run this any time you change a
 `FONT_SIZE_*` in `config.h`** — image, geometry, and manifest all have to
@@ -157,7 +157,7 @@ Both mean the same thing — run `tune.py`. They exist because a stale
 the table and the images it indexes is not something a build would
 otherwise notice.
 
-It also writes `handwriting-templates/` — the same 80 words as plain PNGs
+It also writes `handwriting-templates/` — the same 83 words as plain PNGs
 at their exact final sizes, for tracing over with real handwriting later.
 
 `tune.py` checks the vertical budget before it writes anything, and stops
@@ -185,7 +185,8 @@ takes under a second. If `node` happens to be installed it also runs the
 settings-page test (`clay-slider.test.js`); if not, it says so and carries
 on. It compiles the real `handwritten.c` against a stub of
 the SDK and sweeps every minute of the day and every date of a leap year,
-once per date format and minutes mode — about 1.0 million assertions, under
+once per date format, minutes mode and reading mode — about 2.5 million
+assertions, under
 AddressSanitizer.
 
 Run it before every `pebble build`. It catches in a second what otherwise
@@ -333,6 +334,8 @@ Four of those sliders cover the rows above *past*/*to*, and they are
 separate on purpose:
 
 | slider | moves |
+|---|---|
+| "just gone" / "nearly" | the hedge above the minute, spoken mode only |
 |---|---|
 | Split number, top half | only `twenty-`, so it can be pulled clear of the screen edge on its own |
 | Minute number, with "minute(s)" below | :01–:20 when the annotation shows and fills the gap |

@@ -49,7 +49,7 @@ Treat this as the stable point to branch further changes from.
 
 **Next planned step (v2):** replacing the rendered typeface with the
 maintainer's own handwriting. The rendering pipeline already exports a full
-set of correctly-sized template images for this — the 80 PNGs in
+set of correctly-sized template images for this — the 83 PNGs in
 `handwriting-templates/`, each at the exact canvas size its finished
 artwork needs to be. Swapping them in is a resources-and-`geometry.h`
 change; no layout, anchoring, or animation code should need to move.

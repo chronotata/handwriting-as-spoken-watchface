@@ -84,6 +84,9 @@
 #define RESOURCE_ID_W_SOLO_THE 78
 #define RESOURCE_ID_W_SOLO_WITCHING 79
 #define RESOURCE_ID_W_SOLO_HOUR 80
+#define RESOURCE_ID_W_TWENTYFIVE 81
+#define RESOURCE_ID_W_JUST_GONE 82
+#define RESOURCE_ID_W_NEARLY 83
 
 typedef struct { uint8_t asc, desc; } WordInk;
 
@@ -169,6 +172,9 @@ static const WordInk WORD_INK[] = {
   {36, 1},        /* the */
   {36, 19},        /* witching */
   {36, 1},        /* hour */
+  {34, 16},        /* twenty-five */
+  {18, 11},        /* just|gone */
+  {21, 10},        /* nearly */
 };
 
 /* x-height of each word's family - the lowercase body height. */
@@ -253,4 +259,7 @@ static const uint8_t WORD_XHEIGHT[] = {
   21,   /* SOLO      the */
   21,   /* SOLO      witching */
   21,   /* SOLO      hour */
+  18,   /* TIME      twenty-five */
+  11,   /* HEDGE     just|gone */
+  11,   /* HEDGE     nearly */
 };

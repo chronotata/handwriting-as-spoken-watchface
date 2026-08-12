@@ -417,13 +417,20 @@ static void check_minutes_mode(const Face *f, uint8_t mode, int h, int m) {
   snprintf(buf, sizeof(buf), "%d of them", found);
   CHECK(found <= 1, "more than one \"minutes\"", h, m, buf);
 
+  /* Everything here is about the minute the face SPEAKS, which is not the
+   * wall-clock minute once rounding is on. Comparing against m would have
+   * this failing all over the rounded modes for a face that is correct. */
+  int sh = h, sm = m;
+  uint8_t hedge;
+  round_clock(&sh, &sm, &hedge);
+
   /* On the hour there is no minute number to annotate, in any mode. */
-  if (m == 0) {
+  if (sm == 0) {
     CHECK(found == 0, "\"minutes\" on the hour", h, m, kMinutesModes[mode]);
     return;
   }
 
-  const int mins = (m <= 30) ? m : 60 - m;
+  const int mins = (sm <= 30) ? sm : 60 - sm;
   bool want;
   switch (mode) {
     case MINS_NEVER:
@@ -534,6 +541,92 @@ static void check_palette(void) {
 }
 
 /*
+ * ROUNDING, stated from the rule rather than from the code.
+ *
+ * The face may only ever speak a multiple of five once rounding is on, the
+ * spoken time must be within two minutes of the real one, and the hedge has
+ * to agree with the direction it moved. Phrased that way rather than by
+ * re-deriving the target, so it is a check on the rule and not a copy of it.
+ */
+static void check_rounding(int h, int m) {
+  char buf[200];
+  int sh = h, sm = m;
+  uint8_t hedge;
+  round_clock(&sh, &sm, &hedge);
+
+  if (s_settings.rounding == ROUND_EXACT) {
+    CHECK(sh == h && sm == m && hedge == W_COUNT,
+          "exact mode changed the time", h, m, "");
+    return;
+  }
+
+  snprintf(buf, sizeof(buf), "%02d:%02d spoken as %02d:%02d", h, m, sh, sm);
+  CHECK(sm % 5 == 0, "a rounded minute is not a multiple of five", h, m, buf);
+
+  /* how far the clock moved, in minutes, signed */
+  int delta = (sh * 60 + sm) - (h * 60 + m);
+  if (delta > 720) delta -= 1440;
+  if (delta < -720) delta += 1440;
+  snprintf(buf, sizeof(buf), "%02d:%02d -> %02d:%02d is %d minutes",
+           h, m, sh, sm, delta);
+  CHECK(delta >= -2 && delta <= 2, "rounded further than the nearest tick",
+        h, m, buf);
+
+  if (s_settings.rounding == ROUND_FIVE) {
+    CHECK(hedge == W_COUNT, "the plain rounded mode produced a hedge",
+          h, m, "");
+    return;
+  }
+
+  /* ROUND_SPOKEN: the hedge says which way the clock moved. */
+  snprintf(buf, sizeof(buf), "moved %+d, hedge %s", delta,
+           hedge == W_COUNT ? "none" :
+           (hedge == W_NEARLY ? "nearly" : "just gone"));
+  if (delta == 0) {
+    CHECK(hedge == W_COUNT, "an exact tick was hedged", h, m, buf);
+  } else if (delta > 0) {
+    CHECK(hedge == W_NEARLY, "rounding forward did not say \"nearly\"",
+          h, m, buf);
+  } else {
+    CHECK(hedge == W_JUST_GONE, "rounding back did not say \"just gone\"",
+          h, m, buf);
+  }
+}
+
+/*
+ * The hedge, where it lands on screen.
+ *
+ * It must sit FLAT above the word it qualifies rather than a step in - at
+ * one indent "twenty-five" ends exactly on the right edge, which is the
+ * whole reason that word is set on one line in this mode.
+ */
+static void check_hedge_placement(const Face *f, int h, int m) {
+  char buf[190];
+  int hedges = 0;
+  for (int i = 0; i < f->count; i++) {
+    const Element *e = &f->items[i];
+    if (e->row != ROW_HEDGE) {
+      continue;
+    }
+    hedges++;
+    CHECK(i == 0, "the hedge is not first in reading order", h, m,
+          "it has to be spoken before the minute");
+    CHECK(e->x == MARGIN, "the hedge is not flush with the margin", h, m, "");
+    if (i + 1 < f->count) {
+      snprintf(buf, sizeof(buf), "hedge at x=%d, the word below at x=%d",
+               e->x, f->items[i + 1].x);
+      CHECK(f->items[i + 1].x == MARGIN,
+            "the hedge took an indent step from the word it qualifies",
+            h, m, buf);
+    }
+  }
+  CHECK(hedges <= 1, "more than one hedge", h, m, "");
+  if (s_settings.rounding != ROUND_SPOKEN) {
+    CHECK(hedges == 0, "a hedge outside the spoken mode", h, m, "");
+  }
+}
+
+/*
  * On the hour, every word is set in the SOLO family.
  *
  * Asserted directly because no geometric rule can see it: a smaller word
@@ -550,7 +643,7 @@ static void check_hour_family(const Face *f, int h, int m) {
   }
   for (int i = 0; i < f->count; i++) {
     const Element *e = &f->items[i];
-    if (e->row == ROW_DATE) {
+    if (e->row == ROW_DATE || e->row == ROW_HEDGE) {
       continue;
     }
     snprintf(buf, sizeof(buf), "word %d has canvas height %d, SOLO_BOX_H is %d",
@@ -847,12 +940,13 @@ static void snapshot_offsets(int *out) {
   out[1] = s_settings.offset[ROW_MINUTE];
   out[2] = s_settings.offset_minute_alone;
   out[3] = s_settings.offset_minute_split;
-  out[4] = s_settings.offset[ROW_MINUTES_INLINE];
-  out[5] = s_settings.offset_minutes_own;
-  out[6] = s_settings.offset[ROW_RELATION];
-  out[7] = s_settings.offset[ROW_HOUR];
-  out[8] = s_settings.offset[ROW_SOLO];
-  out[9] = s_settings.offset[ROW_DATE];
+  out[4] = s_settings.offset_hedge;
+  out[5] = s_settings.offset[ROW_MINUTES_INLINE];
+  out[6] = s_settings.offset_minutes_own;
+  out[7] = s_settings.offset[ROW_RELATION];
+  out[8] = s_settings.offset[ROW_HOUR];
+  out[9] = s_settings.offset[ROW_SOLO];
+  out[10] = s_settings.offset[ROW_DATE];
 }
 
 static void check_message_routing(void) {
@@ -862,6 +956,7 @@ static void check_message_routing(void) {
     {MESSAGE_KEY_OffMinute,      "OffMinute"},
     {MESSAGE_KEY_OffMinuteAlone, "OffMinuteAlone"},
     {MESSAGE_KEY_OffMinuteSplit, "OffMinuteSplit"},
+    {MESSAGE_KEY_OffHedge,       "OffHedge"},
     {MESSAGE_KEY_OffMinutes,     "OffMinutes"},
     {MESSAGE_KEY_OffMinutesOwn,  "OffMinutesOwn"},
     {MESSAGE_KEY_OffRelation,    "OffRelation"},
@@ -872,7 +967,7 @@ static void check_message_routing(void) {
   const int n = (int)(sizeof(kOffsets) / sizeof(kOffsets[0]));
 
   for (int i = 0; i < n; i++) {
-    int before[10], after[10];
+    int before[11], after[11];
     settings_defaults();
     snapshot_offsets(before);
 
@@ -899,6 +994,10 @@ static void check_message_routing(void) {
   settings_defaults();
   send_setting(MESSAGE_KEY_MinutesText, 2);
   CHECK(s_settings.minutes_mode == 2, "MinutesText did not arrive", 0, 0, "");
+
+  settings_defaults();
+  send_setting_str(MESSAGE_KEY_Rounding, "2");
+  CHECK(s_settings.rounding == 2, "Rounding did not arrive", 0, 0, "");
 
   settings_defaults();
   send_setting(MESSAGE_KEY_StrokeWeight, 14);
@@ -948,11 +1047,12 @@ static void play_reveal(void) {
   }
 }
 
-static void sweep_minutes(uint8_t fmt, uint8_t mode) {
+static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding) {
   int redrawn = 0, moved = 0, elements = 0, peak_bitmaps = 0;
 
   s_settings.date_format = fmt;
   s_settings.minutes_mode = mode;
+  s_settings.rounding = rounding;
   s_have_prev = false;
   s_last_yday = -1;
   drop_all_bitmaps();
@@ -985,6 +1085,8 @@ static void sweep_minutes(uint8_t fmt, uint8_t mode) {
     check_minutes_mode(&s_face, mode, h, m);
     check_ink_overlap(&s_face, h, m);
     check_hour_family(&s_face, h, m);
+    check_rounding(h, m);
+    check_hedge_placement(&s_face, h, m);
 
     for (int i = 0; i < s_face.count; i++) {
       const Element *e = &s_face.items[i];
@@ -1033,6 +1135,7 @@ static void sweep_dates(uint8_t fmt) {
   int yday = 0;
   bool seen_wday[7] = {false, false, false, false, false, false, false};
   s_settings.date_format = fmt;
+  s_settings.rounding = DEFAULT_ROUNDING;
   s_settings.minutes_mode = DEFAULT_MINUTES_MODE;   /* the date line is
                                                        independent of it; pin
                                                        it so this sweep does
@@ -1133,6 +1236,13 @@ static void check_settings(void) {
     CHECK(clamp_minutes_mode(f) == f, "minutes mode clamp", 0, 0, "in range");
   }
 
+  CHECK(clamp_rounding(-1) == DEFAULT_ROUNDING, "rounding clamp", 0, 0, "negative");
+  CHECK(clamp_rounding(ROUNDING_COUNT) == DEFAULT_ROUNDING, "rounding clamp",
+        0, 0, "one past the end");
+  for (uint8_t f = 0; f < ROUNDING_COUNT; f++) {
+    CHECK(clamp_rounding(f) == f, "rounding clamp", 0, 0, "in range");
+  }
+
   CHECK(clamp_stroke_weight(-1) == DEFAULT_STROKE_WEIGHT, "stroke weight clamp",
         0, 0, "negative");
   CHECK(clamp_stroke_weight(STROKE_WEIGHT_MAX + 1) == DEFAULT_STROKE_WEIGHT,
@@ -1184,6 +1294,7 @@ static void check_minutes_wording(void) {
     {MINS_ALWAYS, 1,  0, false, "one o' clock takes no minutes"}
   };
 
+  s_settings.rounding = ROUND_EXACT;   /* these phrases are the exact ones */
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
     s_settings.minutes_mode = cases[i].mode;
     struct tm tm = make_tm(232, 21, 7, 2026, cases[i].h, cases[i].m);
@@ -1211,6 +1322,7 @@ static void check_wording(void) {
   /* These cases describe the default mode; :25 dropping "minutes" is true
    * of MINS_AUTO only, and is a deliberate choice of a different mode. */
   s_settings.minutes_mode = MINS_AUTO;
+  s_settings.rounding = ROUND_EXACT;
 
   struct { int h, m; uint8_t want; const char *why; } cases[] = {
     {0,  0,  W_SOLO_MIDNIGHT, "midnight alone"},
@@ -1264,9 +1376,12 @@ int main(void) {
    */
   for (uint8_t fmt = 0; fmt < DATE_FORMAT_COUNT; fmt++) {
     for (uint8_t mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
-      printf("\ndate format %d \"%s\"  x  minutes %d \"%s\"\n",
-             fmt, kDateFormats[fmt].sample, mode, kMinutesModes[mode]);
-      sweep_minutes(fmt, mode);
+      for (uint8_t rnd = 0; rnd < ROUNDING_COUNT; rnd++) {
+        printf("\ndate %d \"%s\"  x  minutes \"%s\"  x  reading \"%s\"\n",
+               fmt, kDateFormats[fmt].sample, kMinutesModes[mode],
+               kRoundingModes[rnd]);
+        sweep_minutes(fmt, mode, rnd);
+      }
     }
     sweep_dates(fmt);
   }

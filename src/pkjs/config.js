@@ -84,6 +84,25 @@ module.exports = [
       { type: 'heading', defaultValue: 'Wording' },
       // Values are indices into kMinutesModes[] in src/c/handwritten.c and
       // are the wire format - never reordered, new modes on the end.
+      // Values index kRoundingModes[] in src/c/handwritten.c - wire format,
+      // never reordered. "Nearest five" is how most people read an analogue
+      // dial; it also stops "minute(s)" ever appearing, which is the point.
+      {
+        type: 'select',
+        messageKey: 'Rounding',
+        label: 'Read the minute',
+        description:
+          'Rounding to the nearest five is how an analogue dial is usually ' +
+          'read aloud. "Spoken" adds <em>just gone</em> or <em>nearly</em> ' +
+          'to say which way it rounded. Note that at :58 and :59 the hour ' +
+          'rolls forward while the date stays on today.',
+        defaultValue: '0',
+        options: [
+          { label: 'Exact minute', value: '0' },
+          { label: 'Nearest five', value: '1' },
+          { label: 'Nearest five, spoken', value: '2' }
+        ]
+      },
       {
         type: 'select',
         messageKey: 'MinutesText',
@@ -102,7 +121,9 @@ module.exports = [
           'ten</em> but <em>five past five</em>. "Never" drops it ' +
           'everywhere. "After any number" says <em>five minutes past ' +
           'five</em>, while still saying <em>quarter past</em> and ' +
-          '<em>half past</em> — "quarter minutes past" is not English.'
+          '<em>half past</em> — "quarter minutes past" is not English.' +
+          ' With rounding on, "only when not a round five" never fires, ' +
+          'since every minute becomes one.'
       }
     ]
   },
@@ -145,6 +166,8 @@ module.exports = [
           'past a slider cannot move it by accident. The box on the right ' +
           'takes a typed number.'
       },
+      offsetSlider('OffHedge', '"just gone" / "nearly"',
+                   'The small word above the minute, in the spoken mode'),
       offsetSlider('OffSplitHead', 'Split number, top half',
                    '"twenty-" — only appears when the minute splits across ' +
                    'two lines. Use this to pull it clear of the top edge ' +

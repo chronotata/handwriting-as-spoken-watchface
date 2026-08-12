@@ -36,7 +36,9 @@
       "OffSplitHead",
       "OffMinutesOwn",
       "OffMinuteAlone",
-      "OffMinuteSplit"
+      "OffMinuteSplit",
+      "Rounding",
+      "OffHedge"
     ],
     "resources": {
       "media": [
@@ -597,6 +599,27 @@
           "type": "bitmap",
           "name": "W_SOLO_HOUR",
           "file": "images/w_solo_hour.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_TWENTYFIVE",
+          "file": "images/w_twentyfive.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_JUST_GONE",
+          "file": "images/w_just_gone.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "W_NEARLY",
+          "file": "images/w_nearly.png",
           "memoryFormat": "4BitPalette",
           "storageFormat": "pbi"
         }

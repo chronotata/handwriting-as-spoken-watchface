@@ -30,6 +30,9 @@
                            /* and every "<n> o' clock" and the witching */
                            /* hour, which have the screen to themselves */
 #define FONT_SIZE_MINS 27  /* the small "minute(s)" annotation  */
+#define FONT_SIZE_HEDGE 27 /* "just gone" / "nearly" - same size as the */
+                           /* annotation, but its own family: these have */
+                           /* descenders and would double the MINS box   */
 #define FONT_SIZE_DATE 24  /* day number and year               */
 #define FONT_SIZE_ORD  15  /* the superscript st/nd/rd/th       */
 
@@ -60,6 +63,7 @@
  * for the same reason: two things that want different placement should not
  * share a lever.
  */
+#define OFFSET_HEDGE 0  /* "just gone" / "nearly", above the minute word */
 #define OFFSET_SPLIT_HEAD 8  /* "twenty-", the first half of a split word  */
 
  /*
@@ -257,3 +261,20 @@
  * and watches that have chosen otherwise persist their own value.
  */
 #define DEFAULT_MINUTES_MODE 0
+
+/*
+ * How the minute is read off the face - see kRoundingModes in handwritten.c.
+ *
+ *   0  exact          "six minutes past one"
+ *   1  nearest five   "five past one"
+ *   2  nearest five,  "just gone five past one", "nearly ten past one"
+ *      spoken
+ *
+ * Mode 1 is how most people read an analogue dial, and it is why the
+ * "minute(s)" annotation stops appearing: every minute is a multiple of
+ * five, so the AUTO setting never fires. That is intentional, not a bug.
+ *
+ * Mode 2 adds the hedge that says which way the rounding went. It is the
+ * only mode that sets "twenty-five" on one line - it needs the row.
+ */
+#define DEFAULT_ROUNDING 0

@@ -22,6 +22,8 @@
 #define DATE_BOX_BASE 19
 #define ORD_BOX_H 11
 #define ORD_BOX_BASE 11
+#define HEDGE_BOX_H 32
+#define HEDGE_BOX_BASE 21
 
 /* Ink ascent of "twenty-", the top row of the tallest phrase. The
    difference from TIME_BOX_BASE is the only slack at the top of the
@@ -115,6 +117,9 @@ typedef enum {
   W_SOLO_THE,        /* the */
   W_SOLO_WITCHING,   /* witching */
   W_SOLO_HOUR,       /* hour */
+  W_TWENTYFIVE,      /* twenty-five */
+  W_JUST_GONE,       /* just|gone */
+  W_NEARLY,          /* nearly */
   W_COUNT
 } WordId;
 
@@ -199,4 +204,7 @@ static const WordGeom WORDS[W_COUNT] = {
   {RESOURCE_ID_W_SOLO_THE, 57, 58, 39},
   {RESOURCE_ID_W_SOLO_WITCHING, 158, 58, 39},
   {RESOURCE_ID_W_SOLO_HOUR, 78, 58, 39},
+  {RESOURCE_ID_W_TWENTYFIVE, 181, 51, 34},
+  {RESOURCE_ID_W_JUST_GONE, 98, 32, 21},
+  {RESOURCE_ID_W_NEARLY, 63, 32, 21},
 };

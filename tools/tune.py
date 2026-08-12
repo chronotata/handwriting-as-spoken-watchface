@@ -138,13 +138,23 @@ def words():
     out.append(("W_SOLO_OCLOCK", "SOLO", "o'|clock"))
     for w in ("the", "witching", "hour"):
         out.append(("W_SOLO_" + w.upper(), "SOLO", w))
+    # "twenty-five" set on ONE line. Only the spoken rounding mode uses it,
+    # where it frees the row the hedge needs; the exact mode still splits,
+    # because "twenty-seven" is 206px and would run off the screen.
+    out.append(("W_TWENTYFIVE", "TIME", "twenty-five"))
+    # The hedges get their own family rather than joining MINS: they carry
+    # descenders ("just gone" has a j and a g, "nearly" a y) which would push
+    # the MINS box from 16px to 32 and shift every stacked layout in the
+    # other modes.
+    out.append(("W_JUST_GONE", "HEDGE", "just|gone"))
+    out.append(("W_NEARLY", "HEDGE", "nearly"))
     return out
 
 
 def read_sizes():
     text = CONFIG.read_text()
     out = {}
-    for key in ("TIME", "SOLO", "MINS", "DATE", "ORD"):
+    for key in ("TIME", "SOLO", "MINS", "DATE", "ORD", "HEDGE"):
         m = re.search(r"^\s*#define\s+FONT_SIZE_%s\s+(\d+)" % key, text, re.M)
         if not m:
             sys.exit("could not find FONT_SIZE_%s in config.h" % key)
@@ -350,7 +360,7 @@ def write_test_header(rendered, box):
     # failures on a layout that is actually fine.
     sizes = read_sizes()
     xh = {}
-    for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD"):
+    for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD", "HEDGE"):
         # "on" has neither an ascender nor a descender, so its ink height is
         # the x-height outright.
         xh[fam] = render_word("on", sizes[fam])[0].height
@@ -444,7 +454,7 @@ def main():
     out.append("#define GEOMETRY_HAS_WEEKDAYS 1")
     out.append("")
     out.append("/* Family boxes: ascent + descent, and the shared baseline offset. */")
-    for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD"):
+    for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD", "HEDGE"):
         a, d = box[fam]
         out.append("#define %s_BOX_H %d" % (fam, a + d))
         out.append("#define %s_BOX_BASE %d" % (fam, a))

@@ -110,6 +110,15 @@ typedef enum {
    */
   ROW_MINUTE_ALONE,
   ROW_MINUTE_SPLIT,
+
+  /*
+   * "just gone" / "nearly", above the minute word in the spoken rounding
+   * mode. It does NOT take an indent step - it sits at the same x as the
+   * word it qualifies, because it modifies that word rather than being a
+   * rung of its own in the staircase. At one step in, "twenty-five" would
+   * end exactly on the right edge.
+   */
+  ROW_HEDGE,
   ROW_COUNT
 } RowId;
 
@@ -161,6 +170,8 @@ typedef struct {
   int8_t offset_minutes_own;    /* ROW_MINUTES_OWN, likewise             */
   int8_t offset_minute_alone;   /* ROW_MINUTE_ALONE                      */
   int8_t offset_minute_split;   /* ROW_MINUTE_SPLIT                      */
+  int8_t offset_hedge;          /* ROW_HEDGE                             */
+  uint8_t rounding;             /* index into kRoundingModes             */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -265,6 +276,65 @@ static bool wants_minutes(int mins) {
     case MINS_AUTO:
     default:
       return (mins % 5) != 0;
+  }
+}
+
+/*
+ * How the minute is read off the dial.
+ *
+ * Index order is the wire format - the phone stores and sends it - so new
+ * modes go on the end and these are never reordered.
+ */
+typedef enum {
+  ROUND_EXACT = 0,   /* "six minutes past one"                        */
+  ROUND_FIVE,        /* "five past one"                               */
+  ROUND_SPOKEN       /* "just gone five past one" / "nearly ten past" */
+} RoundingMode;
+
+static const char *const kRoundingModes[] = {
+  "exact",
+  "nearest five",
+  "nearest five, spoken"
+};
+
+#define ROUNDING_COUNT \
+  ((uint8_t)(sizeof(kRoundingModes) / sizeof(kRoundingModes[0])))
+
+/*
+ * Round the clock to the nearest five minutes, and say which way it went.
+ *
+ * Everything rounds to the NEAREST tick - no landmark gets a wider pull
+ * toward the hour or the half. People do reference times against the
+ * roundest mark nearby, but nothing found in the literature pins down how
+ * wide that window should be, so the rule stays the one that is easy to
+ * predict from the dial.
+ *
+ * :58 and :59 round into the next hour. The DATE is deliberately left
+ * alone - it comes from the real time, not the spoken one - so at 23:58
+ * the face reads "nearly midnight" above today's date.
+ */
+static void round_clock(int *h, int *m, uint8_t *hedge) {
+  *hedge = W_COUNT;                    /* W_COUNT means "no hedge" */
+  if (s_settings.rounding == ROUND_EXACT) {
+    return;
+  }
+
+  const int rem = *m % 5;
+  int offset;                          /* + means the tick is behind us */
+  if (rem <= 2) {
+    *m -= rem;
+    offset = rem;
+  } else {
+    *m += 5 - rem;
+    offset = -(5 - rem);
+  }
+  if (*m >= 60) {
+    *m = 0;
+    *h = (*h + 1) % 24;
+  }
+
+  if (s_settings.rounding == ROUND_SPOKEN && offset != 0) {
+    *hedge = (offset > 0) ? W_JUST_GONE : W_NEARLY;
   }
 }
 
@@ -632,8 +702,21 @@ static void build_date(Face *f, struct tm *t) {
 
 static void build_face(Face *f, struct tm *t) {
   f->count = 0;
-  const int h = t->tm_hour;
-  const int m = t->tm_min;
+  int h = t->tm_hour;
+  int m = t->tm_min;
+  uint8_t hedge;
+  round_clock(&h, &m, &hedge);
+  const bool has_hedge = (hedge != W_COUNT);
+
+  /*
+   * The witching hour answers to the REAL clock, not the spoken one. Left on
+   * the rounded time it would fire for five minutes either side of three,
+   * which both dilutes a once-a-day easter egg and does not fit: three SOLO
+   * rows plus a hedge span 203px against the 194 available, and the top row
+   * was clipped by 4px. So 02:58 reads "nearly three o' clock" in the
+   * ordinary way, and only 03:00 itself is the witching hour.
+   */
+  const bool witching = (t->tm_hour == WITCHING_HOUR && t->tm_min == 0);
 
   /*
    * The three CENTRED layouts. All of them are set in the SOLO family and
@@ -641,21 +724,29 @@ static void build_face(Face *f, struct tm *t) {
    * hang off the middle of the screen rather than off REL_TOP, and the
    * levers that place the stacked phrase have nothing to say about them.
    */
-  if (h == WITCHING_HOUR && m == 0) {
+  const int first = has_hedge ? 1 : 0;   /* index of the first real word */
+
+  if (witching) {
+    if (has_hedge) push(f, hedge, ROW_HEDGE);
     push(f, W_SOLO_THE, ROW_SOLO);
     push(f, W_SOLO_WITCHING, ROW_SOLO);
     push(f, W_SOLO_HOUR, ROW_SOLO);
-    indent_rows(f, 0, 2);
-    centre(f, 0, 2);
+    indent_rows(f, first, first + 2);
+    if (has_hedge) f->items[0].x = MARGIN;
+    centre(f, 0, f->count - 1);
   } else if (m == 0 && (h == 0 || h == 12)) {
+    if (has_hedge) push(f, hedge, ROW_HEDGE);
     push(f, h == 0 ? W_SOLO_MIDNIGHT : W_SOLO_MIDDAY, ROW_SOLO);
-    indent_rows(f, 0, 0);
-    centre(f, 0, 0);
+    indent_rows(f, first, first);
+    if (has_hedge) f->items[0].x = MARGIN;
+    centre(f, 0, f->count - 1);
   } else if (m == 0) {
+    if (has_hedge) push(f, hedge, ROW_HEDGE);
     push(f, kSoloOnes[h % 12 - 1], ROW_SOLO);
     push(f, W_SOLO_OCLOCK, ROW_SOLO);
-    indent_rows(f, 0, 1);
-    centre(f, 0, 1);
+    indent_rows(f, first, first + 1);
+    if (has_hedge) f->items[0].x = MARGIN;
+    centre(f, 0, f->count - 1);
   } else {
     int mins;
     bool past;
@@ -670,20 +761,33 @@ static void build_face(Face *f, struct tm *t) {
       ref = (h + 1) % 24;
     }
 
-    const bool split = (mins >= 21 && mins <= 29);
+    /*
+     * "twenty-five" fits on one line at 181px - the same 9px right margin
+     * "midnight" already lives with on the hour row. Only the spoken mode
+     * uses it, and only because it needs the row for the hedge: the exact
+     * mode still has to split, since "twenty-seven" is 206px wide.
+     */
+    const bool one_line_25 =
+        (s_settings.rounding == ROUND_SPOKEN && mins == 25);
+    const bool split = (mins >= 21 && mins <= 29) && !one_line_25;
     const bool show_mins = wants_minutes(mins);
 
     int rel_idx;
+    if (has_hedge) {
+      push(f, hedge, ROW_HEDGE);
+    }
     if (split) {
       /* Two rows, not one: the head is nudged independently of the number
        * it belongs to, so it can be pulled clear of the top of the screen
        * without dragging the rest of the phrase with it. */
       push(f, W_TWENTYDASH, ROW_SPLIT_HEAD);
       push(f, kOnes[mins - 21], ROW_MINUTE_SPLIT);
-      rel_idx = 2;
+      rel_idx = first + 2;
     } else {
       uint8_t head;
-      if (mins == 15) {
+      if (one_line_25) {
+        head = W_TWENTYFIVE;
+      } else if (mins == 15) {
         head = W_QUARTER;
       } else if (mins == 20) {
         /* kOnes only covers one..nineteen (19 entries) - kOnes[19] for 20
@@ -699,12 +803,12 @@ static void build_face(Face *f, struct tm *t) {
        * will sit beneath it - with nothing under it the gap down to
        * "past"/"to" is empty and wants its own placement. */
       push(f, head, show_mins ? ROW_MINUTE : ROW_MINUTE_ALONE);
-      rel_idx = 1;
+      rel_idx = first + 1;
       if (show_mins) {
         /* Its own row for non-split words, so it never moves as the number
          * changes and is never redrawn. */
         push(f, mins == 1 ? W_MINUTE : W_MINUTES, ROW_MINUTES_OWN);
-        rel_idx = 2;
+        rel_idx = first + 2;
       }
     }
 
@@ -721,9 +825,12 @@ static void build_face(Face *f, struct tm *t) {
      * minutes past one") - so ticking between them moved and redrew both
      * words even though the words themselves had not changed.
      */
-    f->items[0].x = MARGIN;
-    if (rel_idx == 2) {
-      f->items[1].x = MARGIN + INDENT;
+    if (has_hedge) {
+      f->items[0].x = MARGIN;       /* flat above the word it qualifies */
+    }
+    f->items[first].x = MARGIN;
+    if (rel_idx == first + 2) {
+      f->items[first + 1].x = MARGIN + INDENT;
     }
     f->items[rel_idx].x = MARGIN + 2 * INDENT;
     f->items[last].x = MARGIN + 3 * INDENT;
@@ -745,7 +852,7 @@ static void build_face(Face *f, struct tm *t) {
      * that come before it in the phrase.
      */
     if (split && show_mins) {
-      const Element *host = &f->items[1];
+      const Element *host = &f->items[first + 1];
       Element e;
       e.word = mins == 1 ? W_MINUTE : W_MINUTES;
       e.row = ROW_MINUTES_INLINE;
@@ -755,7 +862,7 @@ static void build_face(Face *f, struct tm *t) {
       e.x = (after < clamp) ? after : clamp;
       /* Baseline-aligned with the word it follows. */
       e.top = host->top + WORDS[host->word].base - WORDS[e.word].base;
-      insert_element(f, 2, e);
+      insert_element(f, first + 2, e);
     }
   }
 
@@ -811,6 +918,9 @@ static int row_offset(uint8_t row) {
   }
   if (row == ROW_MINUTE_SPLIT) {
     return s_settings.offset_minute_split;
+  }
+  if (row == ROW_HEDGE) {
+    return s_settings.offset_hedge;
   }
   return (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
 }
@@ -929,6 +1039,8 @@ static void settings_defaults(void) {
   s_settings.offset_minutes_own = OFFSET_MINUTES_OWN;
   s_settings.offset_minute_alone = OFFSET_MINUTE_ALONE;
   s_settings.offset_minute_split = OFFSET_MINUTE_SPLIT;
+  s_settings.offset_hedge = OFFSET_HEDGE;
+  s_settings.rounding = DEFAULT_ROUNDING;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
   s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
   s_settings.offset[ROW_SOLO] = OFFSET_SOLO;
@@ -980,6 +1092,10 @@ static uint8_t clamp_date_format(int32_t v) {
   return (v >= 0 && v < DATE_FORMAT_COUNT) ? (uint8_t)v : DEFAULT_DATE_FORMAT;
 }
 
+static uint8_t clamp_rounding(int32_t v) {
+  return (v >= 0 && v < ROUNDING_COUNT) ? (uint8_t)v : DEFAULT_ROUNDING;
+}
+
 static uint8_t clamp_minutes_mode(int32_t v) {
   return (v >= 0 && v < MINUTES_MODE_COUNT) ? (uint8_t)v : DEFAULT_MINUTES_MODE;
 }
@@ -1017,6 +1133,8 @@ static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
     s_settings.offset_minute_alone = v;
   } else if (row == ROW_MINUTE_SPLIT) {
     s_settings.offset_minute_split = v;
+  } else if (row == ROW_HEDGE) {
+    s_settings.offset_hedge = v;
   } else if (row < OFFSET_ROWS) {
     s_settings.offset[row] = v;
   }
@@ -1039,6 +1157,9 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   if ((t = dict_find(it, MESSAGE_KEY_MinutesText))) {
     s_settings.minutes_mode = clamp_minutes_mode(tuple_int(t));
   }
+  if ((t = dict_find(it, MESSAGE_KEY_Rounding))) {
+    s_settings.rounding = clamp_rounding(tuple_int(t));
+  }
   if ((t = dict_find(it, MESSAGE_KEY_StrokeWeight))) {
     s_settings.stroke_weight = clamp_stroke_weight(tuple_int(t));
   }
@@ -1047,6 +1168,7 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   read_offset(it, MESSAGE_KEY_OffMinutesOwn, ROW_MINUTES_OWN);
   read_offset(it, MESSAGE_KEY_OffMinuteAlone, ROW_MINUTE_ALONE);
   read_offset(it, MESSAGE_KEY_OffMinuteSplit, ROW_MINUTE_SPLIT);
+  read_offset(it, MESSAGE_KEY_OffHedge, ROW_HEDGE);
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
   read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);

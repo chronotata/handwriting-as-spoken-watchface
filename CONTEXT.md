@@ -25,7 +25,7 @@ native to the Pebble Time 2 (Emery, 200×228):
 ## 2. Architecture: pre-rendered word bitmaps
 
 Words are **images, not font text.** `tools/tune.py` renders every word the
-face can ever show — 80 of them — to individual PNGs at build-configuration
+face can ever show — 83 of them — to individual PNGs at build-configuration
 time; `handwritten.c` only ever blits rectangles of those images.
 
 **Why not a font:** three consecutive attempts to mask *unrevealed* text
@@ -129,7 +129,7 @@ memory, and levels 3–15 keep their old meaning to the pixel, so
 existing canvas rather than its own, so not one word moved: every canvas
 size, baseline and family box is exactly as it was.
 
-Worth +15.8% across all 80 words, which targets the *nominal* width baked
+Worth +15.8% across all 83 words, which targets the *nominal* width baked
 into the bitmaps rather than matching white-on-black — that scheme is itself
 running about 6% fat from bloom. `DEFAULT_STROKE_WEIGHT` sets how heavily
 the outline is inked, and the phone exposes it as a slider; 0 turns it off.
@@ -294,6 +294,37 @@ Twelve o'clock is asymmetric on purpose: `midday` only when it stands
 alone, `noon` after it (*past*), `twelve` before it (*to*); `midnight` on
 both sides.
 
+**How the minute is READ is a setting** (`kRoundingModes`): the exact
+minute, the nearest five, or the nearest five with a hedge saying which way
+it went — *just gone five past*, *nearly ten past*. Rounding is to the
+nearest tick throughout; no landmark gets a wider pull toward the hour or
+half. People plainly do reference times against the roundest mark nearby,
+but nothing in the literature pins down how wide that window should be, so
+the rule stays the one that is predictable from the dial.
+
+Three consequences worth knowing:
+
+- **`minute(s)` stops appearing** in the rounded modes, because every minute
+  becomes a multiple of five and the AUTO rule never fires. That is the
+  point of the mode, not a side effect.
+- **:58 and :59 roll the hour forward but not the date.** At 23:58 the face
+  reads *nearly midnight* above today's date. The date comes from the real
+  time; only the phrase is rounded.
+- **`twenty-five` is set on ONE line in the spoken mode only.** It fits at
+  181px — the same 9px right margin `midnight` already lives with — and that
+  frees the row the hedge needs. The exact mode still has to split, since
+  `twenty-seven` is 206px and would run off the screen.
+
+The hedge sits **flat** above the word it qualifies rather than a step in:
+it modifies that word instead of being a rung of its own, and at one indent
+`twenty-five` would end exactly on the right edge.
+
+The witching hour answers to the **real** clock, not the spoken one. Left on
+the rounded time it fired for five minutes either side of three, which both
+diluted a once-a-day easter egg and did not fit — three SOLO rows plus a
+hedge span 203px against the 194 available, and the sweep caught the top row
+clipped by 4px. So 02:58 reads *nearly three o' clock* in the ordinary way.
+
 **Whether `minute(s)` is spoken is a setting** (`kMinutesModes`, chosen on
 the phone). `mins` below is the *spoken* minute count — 29 at both `:29`
 and `:31` — not `tm_min`:
@@ -357,7 +388,7 @@ stub (`pebble.h`, `stub.c`) and sweeps its own `build_face()` over all 1440
 minutes of the day, every date of a leap year, and the asymmetric wording
 cases — **once per date format × minutes mode**, driven off
 `DATE_FORMAT_COUNT` and `MINUTES_MODE_COUNT` so a new setting value is swept
-without anyone remembering to widen a loop. Around 930,000 assertions,
+without anyone remembering to widen a loop. Around 2.5 million assertions,
 under a second.
 
 It is deliberately not a Python re-implementation. A model agrees with
@@ -382,6 +413,8 @@ What it checks:
 | message routing | each settings key drives the field it names and no other, both tuple types, clamping applied on the way in |
 | ink overlap | no descender passes more than `INK_OVERLAP_MAX_PCT` of the ascender below it, none reaches the neighbouring x-height, and no ascender reaches the baseline above — on drawn positions, every minute |
 | on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
+| rounding | the spoken minute is always a multiple of five and never more than two minutes from the real one, and the hedge agrees with the direction it moved |
+| hedge | first in reading order, flush with the margin, never a step in, never outside the spoken mode |
 | drawn offsets | every element moves by exactly its own row's offset — no row drags a neighbour, no slider fails to reach its row — swept over 25 offset combinations, plus the two halves of a split number never sharing a row |
 | palette | across five colour schemes including colour-on-colour: level 0 transparent, level 15 exactly the ink, the ramp monotonic, and the bold outline invisible on light ink but inked on dark |
 | settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range index falls back rather than indexing off `kDateFormats` or `kMinutesModes` |
@@ -401,8 +434,11 @@ ink, the two halves of a split number sharing a row again, a settings key
 routed to the wrong field, a key not read at all, clamping dropped from the
 incoming message, each of the minute number's three cases folded back
 onto a shared lever, rows crammed past the overlap rule, the hour row shoved
-into the date, the split head pushed off the top of the screen, and the
-on-the-hour words reverted to `TIME` size.
+into the date, the split head pushed off the top of the screen, the
+on-the-hour words reverted to `TIME` size, the rounding direction inverted,
+rounding to the nearest ten, the hedge taking an indent step, the hedge
+leaking into the plain rounded mode, and `twenty-five` set on one line in
+every mode.
 
 **The budget checks were measuring a layout nobody sees.** `check_fit`,
 both `_Static_assert`s and `check_bounds` all worked on the computed
