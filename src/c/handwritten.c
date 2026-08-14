@@ -208,6 +208,14 @@ static GBitmap *s_cache[W_COUNT];   /* only the words on screen are loaded */
 
 static AppTimer *s_timer;
 static int s_progress, s_total;
+
+/*
+ * Words on their way OUT, rubbed out right-to-left before anything is
+ * written. See collect_leaving().
+ */
+static Element s_leaving[MAX_ELEMENTS];
+static int s_leaving_count;
+static int s_erase_total;
 static int s_last_yday = -1;
 
 /* ------------------------------------------------------------------ */
@@ -483,6 +491,18 @@ static void prune_cache(void) {
         break;
       }
     }
+    /* A word being erased is off the new face but still on the screen, and
+     * stays there for as long as the rub-out takes. Freeing it here left
+     * bitmap_for() to reload it mid-animation at best, and drew nothing at
+     * worst - the word would vanish exactly as abruptly as before. */
+    if (!used) {
+      for (int j = 0; j < s_leaving_count; j++) {
+        if (s_leaving[j].word == i) {
+          used = true;
+          break;
+        }
+      }
+    }
     if (!used) {
       gbitmap_destroy(s_cache[i]);
       s_cache[i] = NULL;
@@ -491,6 +511,9 @@ static void prune_cache(void) {
 }
 
 static void drop_all_bitmaps(void) {
+  /* Whatever was being rubbed out is about to lose its bitmap. */
+  s_leaving_count = 0;
+  s_erase_total = 0;
   for (int i = 0; i < W_COUNT; i++) {
     if (s_cache[i]) {
       gbitmap_destroy(s_cache[i]);
@@ -938,6 +961,54 @@ static bool same(const Element *a, const Element *b) {
       && a->x == b->x && a->top == b->top;
 }
 
+/*
+ * WORDS THAT LEAVE WITH NOTHING WRITTEN IN THEIR PLACE.
+ *
+ * Almost every change swaps one word for another over the same patch of
+ * screen, so the outgoing word is covered as the incoming one is written and
+ * the transition reads as continuous. The hedge is the exception: when the
+ * clock reaches a round five, "nearly" simply stops applying. The spoken
+ * time either side is identical - :04 and :05 both read as five past - so
+ * nothing else changes, and the word blinked out of existence between one
+ * frame and the next.
+ *
+ * It is now rubbed out instead, right to left, as if erased. The rest of the
+ * face is untouched: this is deliberately NOT a general "animate anything
+ * that leaves" rule. A sweep of the day says the other departures are 50%
+ * or more covered by an arriving word, except the exact mode's inline
+ * "minute(s)" and "twenty-", and those already have new words appearing
+ * around them. Erasing every word that leaves 11:59 -> 12:00 would spend
+ * two seconds rubbing out four words to write one.
+ *
+ * The condition is "the new face has no hedge at all" rather than "this
+ * particular hedge is gone", so "nearly" giving way to "just gone" over the
+ * same spot is left as an ordinary replacement.
+ */
+static bool is_hedge_row(uint8_t row) {
+  return row == ROW_HEDGE || row == ROW_HEDGE_SOLO;
+}
+
+static void collect_leaving(void) {
+  s_leaving_count = 0;
+  s_erase_total = 0;
+  if (!s_have_prev) {
+    return;
+  }
+  for (int i = 0; i < s_face.count; i++) {
+    if (is_hedge_row(s_face.items[i].row)) {
+      return;   /* still hedged - a replacement, not a departure */
+    }
+  }
+  for (int i = 0; i < s_prev.count; i++) {
+    const Element *e = &s_prev.items[i];
+    if (!is_hedge_row(e->row)) {
+      continue;
+    }
+    s_leaving[s_leaving_count++] = *e;
+    s_erase_total += WORDS[e->word].w;
+  }
+}
+
 static void mark_changes(bool date_changed) {
   s_total = 0;
   for (int i = 0; i < s_face.count; i++) {
@@ -959,6 +1030,9 @@ static void mark_changes(bool date_changed) {
       s_total += WORDS[e->word].w;
     }
   }
+  /* The rub-out is part of the same stroke budget, and comes first: the
+   * progress counter walks the leavers before it reaches the writers. */
+  s_total += s_erase_total;
   s_progress = 0;
 }
 
@@ -1067,6 +1141,21 @@ static void draw_element(GContext *ctx, const Element *e, int reveal) {
 
 static void update_proc(Layer *layer, GContext *ctx) {
   int travelled = s_progress;
+
+  /* Rubbed out from the RIGHT: the slice still starts at the word's own left
+   * edge and simply gets shorter, so the word shortens in place rather than
+   * sliding. Drawing the far portion at a moving x would look like the word
+   * running off the edge of the screen, which is a different gesture. */
+  for (int i = 0; i < s_leaving_count; i++) {
+    const Element *e = &s_leaving[i];
+    const int w = WORDS[e->word].w;
+    draw_element(ctx, e, w - travelled);
+    travelled -= w;
+    if (travelled < 0) {
+      travelled = 0;
+    }
+  }
+
   for (int i = 0; i < s_face.count; i++) {
     const Element *e = &s_face.items[i];
     if (!e->animate) {
@@ -1114,6 +1203,9 @@ static void refresh(struct tm *t, bool force) {
   s_last_yday = t->tm_yday;
 
   build_face(&s_face, t);
+  /* Before prune_cache(), which needs to know what is still on screen, and
+   * before s_prev is overwritten, which is where the leavers come from. */
+  collect_leaving();
   prune_cache();
   mark_changes(date_changed);
 

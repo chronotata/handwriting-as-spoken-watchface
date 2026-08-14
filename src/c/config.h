@@ -71,7 +71,7 @@
  * middle of the screen with the o'clock wording and is a different balance
  * entirely.
  */
-#define OFFSET_HEDGE -3      /* stacked: above the minute number  */
+#define OFFSET_HEDGE -5      /* stacked: above the minute number  */
 #define OFFSET_HEDGE_SOLO 0  /* centred: above the o'clock wording */
 
 /*
@@ -150,9 +150,9 @@
   * The last two started as copies of OFFSET_MINUTE so that separating them
   * moved nothing on screen; they are independent from here on.
   */
-#define OFFSET_MINUTE 0  /* number WITH "minute(s)" stacked below   */
-#define OFFSET_MINUTE_ALONE 7  /* number with nothing below it            */
-#define OFFSET_MINUTE_SPLIT 6  /* the lower half of a split word          */
+#define OFFSET_MINUTE -3  /* number WITH "minute(s)" stacked below   */
+#define OFFSET_MINUTE_ALONE 4  /* number with nothing below it            */
+#define OFFSET_MINUTE_SPLIT 4  /* the lower half of a split word          */
 
  /*
   * "minute(s)" gets TWO offsets because it appears in two quite different
@@ -162,8 +162,8 @@
   * constrains it and its distance from "past"/"to" is pure taste, so
   * OFFSET_MINUTES_OWN is free.
   */
-#define OFFSET_MINUTES 6  /* "minute(s)" beside a split number       */
-#define OFFSET_MINUTES_OWN 0  /* "minute(s)" on a line of its own        */
+#define OFFSET_MINUTES 4  /* "minute(s)" beside a split number       */
+#define OFFSET_MINUTES_OWN -3  /* "minute(s)" on a line of its own        */
 
 #define OFFSET_RELATION -5  /* "past" / "to"                     */
 #define OFFSET_HOUR -9  /* the hour word                     */

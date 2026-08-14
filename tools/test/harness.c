@@ -658,6 +658,192 @@ static void check_hedge_does_not_move_the_hour(void) {
   printf("  hedge holds still    %d transitions\n", compared);
 }
 
+/*
+ * THE HEDGE IS RUBBED OUT, NOT BLINKED OUT.
+ *
+ * When the clock reaches a round five the hedge stops applying and nothing
+ * takes its place - :04 and :05 both read as five past, so the rest of the
+ * face is identical and the word simply disappeared between two frames.
+ *
+ * Two separate claims, because they break independently:
+ *
+ *   WHICH words get erased. Only a hedge, only when the new face has none,
+ *   and never in the other reading modes. Computed here from the previous
+ *   face rather than by asking collect_leaving() what it did.
+ *
+ *   HOW it is erased. The slice keeps its left edge and gets shorter, so
+ *   the word shrinks in place. Drawing the other end - or the same end at a
+ *   moving x - would read as the word sliding off the screen instead, and
+ *   no check on the Face struct could see the difference, because the Face
+ *   is identical either way. This is what stub_draw_at() is for.
+ */
+static void play_reveal(void);
+
+static int find_draw(int x, int y) {
+  for (int i = 0; i < stub_draw_count(); i++) {
+    const StubDraw d = stub_draw_at(i);
+    if (d.x == x && d.y == y) {
+      return d.w;
+    }
+  }
+  return -1;   /* nothing drawn at that spot */
+}
+
+static void check_hedge_erase(void) {
+  char buf[220];
+  int erased = 0, replaced = 0;
+
+  for (uint8_t rnd = 0; rnd < ROUNDING_COUNT; rnd++) {
+    settings_defaults();
+    s_settings.rounding = rnd;
+    s_have_prev = false;
+    drop_all_bitmaps();
+
+    Face prev;
+    prev.count = 0;
+
+    for (int t = 0; t < 1440; t++) {
+      const int h = t / 60, m = t % 60;
+      struct tm tm = make_tm(232, 21, 7, 2026, h, m);
+      refresh(&tm, false);
+
+      /* What SHOULD be leaving, worked out from the two faces by hand. */
+      int want_leaving = 0, want_total = 0;
+      bool cur_hedged = false;
+      for (int i = 0; i < s_face.count; i++) {
+        if (s_face.items[i].row == ROW_HEDGE
+            || s_face.items[i].row == ROW_HEDGE_SOLO) {
+          cur_hedged = true;
+        }
+      }
+      if (t > 0 && !cur_hedged) {
+        for (int i = 0; i < prev.count; i++) {
+          if (prev.items[i].row == ROW_HEDGE
+              || prev.items[i].row == ROW_HEDGE_SOLO) {
+            want_leaving++;
+            want_total += WORDS[prev.items[i].word].w;
+          }
+        }
+      }
+
+      snprintf(buf, sizeof(buf),
+               "reading mode %d: %d leaving (%dpx), expected %d (%dpx)",
+               rnd, s_leaving_count, s_erase_total, want_leaving, want_total);
+      CHECK(s_leaving_count == want_leaving,
+            "the wrong number of words is being erased", h, m, buf);
+      CHECK(s_erase_total == want_total,
+            "the erase budget does not match the words being erased",
+            h, m, buf);
+      if (rnd != ROUND_SPOKEN) {
+        CHECK(s_leaving_count == 0,
+              "a word was erased outside the spoken mode", h, m, buf);
+      }
+      /* A hedge giving way to another hedge is an ordinary replacement. */
+      if (cur_hedged) {
+        CHECK(s_leaving_count == 0,
+              "a hedge was erased while the new face still has one", h, m, buf);
+        replaced++;
+      }
+
+      if (s_leaving_count == 1) {
+        const Element *e = &s_leaving[0];
+        const int w = WORDS[e->word].w;
+        const int x = e->x, y = e->top + row_offset(e->row);
+        CHECK(s_total >= w, "the animation is too short to finish the erase",
+              h, m, buf);
+
+        /* Still cached, straight out of refresh().
+         *
+         * Checked on the cache rather than on what gets drawn, because
+         * bitmap_for() reloads on demand: dropping the word here still LOOKS
+         * right in a test and still draws, it just re-reads the resource
+         * every frame of the rub-out and depends on a mid-animation
+         * allocation succeeding. Nothing observable fails until the watch is
+         * short of memory, which is not a failure worth discovering there. */
+        snprintf(buf, sizeof(buf),
+                 "word %d is being erased but prune_cache() dropped its "
+                 "bitmap", e->word);
+        CHECK(s_cache[e->word] != NULL,
+              "the word being erased was pruned from the cache", h, m, buf);
+
+        /* Walk the rub-out and watch the slice shorten in place. */
+        int last = w + 1;
+        for (int step = 0; step <= 4; step++) {
+          s_progress = (w * step) / 4;
+          stub_reset_draws();
+          update_proc(NULL, NULL);
+          const int got = find_draw(x, y);
+          const int expect = w - s_progress;
+
+          snprintf(buf, sizeof(buf),
+                   "at %d/%dpx the erased word is %dpx wide at x=%d y=%d, "
+                   "expected %dpx", s_progress, w, got, x, y, expect);
+          if (expect <= 0) {
+            CHECK(got == -1, "the erased word is still on screen at the end",
+                  h, m, buf);
+          } else {
+            CHECK(got == expect, "the erase is not shortening from the right",
+                  h, m, buf);
+            CHECK(got < last, "the erase is not shrinking", h, m, buf);
+            last = got;
+          }
+        }
+        erased++;
+      }
+
+      prev = s_face;
+      /* Draw the minute out before moving on. The watch always does, and the
+       * cache only holds what has actually been drawn - without this the
+       * previous hedge was never loaded, so "still cached" was trivially
+       * false and the check above failed on a correct build. */
+      play_reveal();
+    }
+  }
+
+  /* The opposite direction, so a reveal implemented backwards cannot hide
+   * behind an erase implemented backwards. 00:05 -> 00:06 brings the hedge
+   * back with nothing else changing. */
+  settings_defaults();
+  s_settings.rounding = ROUND_SPOKEN;
+  s_have_prev = false;
+  drop_all_bitmaps();
+  struct tm a = make_tm(232, 21, 7, 2026, 0, 5);
+  refresh(&a, false);
+  struct tm b = make_tm(232, 21, 7, 2026, 0, 6);
+  refresh(&b, false);
+
+  int hedge_i = -1;
+  for (int i = 0; i < s_face.count; i++) {
+    if (s_face.items[i].row == ROW_HEDGE) {
+      hedge_i = i;
+    }
+  }
+  CHECK(hedge_i >= 0, "no hedge at 00:06", 0, 6, "");
+  if (hedge_i >= 0) {
+    const Element *e = &s_face.items[hedge_i];
+    const int w = WORDS[e->word].w;
+    const int x = e->x, y = e->top + row_offset(e->row);
+    CHECK(e->animate, "the returning hedge is not being written", 0, 6, "");
+    int prev_w = -1;
+    for (int step = 1; step <= 4; step++) {
+      s_progress = (w * step) / 4;
+      stub_reset_draws();
+      update_proc(NULL, NULL);
+      const int got = find_draw(x, y);
+      snprintf(buf, sizeof(buf),
+               "at %d/%dpx the returning hedge is %dpx wide, was %dpx",
+               s_progress, w, got, prev_w);
+      CHECK(got > prev_w, "the hedge is not being written left to right",
+            0, 6, buf);
+      prev_w = got;
+    }
+    CHECK(prev_w == w, "the hedge never finishes being written", 0, 6, buf);
+  }
+
+  printf("  hedge rub-out        %d erased, %d replaced instead\n",
+         erased, replaced);
+}
+
 /* ------------------------------------------------------------------ */
 /* Reachability                                                        */
 /* ------------------------------------------------------------------ */
@@ -1935,6 +2121,7 @@ int main(void) {
   check_offset_independence();
   check_rounded_modes_agree();
   check_hedge_does_not_move_the_hour();
+  check_hedge_erase();
   check_message_routing();
   check_settings();
   emit_reachability();

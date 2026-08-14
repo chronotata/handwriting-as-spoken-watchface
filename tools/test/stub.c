@@ -43,8 +43,26 @@ int stub_live_bitmaps(void) { return s_live; }
 void graphics_context_set_compositing_mode(GContext *ctx, GCompOp mode) {
   (void)ctx; (void)mode;
 }
+static StubDraw s_draws[STUB_MAX_DRAWS];
+static int s_draw_count;
+
+void stub_reset_draws(void) { s_draw_count = 0; }
+int stub_draw_count(void) { return s_draw_count; }
+
+StubDraw stub_draw_at(int i) {
+  if (i < 0 || i >= s_draw_count) {
+    StubDraw none = {0, 0, 0, 0};
+    return none;
+  }
+  return s_draws[i];
+}
+
 void graphics_draw_bitmap_in_rect(GContext *ctx, const GBitmap *bmp, GRect r) {
-  (void)ctx; (void)bmp; (void)r;
+  if (s_draw_count < STUB_MAX_DRAWS) {
+    StubDraw d = {r.origin.x, r.origin.y, r.size.w, r.size.h};
+    s_draws[s_draw_count++] = d;
+  }
+  (void)ctx; (void)bmp;
 }
 
 /* The watchface only ever passes these around, so one instance of each

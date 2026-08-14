@@ -445,6 +445,7 @@ What it checks:
 | on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
 | rounding | the spoken minute is always a multiple of five and never more than two minutes from the real one, and the hedge agrees with the direction it moved |
 | hedge | first in reading order, flush with the margin, never a step in, never outside the spoken mode |
+| hedge rub-out | only a hedge is ever erased, only when the new face has none, never outside the spoken mode, and never when one hedge merely replaces another — with the expectation computed from the previous face rather than from `collect_leaving()`. The rub-out itself is checked on the DRAWN RECTANGLES: left edge pinned, width shrinking to nothing. 287 erasures a day |
 | hedge holds still | across all 46 on-the-hour transitions, the hedged face and the un-hedged one place every other word at the same row, x and top — asserted on POSITION, not on the animation flags, because position is the cause and a reveal rewritten to paper over a moving layout would still pass a flag check |
 | drawn offsets | every element moves by exactly its own row's offset — no row drags a neighbour, no slider fails to reach its row — swept over 25 offset combinations, plus the two halves of a split number never sharing a row |
 | palette | across five colour schemes including colour-on-colour: level 0 transparent, level 15 exactly the ink, the ramp monotonic, and the bold outline invisible on light ink but inked on dark |
@@ -478,7 +479,11 @@ rounded modes sharing one lever, the new lever wired to nothing, the
 settings page greying the two block levers the wrong way round, the greying
 ignoring the date toggle, and the greying inverted outright. And returning
 the hedge to the centred group, which moves the o'clock wording 15px and
-forces the redraw that started all this.
+forces the redraw that started all this. Since the rub-out: erasing from the
+left, leaving the erase out of the stroke budget so it never finishes,
+erasing a hedge that was only being replaced, erasing in every reading mode,
+sliding the slice sideways instead of shortening it in place, and letting
+`prune_cache()` free the word mid-erase.
 
 **Two tests that could not fail, both found by injection.** The block
 lever's check computed what it expected by calling `in_phrase_block()` — the

@@ -86,6 +86,25 @@ void gbitmap_destroy(GBitmap *bmp);
  * bounded, which is what prune_cache() exists to guarantee. */
 int stub_live_bitmaps(void);
 
+/*
+ * Every rectangle the face has drawn since the last reset.
+ *
+ * The reveal is the one thing the watch does that has no representation in
+ * the Face struct: build_face() decides WHERE a word goes, and update_proc()
+ * decides how much of it appears. Without recording the draws, a reveal that
+ * grew from the wrong end - or an erase that slid the word sideways instead
+ * of shortening it - would leave every layout check green.
+ */
+#define STUB_MAX_DRAWS 256
+
+typedef struct {
+  int16_t x, y, w, h;
+} StubDraw;
+
+void stub_reset_draws(void);
+int stub_draw_count(void);
+StubDraw stub_draw_at(int i);
+
 /* ---------------------------------------------------------------- */
 /* Graphics - no-ops                                                 */
 /* ---------------------------------------------------------------- */
