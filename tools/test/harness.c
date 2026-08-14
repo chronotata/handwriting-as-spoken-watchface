@@ -571,6 +571,93 @@ static bool expected_in_block(uint8_t row) {
          row == ROW_RELATION || row == ROW_HOUR;
 }
 
+/*
+ * THE HEDGE MUST NOT MOVE THE WORDS IT QUALIFIES.
+ *
+ * On the hour the hedge comes and goes minute by minute - "just gone midday"
+ * at :01, plain "midday" at :00, "nearly midday" at 11:58. If its arrival
+ * shifts the wording, every one of those words counts as a new element and
+ * the whole reveal plays again, redrawing words that were already on screen
+ * and already right. Which is what happened: centre() was centring the
+ * hedge along with them, so "midday" moved 15px and the face redrew itself.
+ *
+ * Asserted on POSITION rather than on the animation flags, because position
+ * is the cause. same() compares word, row, x and top, so holding those
+ * equal is what makes the redraw go away; checking `animate` instead would
+ * pass just as well if the reveal logic were changed to paper over a layout
+ * that still moved.
+ *
+ * The witching hour is exempt and has to be: 03:00 draws three rows of its
+ * own easter egg while 03:01 draws an ordinary "just gone three o' clock",
+ * so those two legitimately differ in every word. That is deliberate - see
+ * the note beside `witching` in handwritten.c.
+ */
+static void check_hedge_does_not_move_the_hour(void) {
+  char buf[220];
+  int compared = 0;
+
+  for (int h = 0; h < 24; h++) {
+    if (h == WITCHING_HOUR) {
+      continue;
+    }
+    /* :00 exactly - no rounding happened, so no hedge. */
+    settings_defaults();
+    s_settings.rounding = ROUND_SPOKEN;
+    struct tm tm = make_tm(232, 21, 7, 2026, h, 0);
+    s_have_prev = false;
+    refresh(&tm, true);
+    const Face plain = s_face;
+
+    /* :01 rounds back to :00 and says "just gone"; the minute before :00 by
+     * two rounds forward to it and says "nearly". Both draw the same hour. */
+    const int kHedged[][2] = {
+      { h, 1 },
+      { (h + 23) % 24, 58 }
+    };
+
+    for (size_t k = 0; k < sizeof(kHedged) / sizeof(kHedged[0]); k++) {
+      const int hh = kHedged[k][0], mm = kHedged[k][1];
+      /* No witching-hour guard needed here: both source times are at :01
+       * and :58, and the easter egg keys off the REAL clock reading exactly
+       * :00, so neither can draw it. Only the hour they round TO could be
+       * the witching hour, and the loop above has already skipped that. */
+      settings_defaults();
+      s_settings.rounding = ROUND_SPOKEN;
+      struct tm t2 = make_tm(232, 21, 7, 2026, hh, mm);
+      s_have_prev = false;
+      refresh(&t2, true);
+
+      int hedges = 0, j = 0;
+      for (int i = 0; i < s_face.count; i++) {
+        const Element *e = &s_face.items[i];
+        if (e->row == ROW_HEDGE || e->row == ROW_HEDGE_SOLO) {
+          hedges++;
+          continue;
+        }
+        if (j >= plain.count) {
+          break;
+        }
+        const Element *p = &plain.items[j++];
+        snprintf(buf, sizeof(buf),
+                 "%02d:00 has word %d at x %d top %d; %02d:%02d has word %d "
+                 "at x %d top %d",
+                 h, p->word, p->x, p->top, hh, mm, e->word, e->x, e->top);
+        CHECK(e->word == p->word && e->row == p->row && e->x == p->x
+                && e->top == p->top,
+              "the hedge moved the wording it qualifies, forcing a redraw",
+              hh, mm, buf);
+      }
+      snprintf(buf, sizeof(buf), "%02d:%02d drew %d hedges and %d other words,"
+               " against %d at %02d:00", hh, mm, hedges, j, plain.count, h);
+      CHECK(hedges == 1, "expected exactly one hedge", hh, mm, buf);
+      CHECK(j == plain.count, "the hedge changed how many words are drawn",
+            hh, mm, buf);
+      compared++;
+    }
+  }
+  printf("  hedge holds still    %d transitions\n", compared);
+}
+
 /* ------------------------------------------------------------------ */
 /* Reachability                                                        */
 /* ------------------------------------------------------------------ */
@@ -807,21 +894,11 @@ static void check_rounded_modes_agree(void) {
 
         /* 2. one uniform shift across the phrase, 3. equal to the levers.
          *
-         * Not on the hour: see the note above - centre() re-centres the
-         * o'clock wording around the hedge, which is a different and
-         * deliberate relationship, not this one. Detected from the drawn
-         * face rather than from the clock, because whether the layout is
-         * centred depends on the SPOKEN minute, not the wall-clock one. */
-        bool centred = false;
-        for (int i = 0; i < n; i++) {
-          if (bare[i].row == ROW_SOLO) {
-            centred = true;
-          }
-        }
-        if (centred) {
-          continue;
-        }
-
+         * These now hold for the centred layouts too. They did not while the
+         * hedge was part of what centre() centred: adding it moved the
+         * o'clock wording, so the two modes disagreed about where the hour
+         * sat by 15px and this check had to exempt them. place_centred()
+         * removed the cause, and the exemption went with it. */
         const int want = spoken_off - five_off;
         int seen = INT_MIN;
         int seen_at = -1;
@@ -1857,6 +1934,7 @@ int main(void) {
   check_palette();
   check_offset_independence();
   check_rounded_modes_agree();
+  check_hedge_does_not_move_the_hour();
   check_message_routing();
   check_settings();
   emit_reachability();

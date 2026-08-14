@@ -329,10 +329,18 @@ Three consequences worth knowing:
   draw the same words on the same rows at the same indents, and differ only
   in that the spoken phrase sits lower to leave the hedge its room. Two
   block levers, one per mode, so tuning either never moves the other.
-  On the hour is the exception: there the hedge joins the `o'clock` wording
-  and `centre()` centres the group, so adding it moves what it was added to.
-  That is deliberate, and the test exempts the vertical claim there rather
-  than the layout bending to satisfy it.
+  This holds on the hour too, since `place_centred()` stopped the hedge
+  moving the wording it qualifies.
+- **The hedge never moves the words it qualifies.** In the stacked layout it
+  never could - the phrase hangs off `REL_TOP`. In the centred layouts it
+  did: `centre()` was centring the hedge along with the `o'clock` wording,
+  so at :00 with no hedge and :01 with one, `midday` sat 15px apart. Nothing
+  about the phrase had changed but every `top` had, and `same()` compares
+  `top`, so the whole reveal played again over words that were already on
+  the screen and already right. `place_centred()` centres the words alone
+  and hangs the hedge above them at one row pitch, so only the hedge itself
+  animates in and out. Worth about 44 fewer word-redraws a day in the spoken
+  mode, and the on-the-hour wording now holds perfectly still.
 
 The hedge sits **flat** above the word it qualifies rather than a step in:
 it modifies that word instead of being a rung of its own, and at one indent
@@ -437,6 +445,7 @@ What it checks:
 | on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
 | rounding | the spoken minute is always a multiple of five and never more than two minutes from the real one, and the hedge agrees with the direction it moved |
 | hedge | first in reading order, flush with the margin, never a step in, never outside the spoken mode |
+| hedge holds still | across all 46 on-the-hour transitions, the hedged face and the un-hedged one place every other word at the same row, x and top — asserted on POSITION, not on the animation flags, because position is the cause and a reveal rewritten to paper over a moving layout would still pass a flag check |
 | drawn offsets | every element moves by exactly its own row's offset — no row drags a neighbour, no slider fails to reach its row — swept over 25 offset combinations, plus the two halves of a split number never sharing a row |
 | palette | across five colour schemes including colour-on-colour: level 0 transparent, level 15 exactly the ink, the ramp monotonic, and the bold outline invisible on light ink but inked on dark |
 | settings | `tuple_int()` reads Clay's cstring **and** int tuples; an out-of-range index falls back rather than indexing off `kDateFormats` or `kMinutesModes` |
@@ -467,7 +476,9 @@ reverted to splitting in the plain rounded mode, the relation row dropped
 out of the block so the phrase stretched instead of translating, the two
 rounded modes sharing one lever, the new lever wired to nothing, the
 settings page greying the two block levers the wrong way round, the greying
-ignoring the date toggle, and the greying inverted outright.
+ignoring the date toggle, and the greying inverted outright. And returning
+the hedge to the centred group, which moves the o'clock wording 15px and
+forces the redraw that started all this.
 
 **Two tests that could not fail, both found by injection.** The block
 lever's check computed what it expected by calling `in_phrase_block()` — the

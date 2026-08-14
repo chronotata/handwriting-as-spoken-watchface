@@ -554,6 +554,41 @@ static void indent_rows(Face *f, int from, int to) {
   }
 }
 
+/*
+ * Place a centred layout: the SOLO words centred on their own, and the
+ * hedge - if there is one - hung above them.
+ *
+ * The hedge is deliberately NOT part of what gets centred. Including it
+ * made the words it qualifies move as it came and went: at :00 exactly
+ * there is no hedge, a minute either side there is, and "midday" shifted
+ * 15px between the two. Nothing about the phrase had changed, but every
+ * word's `top` had, so same() saw a different element and played the whole
+ * reveal again - a full redraw of words that were already on the screen
+ * and already correct.
+ *
+ * Centring the words alone makes their position independent of the hedge,
+ * which is how the STACKED layout has always worked: there the phrase hangs
+ * off REL_TOP and the hedge sits above it without disturbing anything. The
+ * centred layouts now behave the same way, so on the hour the wording holds
+ * still and only the hedge itself animates in and out.
+ *
+ * The cost is that the words sit where the un-hedged layout puts them
+ * rather than splitting the difference, so the hedge takes the space above
+ * instead of the pair sharing it. OFFSET_HEDGE_SOLO tunes that.
+ */
+static void centre(Face *f, int from, int to);
+
+static void place_centred(Face *f, int first) {
+  centre(f, first, f->count - 1);
+  if (first > 0) {
+    /* One row pitch above the first word, matching stack()'s spacing so the
+     * gap between the hedge and the wording is the same ROW_GAP as every
+     * other pair of rows on the face. */
+    f->items[0].top = f->items[first].top
+                    - (WORDS[f->items[0].word].h + ROW_GAP);
+  }
+}
+
 /* Centre a run of rows vertically in the space above the date. */
 static void centre(Face *f, int from, int to) {
   int span = 0;
@@ -754,20 +789,20 @@ static void build_face(Face *f, struct tm *t) {
     push(f, W_SOLO_HOUR, ROW_SOLO);
     indent_rows(f, first, first + 2);
     if (has_hedge) f->items[0].x = MARGIN;
-    centre(f, 0, f->count - 1);
+    place_centred(f, first);
   } else if (m == 0 && (h == 0 || h == 12)) {
     if (has_hedge) push(f, hedge, ROW_HEDGE_SOLO);
     push(f, h == 0 ? W_SOLO_MIDNIGHT : W_SOLO_MIDDAY, ROW_SOLO);
     indent_rows(f, first, first);
     if (has_hedge) f->items[0].x = MARGIN;
-    centre(f, 0, f->count - 1);
+    place_centred(f, first);
   } else if (m == 0) {
     if (has_hedge) push(f, hedge, ROW_HEDGE_SOLO);
     push(f, kSoloOnes[h % 12 - 1], ROW_SOLO);
     push(f, W_SOLO_OCLOCK, ROW_SOLO);
     indent_rows(f, first, first + 1);
     if (has_hedge) f->items[0].x = MARGIN;
-    centre(f, 0, f->count - 1);
+    place_centred(f, first);
   } else {
     int mins;
     bool past;

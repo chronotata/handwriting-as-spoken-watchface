@@ -356,7 +356,7 @@ separate on purpose:
 | Whole phrase, with "just gone" / "nearly" | the minute, "past"/"to" and the hour together — not the hedge, date or on-the-hour wording. **Spoken mode only**, where the phrase sits lower to leave the hedge its room |
 | Whole phrase, without the hedge | the same phrase in plain "nearest five", where nothing sits above it and it can ride higher. **That mode only** |
 | "just gone" / "nearly" | the hedge above the stacked phrase, spoken mode only |
-| "just gone" / "nearly", on the hour | the same word above the o'clock wording |
+| "just gone" / "nearly", on the hour | the same word above the o'clock wording. It hangs above the wording rather than sharing the space with it, so the hour never shifts as the hedge comes and goes |
 |---|---|
 | Split number, top half | only `twenty-`, so it can be pulled clear of the screen edge on its own |
 | Minute number, with "minute(s)" below | :01–:20 when the annotation shows and fills the gap |

@@ -165,7 +165,7 @@
 #define OFFSET_MINUTES 6  /* "minute(s)" beside a split number       */
 #define OFFSET_MINUTES_OWN 0  /* "minute(s)" on a line of its own        */
 
-#define OFFSET_RELATION 0  /* "past" / "to"                     */
+#define OFFSET_RELATION -5  /* "past" / "to"                     */
 #define OFFSET_HOUR -9  /* the hour word                     */
 #define OFFSET_SOLO      0  /* solo midnight / midday            */
 #define OFFSET_DATE      0  /* the date line                     */
@@ -337,4 +337,4 @@
  * Mode 2 adds the hedge that says which way the rounding went. It is the
  * only mode that sets "twenty-five" on one line - it needs the row.
  */
-#define DEFAULT_ROUNDING 2
+#define DEFAULT_ROUNDING 0
