@@ -160,13 +160,16 @@ module.exports = [
       {
         type: 'text',
         defaultValue:
-          'Nudge each row up or down. Negative moves a row up, positive ' +
-          'moves it down. Changes apply straight away. <strong>Drag the ' +
-          'dot</strong> — tapping the track does nothing, so scrolling ' +
-          'past a slider cannot move it by accident. The box on the right ' +
-          'takes a typed number.<br><br>Anything that cannot affect what ' +
-          'is currently on the watch is greyed out — the wording and date ' +
-          'settings above decide which rows get drawn at all.'
+          '<strong>Zero is the tuned layout</strong>, not a flat one. ' +
+          'Each slider nudges its row away from where the watchface was ' +
+          'designed to put it, so putting one back to 0 restores the ' +
+          'design rather than undoing it.<br><br>Negative moves a row up, ' +
+          'positive moves it down. Changes apply straight away. ' +
+          '<strong>Drag the dot</strong> — tapping the track does nothing, ' +
+          'so scrolling past a slider cannot move it by accident. The box ' +
+          'on the right takes a typed number.<br><br>Anything that cannot ' +
+          'affect what is currently on the watch is greyed out — the ' +
+          'wording and date settings above decide which rows get drawn.'
       },
       // The two rounded modes draw the same phrase and differ only in where
       // the whole of it sits, so each gets its own lever and neither drags

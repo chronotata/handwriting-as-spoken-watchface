@@ -38,12 +38,57 @@
 static int s_failures;
 static int s_checks;
 
+/*
+ * Distinct failure messages, counted.
+ *
+ * The line cap keeps a broken build readable, but it hides WHICH checks are
+ * failing once a noisy one has used the quota - and during fail-injection
+ * that is indistinguishable from a check that cannot fail at all. Twice now
+ * an injection has looked like it did nothing when it had fired thousands of
+ * times behind a wall of unrelated output. The summary prints every distinct
+ * message no matter how late it first appeared.
+ */
+#define MAX_FAIL_KINDS 64
+
+static struct {
+  const char *what;
+  int count;
+} s_fail_kinds[MAX_FAIL_KINDS];
+static int s_fail_kind_count;
+
+static void note_kind(const char *what) {
+  for (int i = 0; i < s_fail_kind_count; i++) {
+    /* Pointer comparison is enough: every `what` is a string literal, and
+     * literals for the same check are the same object. */
+    if (s_fail_kinds[i].what == what) {
+      s_fail_kinds[i].count++;
+      return;
+    }
+  }
+  if (s_fail_kind_count < MAX_FAIL_KINDS) {
+    s_fail_kinds[s_fail_kind_count].what = what;
+    s_fail_kinds[s_fail_kind_count].count = 1;
+    s_fail_kind_count++;
+  }
+}
+
+static void print_fail_kinds(void) {
+  if (!s_fail_kind_count) {
+    return;
+  }
+  fprintf(stderr, "\n  failures by check:\n");
+  for (int i = 0; i < s_fail_kind_count; i++) {
+    fprintf(stderr, "  %8d  %s\n", s_fail_kinds[i].count, s_fail_kinds[i].what);
+  }
+}
+
 static void fail(const char *what, int h, int m, const char *detail) {
   if (s_failures < 25) {
     fprintf(stderr, "  FAIL %02d:%02d  %s: %s\n", h, m, what, detail);
   } else if (s_failures == 25) {
-    fprintf(stderr, "  ... further failures suppressed\n");
+    fprintf(stderr, "  ... further lines suppressed; see the summary below\n");
   }
+  note_kind(what);
   s_failures++;
 }
 
@@ -659,6 +704,72 @@ static void check_hedge_does_not_move_the_hour(void) {
 }
 
 /*
+ * A SLIDER AT ZERO MEANS THE TUNED LAYOUT.
+ *
+ * The offsets in config.h are part of the design, not the sliders' starting
+ * values: with every slider at 0 each row must already sit where it was
+ * tuned to sit. That is the whole point of baking them in - it is what makes
+ * "put it back to 0" restore the design rather than flatten the row, and
+ * what lets src/pkjs/config.js honestly declare 0 instead of keeping a
+ * second copy of the numbers.
+ *
+ * The expected values are written out here from config.h rather than read
+ * back from baked_offset(). Asking the function under test what it thinks
+ * the baseline is would pass whatever it returned, including zero - which is
+ * exactly the regression this exists to catch.
+ */
+static void check_baked_baseline(void) {
+  char buf[200];
+  static const struct { uint8_t row; int off; const char *name; } kBaked[] = {
+    {ROW_MINUTE,         OFFSET_MINUTE,       "OFFSET_MINUTE"},
+    {ROW_MINUTES_INLINE, OFFSET_MINUTES,      "OFFSET_MINUTES"},
+    {ROW_RELATION,       OFFSET_RELATION,     "OFFSET_RELATION"},
+    {ROW_HOUR,           OFFSET_HOUR,         "OFFSET_HOUR"},
+    {ROW_SOLO,           OFFSET_SOLO,         "OFFSET_SOLO"},
+    {ROW_DATE,           OFFSET_DATE,         "OFFSET_DATE"},
+    {ROW_SPLIT_HEAD,     OFFSET_SPLIT_HEAD,   "OFFSET_SPLIT_HEAD"},
+    {ROW_MINUTES_OWN,    OFFSET_MINUTES_OWN,  "OFFSET_MINUTES_OWN"},
+    {ROW_MINUTE_ALONE,   OFFSET_MINUTE_ALONE, "OFFSET_MINUTE_ALONE"},
+    {ROW_MINUTE_SPLIT,   OFFSET_MINUTE_SPLIT, "OFFSET_MINUTE_SPLIT"},
+    {ROW_HEDGE,          OFFSET_HEDGE,        "OFFSET_HEDGE"},
+    {ROW_HEDGE_SOLO,     OFFSET_HEDGE_SOLO,   "OFFSET_HEDGE_SOLO"}
+  };
+  const int n = (int)(sizeof(kBaked) / sizeof(kBaked[0]));
+  _Static_assert(sizeof(kBaked) / sizeof(kBaked[0]) == ROW_COUNT,
+                 "every row needs a baked baseline listed here");
+
+  for (uint8_t rnd = 0; rnd < ROUNDING_COUNT; rnd++) {
+    settings_defaults();
+    s_settings.rounding = rnd;
+    const int block = (rnd == ROUND_SPOKEN)  ? OFFSET_BLOCK
+                    : (rnd == ROUND_FIVE)    ? OFFSET_BLOCK_FIVE : 0;
+
+    for (int i = 0; i < n; i++) {
+      const int want = kBaked[i].off
+                     + (expected_in_block(kBaked[i].row) ? block : 0);
+      snprintf(buf, sizeof(buf),
+               "reading mode %d: row %d (%s) draws at %+d with every slider "
+               "at zero, but is tuned to %+d", rnd, kBaked[i].row,
+               kBaked[i].name, row_offset(kBaked[i].row), want);
+      CHECK(row_offset(kBaked[i].row) == want,
+            "a slider at zero does not give the tuned layout", 0, 0, buf);
+    }
+  }
+
+  /* And a slider is a DEVIATION from that, not a replacement for it. */
+  settings_defaults();
+  s_settings.rounding = ROUND_EXACT;
+  s_settings.offset[ROW_HOUR] = 6;
+  snprintf(buf, sizeof(buf), "hour row draws at %+d, expected %+d",
+           row_offset(ROW_HOUR), OFFSET_HOUR + 6);
+  CHECK(row_offset(ROW_HOUR) == OFFSET_HOUR + 6,
+        "a slider replaces the tuned value instead of adding to it", 0, 0, buf);
+
+  printf("  baked baseline       %d rows x %d reading modes\n",
+         n, ROUNDING_COUNT);
+}
+
+/*
  * THE HEDGE IS RUBBED OUT, NOT BLINKED OUT.
  *
  * When the clock reaches a round five the hedge stops applying and nothing
@@ -1085,7 +1196,11 @@ static void check_rounded_modes_agree(void) {
          * o'clock wording, so the two modes disagreed about where the hour
          * sat by 15px and this check had to exempt them. place_centred()
          * removed the cause, and the exemption went with it. */
-        const int want = spoken_off - five_off;
+        /* Both levers now sit on top of a baked baseline, so the gap
+         * between the modes is the gap between the two totals - not
+         * between the two slider values. */
+        const int want = (OFFSET_BLOCK + spoken_off)
+                       - (OFFSET_BLOCK_FIVE + five_off);
         int seen = INT_MIN;
         int seen_at = -1;
         for (int i = 0; i < n; i++) {
@@ -1119,7 +1234,7 @@ static void check_rounded_modes_agree(void) {
         if (seen != INT_MIN) {
           snprintf(buf, sizeof(buf),
                    "levers %+d/%+d: the phrase moved %d between the modes, "
-                   "but the levers differ by %d",
+                   "but with the baked baselines they differ by %d",
                    spoken_off, five_off, seen, want);
           CHECK(seen == want,
                 "the shift between the rounded modes is not the two levers",
@@ -2121,6 +2236,7 @@ int main(void) {
   check_offset_independence();
   check_rounded_modes_agree();
   check_hedge_does_not_move_the_hour();
+  check_baked_baseline();
   check_hedge_erase();
   check_message_routing();
   check_settings();
@@ -2130,6 +2246,7 @@ int main(void) {
   printf("  live bitmaps at exit %d\n", stub_live_bitmaps());
   CHECK(stub_live_bitmaps() == 0, "bitmap leak", 0, 0, "");
 
+  print_fail_kinds();
   printf("\n%d checks, %d failures\n", s_checks, s_failures);
   if (s_failures) {
     printf("FAILED\n");

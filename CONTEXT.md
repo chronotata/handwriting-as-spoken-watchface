@@ -445,6 +445,7 @@ What it checks:
 | on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
 | rounding | the spoken minute is always a multiple of five and never more than two minutes from the real one, and the hedge agrees with the direction it moved |
 | hedge | first in reading order, flush with the margin, never a step in, never outside the spoken mode |
+| baked baseline | with every slider at zero each row draws at exactly its `config.h` offset, in all three reading modes, and a slider ADDS to that rather than replacing it — with the expected values transcribed from `config.h` rather than read back from `baked_offset()` |
 | hedge rub-out | only a hedge is ever erased, only when the new face has none, never outside the spoken mode, and never when one hedge merely replaces another — with the expectation computed from the previous face rather than from `collect_leaving()`. The rub-out itself is checked on the DRAWN RECTANGLES: left edge pinned, width shrinking to nothing. 287 erasures a day |
 | hedge holds still | across all 46 on-the-hour transitions, the hedged face and the un-hedged one place every other word at the same row, x and top — asserted on POSITION, not on the animation flags, because position is the cause and a reveal rewritten to paper over a moving layout would still pass a flag check |
 | drawn offsets | every element moves by exactly its own row's offset — no row drags a neighbour, no slider fails to reach its row — swept over 25 offset combinations, plus the two halves of a split number never sharing a row |
@@ -483,7 +484,10 @@ forces the redraw that started all this. Since the rub-out: erasing from the
 left, leaving the erase out of the stroke budget so it never finishes,
 erasing a hedge that was only being replaced, erasing in every reading mode,
 sliding the slice sideways instead of shortening it in place, and letting
-`prune_cache()` free the word mid-erase.
+`prune_cache()` free the word mid-erase. And since the baseline was baked
+in: ignoring it so the sliders are absolute again, dropping it from one row,
+seeding the sliders with it so every offset doubles, and a slider replacing
+the baseline instead of adding to it.
 
 **Two tests that could not fail, both found by injection.** The block
 lever's check computed what it expected by calling `in_phrase_block()` — the

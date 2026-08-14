@@ -37,11 +37,15 @@
 #define FONT_SIZE_ORD  15  /* the superscript st/nd/rd/th       */
 
 /* ---------------------------------------------------------------- */
-/* Vertical offsets - compile-time defaults.                         */
+/* Vertical offsets - the TUNED BASELINE, baked into the layout.      */
 /*                                                                   */
-/* These are also live sliders on the phone settings page, so you can */
-/* nudge rows on the watch without rebuilding. Anything set there     */
-/* overrides the values here.                                        */
+/* These are not the sliders' starting values. They are part of the   */
+/* design, like REL_TOP: a slider at 0 means "as tuned here", and     */
+/* what the slider carries is a DEVIATION added on top.               */
+/*                                                                   */
+/* So the tuning lives in this file ONLY. src/pkjs/config.js declares */
+/* every slider default as 0 and that is now simply true, rather than */
+/* a second copy of these numbers that had to be kept in step by hand.*/
 /*                                                                   */
 /* SIGN: standard screen coordinates. NEGATIVE moves a row UP,        */
 /* POSITIVE moves it DOWN. Offset +1 on the hour row puts every hour  */
@@ -71,7 +75,7 @@
  * middle of the screen with the o'clock wording and is a different balance
  * entirely.
  */
-#define OFFSET_HEDGE -5      /* stacked: above the minute number  */
+#define OFFSET_HEDGE -4      /* stacked: above the minute number  */
 #define OFFSET_HEDGE_SOLO 0  /* centred: above the o'clock wording */
 
 /*
@@ -87,26 +91,18 @@
  * already balanced and must not shift: this lever exists to rebalance the
  * phrase against the hedge row, which only the spoken mode has.
  *
- * This value and OFFSET_HEDGE above are tuned on the WATCH, through the
- * settings page, and what is written here is a copy of what that tuning
- * arrived at. They govern the EMULATOR, which has no settings page to
- * open, so keeping them level with the phone is what makes an emulator
- * preview worth looking at.
+ * -8 and OFFSET_HEDGE's -4 are a MATCHED PAIR, and the hedge is boxed in on
+ * both sides. Above it is the top of the screen: its canvas does not move
+ * with this lever, so "nearly" clips at -5 and needs -4 or higher whatever
+ * the block does. Below it is the minute number, which DOES move with this
+ * lever, so pulling the phrase up closes the gap - at -9 the descender of
+ * "just gone" passes INK_OVERLAP_MAX_PCT into the number's ascender.
  *
- * The Clay defaults in src/pkjs/config.js are deliberately NOT kept in
- * step: editing here to preview on the emulator while tuning on the watch
- * is the workflow, not drift. Before a public release both files need the
- * tuned values - see UPGRADING.md - because Clay's own defaults are what a
- * stranger's watch receives the first time they open the settings page.
- *
- * -9 and OFFSET_HEDGE's -3 are a MATCHED PAIR, not two independent nudges.
- * This lever pulls the phrase up while the hedge stays where it is, so the
- * two close on each other; the hedge's own -3 is what buys the room back.
- * Measured with the harness: at hedge -3 this may go to -10 before "just
- * gone" and the minute number interweave past INK_OVERLAP_MAX_PCT, but at
- * hedge 0 even -9 already collides. Move one and re-run tools/test/run.sh.
+ * Between them there is no room to spare: at block -9 there is no hedge
+ * value at all that clears both, which is how this pair was arrived at.
+ * Move either and re-run tools/test/run.sh; the sweep reports both walls.
  */
-#define OFFSET_BLOCK -9
+#define OFFSET_BLOCK -8
 
 /*
  * The same lever for the PLAIN rounded mode, which draws the identical

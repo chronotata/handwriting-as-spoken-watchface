@@ -1063,9 +1063,44 @@ static void mark_changes(bool date_changed) {
  */
 static int block_offset(void) {
   switch (s_settings.rounding) {
-    case ROUND_SPOKEN: return s_settings.offset_block;
-    case ROUND_FIVE:   return s_settings.offset_block_five;
+    case ROUND_SPOKEN: return OFFSET_BLOCK + s_settings.offset_block;
+    case ROUND_FIVE:   return OFFSET_BLOCK_FIVE + s_settings.offset_block_five;
     default:           return 0;
+  }
+}
+
+/*
+ * THE TUNED BASELINE, BAKED IN.
+ *
+ * These are not the sliders' starting values - they are part of the layout,
+ * the same as REL_TOP or ROW_GAP. A slider at 0 means "as designed", and
+ * what it carries is a DEVIATION from that.
+ *
+ * It used to be the other way round: config.h seeded the sliders, so the
+ * tuning lived in whatever the phone happened to have stored. That had two
+ * problems. Setting a slider back to 0 did not restore the design, it
+ * flattened the row - so there was no way to undo a nudge except to
+ * remember the number. And the real defaults were in src/pkjs/config.js,
+ * which Clay uses for a watch it has never met, so the tuning had to be
+ * written down twice and kept in step by hand.
+ *
+ * Now it is written once, here, and config.js can honestly say 0.
+ */
+static int baked_offset(uint8_t row) {
+  switch (row) {
+    case ROW_MINUTE:         return OFFSET_MINUTE;
+    case ROW_MINUTES_INLINE: return OFFSET_MINUTES;
+    case ROW_RELATION:       return OFFSET_RELATION;
+    case ROW_HOUR:           return OFFSET_HOUR;
+    case ROW_SOLO:           return OFFSET_SOLO;
+    case ROW_DATE:           return OFFSET_DATE;
+    case ROW_SPLIT_HEAD:     return OFFSET_SPLIT_HEAD;
+    case ROW_MINUTES_OWN:    return OFFSET_MINUTES_OWN;
+    case ROW_MINUTE_ALONE:   return OFFSET_MINUTE_ALONE;
+    case ROW_MINUTE_SPLIT:   return OFFSET_MINUTE_SPLIT;
+    case ROW_HEDGE:          return OFFSET_HEDGE;
+    case ROW_HEDGE_SOLO:     return OFFSET_HEDGE_SOLO;
+    default:                 return 0;
   }
 }
 
@@ -1086,26 +1121,28 @@ static bool in_phrase_block(uint8_t row) {
 }
 
 static int row_offset(uint8_t row) {
+  /* baked baseline + whatever the slider adds on top of it */
+  const int base = baked_offset(row);
   if (row == ROW_SPLIT_HEAD) {
-    return s_settings.offset_split_head + block_offset();
+    return base + s_settings.offset_split_head + block_offset();
   }
   if (row == ROW_MINUTES_OWN) {
-    return s_settings.offset_minutes_own + block_offset();
+    return base + s_settings.offset_minutes_own + block_offset();
   }
   if (row == ROW_MINUTE_ALONE) {
-    return s_settings.offset_minute_alone + block_offset();
+    return base + s_settings.offset_minute_alone + block_offset();
   }
   if (row == ROW_MINUTE_SPLIT) {
-    return s_settings.offset_minute_split + block_offset();
+    return base + s_settings.offset_minute_split + block_offset();
   }
   if (row == ROW_HEDGE) {
-    return s_settings.offset_hedge;
+    return base + s_settings.offset_hedge;
   }
   if (row == ROW_HEDGE_SOLO) {
-    return s_settings.offset_hedge_solo;
+    return base + s_settings.offset_hedge_solo;
   }
   const int own = (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
-  return own + (in_phrase_block(row) ? block_offset() : 0);
+  return base + own + (in_phrase_block(row) ? block_offset() : 0);
 }
 
 /*
@@ -1235,21 +1272,24 @@ static void settings_defaults(void) {
   s_settings.date_format = DEFAULT_DATE_FORMAT;
   s_settings.minutes_mode = DEFAULT_MINUTES_MODE;
   s_settings.stroke_weight = DEFAULT_STROKE_WEIGHT;
-  s_settings.offset[ROW_MINUTE] = OFFSET_MINUTE;
-  s_settings.offset[ROW_MINUTES_INLINE] = OFFSET_MINUTES;
-  s_settings.offset_minutes_own = OFFSET_MINUTES_OWN;
-  s_settings.offset_minute_alone = OFFSET_MINUTE_ALONE;
-  s_settings.offset_minute_split = OFFSET_MINUTE_SPLIT;
-  s_settings.offset_hedge = OFFSET_HEDGE;
-  s_settings.offset_hedge_solo = OFFSET_HEDGE_SOLO;
-  s_settings.offset_block = OFFSET_BLOCK;
-  s_settings.offset_block_five = OFFSET_BLOCK_FIVE;
   s_settings.rounding = DEFAULT_ROUNDING;
-  s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
-  s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
-  s_settings.offset[ROW_SOLO] = OFFSET_SOLO;
-  s_settings.offset[ROW_DATE] = OFFSET_DATE;
-  s_settings.offset_split_head = OFFSET_SPLIT_HEAD;
+  /*
+   * Every slider starts at ZERO, and zero means the tuned layout - see
+   * baked_offset(). Seeding them with the tuned numbers instead would mean a
+   * slider could never be returned to the design, only to a flat row, and
+   * would put the same numbers in two files that then had to agree.
+   */
+  for (int i = 0; i < OFFSET_ROWS; i++) {
+    s_settings.offset[i] = 0;
+  }
+  s_settings.offset_minutes_own = 0;
+  s_settings.offset_minute_alone = 0;
+  s_settings.offset_minute_split = 0;
+  s_settings.offset_hedge = 0;
+  s_settings.offset_hedge_solo = 0;
+  s_settings.offset_block = 0;
+  s_settings.offset_block_five = 0;
+  s_settings.offset_split_head = 0;
 }
 
 static void settings_load(void) {

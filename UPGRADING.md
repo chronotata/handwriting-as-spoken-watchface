@@ -312,11 +312,25 @@ real hardware the same way `--emulator` does from the simulator.
 
 ## 8. Tuning without a rebuild
 
-Open the watchface's settings in the Pebble phone app. Twelve sliders — one
-per row — nudge that row up (negative) or down (positive) by up to 15px,
-and apply the moment you change them. No rebuild, no reinstall. The same
-page carries the colours, the date on/off toggle, the date format, whether
-`minute(s)` is spoken, and the stroke weight.
+Open the watchface's settings in the Pebble phone app. Fourteen sliders
+nudge a row up (negative) or down (positive) by up to 15px, and apply the
+moment you change them. No rebuild, no reinstall. The same page carries the
+colours, the date on/off toggle, the date format, whether `minute(s)` is
+spoken, and the stroke weight.
+
+**Zero is the tuned layout, not a flat one.** The offsets in
+`src/c/config.h` are baked into the design the same way `REL_TOP` is, and a
+slider carries a *deviation* from that. So a slider put back to 0 restores
+the design rather than undoing it, and there is no need to remember the
+number you started from.
+
+That also means the tuning is written down once. `src/pkjs/config.js`
+declares every slider default as 0, which is now simply true rather than a
+second copy of the same numbers that had to be kept in step by hand.
+
+If you tune on the watch and want to keep it, copy the slider values into
+the matching `OFFSET_*` in `config.h`, **add them to what is already
+there**, and set the sliders back to 0.
 
 **Stroke weight** only does anything when the ink is darker than the paper.
 Dark strokes render about 20% thinner than light ones on this screen, so
