@@ -1,0 +1,20 @@
+{
+  "0|0|0": ["OffMinute", "OffMinutes", "OffRelation", "OffHour", "OffSolo", "OffSplitHead", "OffMinutesOwn", "OffMinuteAlone", "OffMinuteSplit"],
+  "0|0|1": ["OffMinute", "OffMinutes", "OffRelation", "OffHour", "OffSolo", "OffDate", "OffSplitHead", "OffMinutesOwn", "OffMinuteAlone", "OffMinuteSplit", "DateFormat"],
+  "0|1|0": ["OffRelation", "OffHour", "OffSolo", "OffSplitHead", "OffMinuteAlone", "OffMinuteSplit"],
+  "0|1|1": ["OffRelation", "OffHour", "OffSolo", "OffDate", "OffSplitHead", "OffMinuteAlone", "OffMinuteSplit", "DateFormat"],
+  "0|2|0": ["OffMinute", "OffMinutes", "OffRelation", "OffHour", "OffSolo", "OffSplitHead", "OffMinutesOwn", "OffMinuteAlone", "OffMinuteSplit"],
+  "0|2|1": ["OffMinute", "OffMinutes", "OffRelation", "OffHour", "OffSolo", "OffDate", "OffSplitHead", "OffMinutesOwn", "OffMinuteAlone", "OffMinuteSplit", "DateFormat"],
+  "1|0|0": ["OffRelation", "OffHour", "OffSolo", "OffMinuteAlone", "OffBlockFive"],
+  "1|0|1": ["OffRelation", "OffHour", "OffSolo", "OffDate", "OffMinuteAlone", "DateFormat", "OffBlockFive"],
+  "1|1|0": ["OffRelation", "OffHour", "OffSolo", "OffMinuteAlone", "OffBlockFive"],
+  "1|1|1": ["OffRelation", "OffHour", "OffSolo", "OffDate", "OffMinuteAlone", "DateFormat", "OffBlockFive"],
+  "1|2|0": ["OffMinute", "OffRelation", "OffHour", "OffSolo", "OffMinutesOwn", "OffMinuteAlone", "OffBlockFive"],
+  "1|2|1": ["OffMinute", "OffRelation", "OffHour", "OffSolo", "OffDate", "OffMinutesOwn", "OffMinuteAlone", "DateFormat", "OffBlockFive"],
+  "2|0|0": ["OffRelation", "OffHour", "OffSolo", "OffMinuteAlone", "OffHedge", "OffHedgeSolo", "OffBlock"],
+  "2|0|1": ["OffRelation", "OffHour", "OffSolo", "OffDate", "OffMinuteAlone", "OffHedge", "OffHedgeSolo", "DateFormat", "OffBlock"],
+  "2|1|0": ["OffRelation", "OffHour", "OffSolo", "OffMinuteAlone", "OffHedge", "OffHedgeSolo", "OffBlock"],
+  "2|1|1": ["OffRelation", "OffHour", "OffSolo", "OffDate", "OffMinuteAlone", "OffHedge", "OffHedgeSolo", "DateFormat", "OffBlock"],
+  "2|2|0": ["OffMinute", "OffRelation", "OffHour", "OffSolo", "OffMinutesOwn", "OffMinuteAlone", "OffHedge", "OffHedgeSolo", "OffBlock"],
+  "2|2|1": ["OffMinute", "OffRelation", "OffHour", "OffSolo", "OffDate", "OffMinutesOwn", "OffMinuteAlone", "OffHedge", "OffHedgeSolo", "DateFormat", "OffBlock"]
+}

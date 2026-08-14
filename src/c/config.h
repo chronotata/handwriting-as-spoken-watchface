@@ -71,7 +71,7 @@
  * middle of the screen with the o'clock wording and is a different balance
  * entirely.
  */
-#define OFFSET_HEDGE 0       /* stacked: above the minute number  */
+#define OFFSET_HEDGE -3      /* stacked: above the minute number  */
 #define OFFSET_HEDGE_SOLO 0  /* centred: above the o'clock wording */
 
 /*
@@ -86,8 +86,44 @@
  * Applies ONLY in the spoken reading mode. The other two layouts are
  * already balanced and must not shift: this lever exists to rebalance the
  * phrase against the hedge row, which only the spoken mode has.
+ *
+ * This value and OFFSET_HEDGE above are tuned on the WATCH, through the
+ * settings page, and what is written here is a copy of what that tuning
+ * arrived at. They govern the EMULATOR, which has no settings page to
+ * open, so keeping them level with the phone is what makes an emulator
+ * preview worth looking at.
+ *
+ * The Clay defaults in src/pkjs/config.js are deliberately NOT kept in
+ * step: editing here to preview on the emulator while tuning on the watch
+ * is the workflow, not drift. Before a public release both files need the
+ * tuned values - see UPGRADING.md - because Clay's own defaults are what a
+ * stranger's watch receives the first time they open the settings page.
+ *
+ * -9 and OFFSET_HEDGE's -3 are a MATCHED PAIR, not two independent nudges.
+ * This lever pulls the phrase up while the hedge stays where it is, so the
+ * two close on each other; the hedge's own -3 is what buys the room back.
+ * Measured with the harness: at hedge -3 this may go to -10 before "just
+ * gone" and the minute number interweave past INK_OVERLAP_MAX_PCT, but at
+ * hedge 0 even -9 already collides. Move one and re-run tools/test/run.sh.
  */
-#define OFFSET_BLOCK 0
+#define OFFSET_BLOCK -9
+
+/*
+ * The same lever for the PLAIN rounded mode, which draws the identical
+ * phrase with no hedge above it.
+ *
+ * Separate from OFFSET_BLOCK because the two modes want the block in two
+ * different places: lower in the spoken mode to leave the hedge its room,
+ * higher here where nothing sits above it. Sharing one lever would mean
+ * every adjustment to one mode dragged the other with it.
+ *
+ * The phrase itself is the same in both - same words, same rows, same
+ * indents, same spacing. Only where the whole thing sits differs, and the
+ * harness asserts exactly that: modes 1 and 2 must differ by ONE uniform
+ * translation of the block and nothing else.
+ */
+#define OFFSET_BLOCK_FIVE -12
+
 #define OFFSET_SPLIT_HEAD 8  /* "twenty-", the first half of a split word  */
 
  /*
@@ -301,4 +337,4 @@
  * Mode 2 adds the hedge that says which way the rounding went. It is the
  * only mode that sets "twenty-five" on one line - it needs the row.
  */
-#define DEFAULT_ROUNDING 0
+#define DEFAULT_ROUNDING 2

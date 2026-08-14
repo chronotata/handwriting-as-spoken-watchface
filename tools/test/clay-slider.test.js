@@ -66,14 +66,60 @@ function dispatch(type, ev) {
   return ev;
 }
 
+/* The reachability table the C sweep observed. The settings page keeps its
+ * own copy - it cannot require() anything, Clay injects it as source - so
+ * the two are compared here rather than shared. */
+var REACH = require('./reachability.json');
+
+/* A Clay config item: a value, an enabled flag, and change listeners. */
+function makeItem(value) {
+  return {
+    value: value,
+    enabled: true,
+    handlers: [],
+    get: function () { return this.value; },
+    set: function (v) {
+      this.value = v;
+      this.handlers.forEach(function (fn) { fn(); });
+    },
+    enable: function () { this.enabled = true; },
+    disable: function () { this.enabled = false; },
+    on: function (evt, fn) {
+      if (evt === 'change') { this.handlers.push(fn); }
+    }
+  };
+}
+
+/* Every control the page might grey out, plus the three that decide it and
+ * one - PaperColor - that is governed by nothing and must be left alone. */
+var items = {
+  Rounding: makeItem('0'),
+  MinutesText: makeItem('0'),
+  ShowDate: makeItem(true),
+  PaperColor: makeItem('000000')
+};
+Object.keys(REACH).forEach(function (cell) {
+  REACH[cell].forEach(function (key) {
+    if (!items[key]) { items[key] = makeItem(0); }
+  });
+});
+
 /* Boot it exactly as Clay does: call with clayConfig as `this`, which
- * registers an AFTER_BUILD handler, then fire AFTER_BUILD. */
-var afterBuild = null;
+ * registers its AFTER_BUILD handlers, then fire them.
+ *
+ * ALL of them, in order. Keeping only the last one was enough while there
+ * was one; the moment a second was added, silently dropping the first would
+ * have left the greying untested while every check below still passed. */
+var afterBuilds = [];
 var fakeClayConfig = {
   EVENTS: { AFTER_BUILD: 'AFTER_BUILD' },
-  on: function (evt, fn) { if (evt === 'AFTER_BUILD') { afterBuild = fn; } }
+  on: function (evt, fn) { if (evt === 'AFTER_BUILD') { afterBuilds.push(fn); } },
+  getItemByMessageKey: function (key) { return items[key] || null; }
 };
 require('../../src/pkjs/custom-clay.js').call(fakeClayConfig);
+var afterBuild = afterBuilds.length
+  ? function () { afterBuilds.forEach(function (fn) { fn(); }); }
+  : null;
 
 var pass = 0;
 var fail = 0;
@@ -215,6 +261,105 @@ text.value = 'xyz';
 e = dispatch('input', { target: text });
 check('the number box beside each slider is left alone',
       text.value === 'xyz' && !e.stopped);
+
+/* ------------------------------------------------------------------ */
+/* Greying out                                                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE SETTINGS PAGE MUST AGREE WITH THE LAYOUT ABOUT WHAT IS DEAD.
+ *
+ * tools/test/harness.c swept every combination of reading mode, "minutes"
+ * wording and the date toggle across all 1440 minutes, recorded which rows
+ * the face actually draws, and wrote reachability.json. This drives the real
+ * settings-page handler across the same combinations and requires the set of
+ * ENABLED controls to match exactly.
+ *
+ * Comparing behaviour rather than reading the table out of the source: the
+ * page could hold a perfectly correct table and still wire it up backwards.
+ *
+ * Both directions matter, and for different reasons. A control left live
+ * when it does nothing sends the user off tuning a dead slider. A control
+ * greyed out when it works is worse - the setting is simply unreachable, and
+ * nothing about the page suggests why.
+ */
+function cellName(rnd, mode, date) { return rnd + '|' + mode + '|' + date; }
+
+function applyCell(rnd, mode, date) {
+  items.Rounding.set(String(rnd));
+  items.MinutesText.set(String(mode));
+  items.ShowDate.set(date === 1);
+}
+
+var governed = {};
+Object.keys(REACH).forEach(function (cell) {
+  REACH[cell].forEach(function (key) { governed[key] = true; });
+});
+
+var cells = Object.keys(REACH);
+check('the C sweep wrote every combination', cells.length === 18,
+      'got ' + cells.length);
+
+cells.forEach(function (cell) {
+  var parts = cell.split('|');
+  applyCell(parts[0], parts[1], Number(parts[2]));
+
+  var expected = REACH[cell].slice().sort();
+  var actual = Object.keys(governed).filter(function (key) {
+    return items[key].enabled;
+  }).sort();
+
+  check('reachable controls are live in ' + cell,
+        actual.join(',') === expected.join(','),
+        'enabled [' + actual.join(', ') + '] but the layout draws [' +
+        expected.join(', ') + ']');
+});
+
+/* The specific promises behind the two levers, named so a failure says what
+ * broke rather than just which cell. */
+applyCell(2, 0, 1);
+check('the spoken block lever is live in the spoken mode',
+      items.OffBlock.enabled);
+check('the rounded block lever is dead in the spoken mode',
+      !items.OffBlockFive.enabled);
+check('the hedge levers are live in the spoken mode',
+      items.OffHedge.enabled && items.OffHedgeSolo.enabled);
+check('nothing splits in the spoken mode, so the split levers are dead',
+      !items.OffSplitHead.enabled && !items.OffMinuteSplit.enabled);
+
+applyCell(1, 0, 1);
+check('the rounded block lever is live in the plain rounded mode',
+      items.OffBlockFive.enabled);
+check('the spoken block lever is dead in the plain rounded mode',
+      !items.OffBlock.enabled);
+check('there is no hedge in the plain rounded mode',
+      !items.OffHedge.enabled && !items.OffHedgeSolo.enabled);
+check('nothing splits in the plain rounded mode either',
+      !items.OffSplitHead.enabled && !items.OffMinuteSplit.enabled);
+
+applyCell(0, 0, 1);
+check('the exact mode still splits, so its levers are live',
+      items.OffSplitHead.enabled && items.OffMinuteSplit.enabled);
+check('neither block lever touches the exact mode',
+      !items.OffBlock.enabled && !items.OffBlockFive.enabled);
+
+applyCell(0, 0, 0);
+check('with the date off, its lever and its format are both dead',
+      !items.OffDate.enabled && !items.DateFormat.enabled);
+
+/* Not in the table at all: the colours, and the three selects that drive
+ * the greying. Disabling the Rounding select would strand the page in
+ * whatever mode it happened to be in. */
+check('a control the table does not govern is never touched',
+      items.PaperColor.enabled && !governed.PaperColor);
+
+/* An unrecognised combination means the table went stale against a mode
+ * that has since been added. Everything must stay usable. */
+items.Rounding.set('9');
+var allLive = Object.keys(governed).every(function (key) {
+  return items[key].enabled;
+});
+check('an unknown mode leaves every control usable', allLive);
 
 console.log('  clay slider          ' + (pass + fail) + ' checks, ' +
             fail + ' failures');

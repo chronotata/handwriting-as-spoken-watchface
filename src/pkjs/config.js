@@ -164,20 +164,27 @@ module.exports = [
           'moves it down. Changes apply straight away. <strong>Drag the ' +
           'dot</strong> — tapping the track does nothing, so scrolling ' +
           'past a slider cannot move it by accident. The box on the right ' +
-          'takes a typed number.'
+          'takes a typed number.<br><br>Anything that cannot affect what ' +
+          'is currently on the watch is greyed out — the wording and date ' +
+          'settings above decide which rows get drawn at all.'
       },
-      offsetSlider('OffBlock', 'Whole phrase',
+      // The two rounded modes draw the same phrase and differ only in where
+      // the whole of it sits, so each gets its own lever and neither drags
+      // the other. See OFFSET_BLOCK / OFFSET_BLOCK_FIVE in src/c/config.h.
+      offsetSlider('OffBlock', 'Whole phrase, with "just gone" / "nearly"',
                    'Moves the minute, "past"/"to" and the hour together, ' +
                    'leaving the hedge, the date and the on-the-hour wording ' +
-                   'where they are. Only applies to "nearest five, spoken" ' +
-                   '— the other two layouts are untouched.'),
+                   'where they are. This is the phrase sitting lower to ' +
+                   'leave the hedge its room.'),
+      offsetSlider('OffBlockFive', 'Whole phrase, without the hedge',
+                   'The same phrase in plain "nearest five", where nothing ' +
+                   'sits above it and it can ride higher. Tuned separately ' +
+                   'so adjusting one reading mode never moves the other.'),
       offsetSlider('OffHedge', '"just gone" / "nearly"',
-                   'The small word above the minute. Greyed out unless the ' +
-                   'reading mode is "nearest five, spoken".'),
+                   'The small word above the minute.'),
       offsetSlider('OffHedgeSolo', '"just gone" / "nearly", on the hour',
                    'The same word above the o\'clock wording, which is a ' +
-                   'different balance. Greyed out unless the reading mode ' +
-                   'is "nearest five, spoken".'),
+                   'different balance.'),
       offsetSlider('OffSplitHead', 'Split number, top half',
                    '"twenty-" — only appears when the minute splits across ' +
                    'two lines. Use this to pull it clear of the top edge ' +

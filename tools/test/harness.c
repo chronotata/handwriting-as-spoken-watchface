@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "generated.h"   /* RESOURCE_ID_*, WORD_INK[] - written by tune.py */
 
@@ -570,6 +571,304 @@ static bool expected_in_block(uint8_t row) {
          row == ROW_RELATION || row == ROW_HOUR;
 }
 
+/* ------------------------------------------------------------------ */
+/* Reachability                                                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * WHICH SETTINGS CAN DO ANYTHING, GIVEN THE OTHER SETTINGS.
+ *
+ * A lever for a row that the current combination of modes never draws is a
+ * control that does nothing, and offering it invites the reasonable
+ * conclusion that the watchface is broken. So the settings page greys those
+ * out - but "which levers are dead right now" is a fact about the LAYOUT
+ * code, and the settings page is JavaScript that cannot see it.
+ *
+ * Rather than keep a hand-written list in the page and hope it stays true,
+ * this sweeps every combination, records which rows are ever drawn, and
+ * writes the answer out. tools/test/clay-slider.test.js then drives the real
+ * settings-page handler across the same combinations and fails if it greys
+ * out anything different. The layout is the source of truth; the page has to
+ * agree with it, and changing what a mode draws forces the page to be
+ * revisited rather than silently going stale.
+ *
+ * Deriving it from the sweep rather than from reading the code also means it
+ * reports what the face DOES, not what it was meant to do.
+ */
+static const char *const kRowKey[ROW_COUNT] = {
+  [ROW_MINUTE]        = "OffMinute",
+  [ROW_MINUTES_INLINE] = "OffMinutes",
+  [ROW_RELATION]      = "OffRelation",
+  [ROW_HOUR]          = "OffHour",
+  [ROW_SOLO]          = "OffSolo",
+  [ROW_DATE]          = "OffDate",
+  [ROW_SPLIT_HEAD]    = "OffSplitHead",
+  [ROW_MINUTES_OWN]   = "OffMinutesOwn",
+  [ROW_MINUTE_ALONE]  = "OffMinuteAlone",
+  [ROW_MINUTE_SPLIT]  = "OffMinuteSplit",
+  [ROW_HEDGE]         = "OffHedge",
+  [ROW_HEDGE_SOLO]    = "OffHedgeSolo"
+};
+
+static void emit_reachability(void) {
+  FILE *out = fopen("reachability.json", "w");
+  if (!out) {
+    printf("  reachability         COULD NOT WRITE reachability.json\n");
+    CHECK(false, "reachability.json could not be written", 0, 0,
+          "the settings-page test reads it");
+    return;
+  }
+  fprintf(out, "{\n");
+
+  int cells = 0;
+  for (uint8_t rnd = 0; rnd < ROUNDING_COUNT; rnd++) {
+    for (uint8_t mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
+      for (int date_on = 0; date_on <= 1; date_on++) {
+        bool seen[ROW_COUNT];
+        memset(seen, 0, sizeof(seen));
+
+        for (uint8_t fmt = 0; fmt < DATE_FORMAT_COUNT; fmt++) {
+          for (int t = 0; t < 1440; t++) {
+            struct tm tm = make_tm(232, 21, 7, 2026, t / 60, t % 60);
+            settings_defaults();
+            s_settings.rounding = rnd;
+            s_settings.minutes_mode = mode;
+            s_settings.date_format = fmt;
+            s_settings.show_date = (date_on != 0);
+            s_have_prev = false;
+            refresh(&tm, true);
+            for (int i = 0; i < s_face.count; i++) {
+              seen[s_face.items[i].row] = true;
+            }
+          }
+        }
+
+        /* The block levers are not rows. Each moves the phrase in one
+         * reading mode, so it is live exactly when that mode is chosen and
+         * the phrase is something this combination ever draws. */
+        bool phrase = false;
+        for (uint8_t r = 0; r < ROW_COUNT; r++) {
+          if (seen[r] && expected_in_block(r)) {
+            phrase = true;
+          }
+        }
+
+        if (cells++) {
+          fprintf(out, ",\n");
+        }
+        fprintf(out, "  \"%d|%d|%d\": [", rnd, mode, date_on);
+
+        int n = 0;
+        for (uint8_t r = 0; r < ROW_COUNT; r++) {
+          if (seen[r] && kRowKey[r]) {
+            fprintf(out, "%s\"%s\"", n++ ? ", " : "", kRowKey[r]);
+          }
+        }
+        /* The date FORMAT is as dead as the date's own lever when there is
+         * no date on screen - it is a setting for something not drawn, which
+         * is the same test every row lever gets. */
+        if (seen[ROW_DATE]) {
+          fprintf(out, "%s\"DateFormat\"", n++ ? ", " : "");
+        }
+        if (phrase && rnd == ROUND_SPOKEN) {
+          fprintf(out, "%s\"OffBlock\"", n++ ? ", " : "");
+        }
+        if (phrase && rnd == ROUND_FIVE) {
+          fprintf(out, "%s\"OffBlockFive\"", n++ ? ", " : "");
+        }
+        fprintf(out, "]");
+      }
+    }
+  }
+
+  fprintf(out, "\n}\n");
+  fclose(out);
+  printf("  reachability         %d combinations written\n", cells);
+}
+
+/*
+ * THE TWO ROUNDED MODES ARE ONE TRANSLATION APART.
+ *
+ * "Nearest five" and "nearest five, spoken" say the same thing; the second
+ * merely admits which way it rounded. So they draw the same phrase - same
+ * words, same rows, same indents - and the only intended difference is that
+ * the spoken one carries a hedge above it, and therefore wants the whole
+ * phrase sitting a little lower to leave room for it.
+ *
+ * That is what the two block levers are for, and this is the invariant that
+ * keeps them honest. It is deliberately NOT "the two modes look identical",
+ * which they must not, and NOT "the words match", which would miss the
+ * failure that actually matters: one row sliding relative to its neighbours
+ * while the block is being tuned. The phrase has to move as a rigid body.
+ *
+ * Stated as three separate claims, because they fail for different reasons
+ * and a merged message would not say which:
+ *
+ *   1. the same elements, in the same order, at the same x
+ *   2. every phrase row shifted by the SAME amount as every other
+ *   3. that amount is exactly the difference between the two levers
+ *
+ * ON THE HOUR IS EXEMPT FROM 2 AND 3, and the first draft of this check was
+ * wrong to demand them. There the hedge is not a row sitting above a stacked
+ * phrase; it joins the o'clock wording and centre() centres the GROUP, so
+ * adding it necessarily moves the words it was added to - by 15 or 16px, as
+ * this promptly reported. That is the layout doing what it is supposed to
+ * do, and rewriting it to satisfy a test would have broken the one case
+ * already agreed to look right in both modes.
+ *
+ * Claim 1 still holds there, so it is still asserted: the two modes must
+ * agree on WHICH words, in what order, at what indent, even where they
+ * disagree about the height. Only the vertical claims stand down, and only
+ * for the centred layout.
+ *
+ * Everything outside the phrase in a stacked layout - the date - is held to
+ * moving by exactly zero rather than skipped. "Already right" is worth a
+ * check, not an exemption; it is what a mis-wired lever breaks first.
+ */
+static void check_rounded_modes_agree(void) {
+  char buf[240];
+  /* Pairs, not single values: with both levers equal every delta is zero and
+   * the check passes while proving nothing. Includes the range ends, and one
+   * equal pair to confirm the degenerate case really does collapse. */
+  static const int8_t kPairs[][2] = {
+    {0, 0}, {-9, 0}, {-9, -4}, {5, -7}, {15, -15}, {-15, 15}, {-3, -3}
+  };
+  const int kPairCount = (int)(sizeof(kPairs) / sizeof(kPairs[0]));
+
+  int flat_five[MAX_ELEMENTS];
+  Face five;
+
+  for (int p = 0; p < kPairCount; p++) {
+    const int spoken_off = kPairs[p][0];
+    const int five_off = kPairs[p][1];
+    for (uint8_t mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
+      for (int t = 0; t < 1440; t++) {
+        const int h = t / 60, m = t % 60;
+        struct tm tm = make_tm(232, 21, 7, 2026, h, m);
+
+        settings_defaults();
+        s_settings.minutes_mode = mode;
+        s_settings.rounding = ROUND_FIVE;
+        s_settings.offset_block = (int8_t)spoken_off;
+        s_settings.offset_block_five = (int8_t)five_off;
+        s_have_prev = false;
+        refresh(&tm, true);
+        five = s_face;
+        for (int i = 0; i < five.count; i++) {
+          flat_five[i] = drawn_baseline_of(&five.items[i]);
+        }
+
+        settings_defaults();
+        s_settings.minutes_mode = mode;
+        s_settings.rounding = ROUND_SPOKEN;
+        s_settings.offset_block = (int8_t)spoken_off;
+        s_settings.offset_block_five = (int8_t)five_off;
+        s_have_prev = false;
+        refresh(&tm, true);
+
+        /* The hedge is the one element the spoken mode adds. Everything
+         * left has to line up with the plain mode one for one. */
+        Element bare[MAX_ELEMENTS];
+        int bare_drawn[MAX_ELEMENTS];
+        int n = 0;
+        for (int i = 0; i < s_face.count; i++) {
+          const Element *e = &s_face.items[i];
+          if (e->row == ROW_HEDGE || e->row == ROW_HEDGE_SOLO) {
+            continue;
+          }
+          bare_drawn[n] = drawn_baseline_of(e);
+          bare[n++] = *e;
+        }
+
+        snprintf(buf, sizeof(buf),
+                 "levers %+d/%+d, minutes mode %d: plain has %d elements, "
+                 "spoken has %d once the hedge is set aside",
+                 spoken_off, five_off, mode, five.count, n);
+        CHECK(n == five.count,
+              "the two rounded modes do not draw the same phrase", h, m, buf);
+        if (n != five.count) {
+          continue;
+        }
+
+        /* 1. same elements, same order, same x */
+        for (int i = 0; i < n; i++) {
+          snprintf(buf, sizeof(buf),
+                   "element %d: plain word %d row %d x %d, "
+                   "spoken word %d row %d x %d",
+                   i, five.items[i].word, five.items[i].row, five.items[i].x,
+                   bare[i].word, bare[i].row, bare[i].x);
+          CHECK(bare[i].word == five.items[i].word,
+                "the rounded modes disagree on a word", h, m, buf);
+          CHECK(bare[i].row == five.items[i].row,
+                "the rounded modes put a word on a different row", h, m, buf);
+          CHECK(bare[i].x == five.items[i].x,
+                "the rounded modes indent a word differently", h, m, buf);
+        }
+
+        /* 2. one uniform shift across the phrase, 3. equal to the levers.
+         *
+         * Not on the hour: see the note above - centre() re-centres the
+         * o'clock wording around the hedge, which is a different and
+         * deliberate relationship, not this one. Detected from the drawn
+         * face rather than from the clock, because whether the layout is
+         * centred depends on the SPOKEN minute, not the wall-clock one. */
+        bool centred = false;
+        for (int i = 0; i < n; i++) {
+          if (bare[i].row == ROW_SOLO) {
+            centred = true;
+          }
+        }
+        if (centred) {
+          continue;
+        }
+
+        const int want = spoken_off - five_off;
+        int seen = INT_MIN;
+        int seen_at = -1;
+        for (int i = 0; i < n; i++) {
+          const int delta = bare_drawn[i] - flat_five[i];
+          if (!expected_in_block(bare[i].row)) {
+            snprintf(buf, sizeof(buf),
+                     "levers %+d/%+d: element %d (word %d, row %d) moved %d "
+                     "between the modes, and nothing outside the phrase "
+                     "should move at all",
+                     spoken_off, five_off, i, bare[i].word, bare[i].row, delta);
+            CHECK(delta == 0,
+                  "a row outside the phrase moved between the rounded modes",
+                  h, m, buf);
+            continue;
+          }
+          if (seen == INT_MIN) {
+            seen = delta;
+            seen_at = i;
+            continue;
+          }
+          snprintf(buf, sizeof(buf),
+                   "levers %+d/%+d: element %d (word %d, row %d) moved %d, "
+                   "but element %d moved %d - the phrase is being stretched, "
+                   "not translated",
+                   spoken_off, five_off, i, bare[i].word, bare[i].row, delta,
+                   seen_at, seen);
+          CHECK(delta == seen,
+                "the phrase drifted row by row between the rounded modes",
+                h, m, buf);
+        }
+        if (seen != INT_MIN) {
+          snprintf(buf, sizeof(buf),
+                   "levers %+d/%+d: the phrase moved %d between the modes, "
+                   "but the levers differ by %d",
+                   spoken_off, five_off, seen, want);
+          CHECK(seen == want,
+                "the shift between the rounded modes is not the two levers",
+                h, m, buf);
+        }
+      }
+    }
+  }
+  printf("  rounded modes        %d lever pairs x %d minutes modes\n",
+         kPairCount, MINUTES_MODE_COUNT);
+}
+
 static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
                                uint8_t rnd) {
   char buf[210];
@@ -582,6 +881,7 @@ static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
     s_settings.minutes_mode = mode;
     s_settings.rounding = rnd;
     s_settings.offset_block = 0;
+    s_settings.offset_block_five = 0;
     s_have_prev = false;
     refresh(&tm, true);
     const Face flat = s_face;
@@ -600,7 +900,12 @@ static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
     s_settings.date_format = fmt;
     s_settings.minutes_mode = mode;
     s_settings.rounding = rnd;
+    /* BOTH levers move together, so each rounded mode is exercised by its
+     * own one and the exact mode has to ignore the pair of them. Setting
+     * only the spoken lever would have let the rounded lever be wired to
+     * anything at all - or to nothing - without this noticing. */
     s_settings.offset_block = (int8_t)kShifts[s];
+    s_settings.offset_block_five = (int8_t)kShifts[s];
     s_have_prev = false;
     refresh(&tm, true);
 
@@ -609,8 +914,8 @@ static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
 
     for (int i = 0; i < s_face.count && i < flat.count; i++) {
       const Element *e = &s_face.items[i];
-      /* scoped to the spoken mode - see above */
-      const int want = (rnd == ROUND_SPOKEN && expected_in_block(e->row))
+      /* Neither lever touches the exact mode - see block_offset(). */
+      const int want = (rnd != ROUND_EXACT && expected_in_block(e->row))
                        ? kShifts[s] : 0;
       const int moved = drawn_baseline_of(e) - flat_drawn[i];
       snprintf(buf, sizeof(buf),
@@ -932,6 +1237,20 @@ static void check_offset_independence(void) {
         refresh(&tm, true);
         const Face flat = s_face;
 
+        /* Where the flat pass DRAWS each row, not where it computes it.
+         *
+         * apply_plan() zeroes the ten levers this sweep owns, but the block
+         * lever is not one of them and carries its own non-zero default, so
+         * an unoffset flat baseline would charge that default to whichever
+         * row happened to be in the phrase. Comparing drawn against drawn
+         * cancels every contributor the plan does not touch, which is the
+         * property wanted here: this check is about the ten levers moving
+         * independently, and check_block_offset() owns the block. */
+        int flat_drawn[MAX_ELEMENTS];
+        for (int i = 0; i < flat.count; i++) {
+          flat_drawn[i] = drawn_baseline(&flat.items[i]);
+        }
+
         settings_defaults();
         s_settings.minutes_mode = (uint8_t)mode;
         s_settings.rounding = (uint8_t)rnd;
@@ -945,8 +1264,7 @@ static void check_offset_independence(void) {
         for (int i = 0; i < s_face.count && i < flat.count; i++) {
           const Element *e = &s_face.items[i];
           const int want = plan_for(kPlans[p], kRows, e->row);
-          const int moved = drawn_baseline(e)
-                          - (flat.items[i].top + WORDS[flat.items[i].word].base);
+          const int moved = drawn_baseline(e) - flat_drawn[i];
           snprintf(buf, sizeof(buf),
                    "plan %d mode %d: element %d (word %d, row %d) moved %d, "
                    "its own offset is %d", p, mode, i, e->word, e->row,
@@ -1064,6 +1382,11 @@ static void send_setting_str(uint32_t key, const char *value) {
  * this check used "non-zero means it changed", which quietly became a test
  * that every default was zero.
  */
+/* One slot per entry in kOffsets[] below. Sized from a name rather than a
+ * literal because the two got out of step the moment a lever was added: the
+ * table grew, the arrays did not, and the sweep ran off the end of them. */
+#define OFFSET_KEY_COUNT 14
+
 static void snapshot_offsets(int *out) {
   out[0] = s_settings.offset_split_head;
   out[1] = s_settings.offset[ROW_MINUTE];
@@ -1072,6 +1395,7 @@ static void snapshot_offsets(int *out) {
   out[4] = s_settings.offset_hedge;
   out[5] = s_settings.offset_hedge_solo;
   out[6] = s_settings.offset_block;
+  out[13] = s_settings.offset_block_five;
   out[7] = s_settings.offset[ROW_MINUTES_INLINE];
   out[8] = s_settings.offset_minutes_own;
   out[9] = s_settings.offset[ROW_RELATION];
@@ -1095,12 +1419,16 @@ static void check_message_routing(void) {
     {MESSAGE_KEY_OffRelation,    "OffRelation"},
     {MESSAGE_KEY_OffHour,        "OffHour"},
     {MESSAGE_KEY_OffSolo,        "OffSolo"},
-    {MESSAGE_KEY_OffDate,        "OffDate"}
+    {MESSAGE_KEY_OffDate,        "OffDate"},
+    {MESSAGE_KEY_OffBlockFive,   "OffBlockFive"}
   };
   const int n = (int)(sizeof(kOffsets) / sizeof(kOffsets[0]));
+  _Static_assert(sizeof(kOffsets) / sizeof(kOffsets[0]) == OFFSET_KEY_COUNT,
+                 "kOffsets[] and snapshot_offsets() disagree on how many "
+                 "offset keys there are");
 
   for (int i = 0; i < n; i++) {
-    int before[13], after[13];
+    int before[OFFSET_KEY_COUNT], after[OFFSET_KEY_COUNT];
     settings_defaults();
     snapshot_offsets(before);
 
@@ -1528,8 +1856,10 @@ int main(void) {
   check_minutes_wording();
   check_palette();
   check_offset_independence();
+  check_rounded_modes_agree();
   check_message_routing();
   check_settings();
+  emit_reachability();
 
   drop_all_bitmaps();
   printf("  live bitmaps at exit %d\n", stub_live_bitmaps());

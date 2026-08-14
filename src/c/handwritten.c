@@ -44,13 +44,16 @@ _Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP + OFFSET_HOUR
                  < DATE_BASELINE - DATE_BOX_BASE,
                "hour row overlaps the date: lower REL_TOP or ROW_GAP, "
                "or raise DATE_BASELINE");
-/* The same row again with the block lever, which only the spoken mode
- * applies. Asserted separately rather than folded into the line above,
- * because a NEGATIVE block would otherwise make that check too lenient for
- * the two modes the lever does not touch. */
+/* The same row again with each block lever. Asserted separately rather than
+ * folded into the line above, because a NEGATIVE block - and both of these
+ * default negative or zero - would otherwise make that check too lenient
+ * for the exact mode, which no block lever touches. */
 _Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP + OFFSET_HOUR + OFFSET_BLOCK
                  < DATE_BASELINE - DATE_BOX_BASE,
-               "the block lever pushes the hour row into the date");
+               "the spoken block lever pushes the hour row into the date");
+_Static_assert(REL_TOP + 2 * TIME_BOX_H + ROW_GAP + OFFSET_HOUR
+                 + OFFSET_BLOCK_FIVE < DATE_BASELINE - DATE_BOX_BASE,
+               "the rounded block lever pushes the hour row into the date");
 _Static_assert(REL_TOP - 2 * (TIME_BOX_H + ROW_GAP) + OFFSET_SPLIT_HEAD
                  + (TIME_BOX_BASE - SPLIT_HEAD_ASC) >= 0,
                "top row is clipped by the top of the screen: raise REL_TOP, "
@@ -188,7 +191,8 @@ typedef struct {
   int8_t offset_hedge;          /* ROW_HEDGE                             */
   uint8_t rounding;             /* index into kRoundingModes             */
   int8_t offset_hedge_solo;     /* ROW_HEDGE_SOLO                        */
-  int8_t offset_block;          /* the whole phrase, as one              */
+  int8_t offset_block;          /* the whole phrase, as one - SPOKEN     */
+  int8_t offset_block_five;     /* the same, for the plain rounded mode  */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -780,12 +784,16 @@ static void build_face(Face *f, struct tm *t) {
 
     /*
      * "twenty-five" fits on one line at 181px - the same 9px right margin
-     * "midnight" already lives with on the hour row. Only the spoken mode
-     * uses it, and only because it needs the row for the hedge: the exact
-     * mode still has to split, since "twenty-seven" is 206px wide.
+     * "midnight" already lives with on the hour row.
+     *
+     * Both ROUNDED modes use it. Rounding leaves 25 as the only minute that
+     * can land in the 21-29 band at all, so there is nothing left for it to
+     * look inconsistent beside, and the spoken mode needs the row back for
+     * the hedge. The EXACT mode still splits: there 21-29 all occur, and
+     * "twenty-seven" is 206px and would run off the screen.
      */
     const bool one_line_25 =
-        (s_settings.rounding == ROUND_SPOKEN && mins == 25);
+        (s_settings.rounding != ROUND_EXACT && mins == 25);
     const bool split = (mins >= 21 && mins <= 29) && !one_line_25;
     const bool show_mins = wants_minutes(mins);
 
@@ -929,13 +937,27 @@ static void mark_changes(bool date_changed) {
  * are anchored elsewhere and deliberately stay put.
  */
 /*
- * The block lever only applies in the SPOKEN reading mode. The other two
- * layouts are already tuned and must not move: this lever exists to
- * rebalance the phrase against the hedge row, which only the spoken mode
- * has.
+ * How far the whole phrase is shifted, which depends on the reading mode.
+ *
+ * The two rounded modes draw the SAME phrase - identical words, identical
+ * rows, identical indents - and differ only in that the spoken one carries
+ * a hedge above it. So the phrase wants to sit slightly lower there, to
+ * leave the hedge its room, and slightly higher in the plain mode, where it
+ * is better centred with nothing above it.
+ *
+ * That is one rigid translation of the block, not a re-layout: the minute,
+ * "past"/"to" and the hour hold their spacing exactly. Two levers rather
+ * than one so each position can be tuned and then left alone.
+ *
+ * The exact mode gets neither. Its layout was settled first and must not
+ * move when either of these is touched.
  */
 static int block_offset(void) {
-  return (s_settings.rounding == ROUND_SPOKEN) ? s_settings.offset_block : 0;
+  switch (s_settings.rounding) {
+    case ROUND_SPOKEN: return s_settings.offset_block;
+    case ROUND_FIVE:   return s_settings.offset_block_five;
+    default:           return 0;
+  }
 }
 
 static bool in_phrase_block(uint8_t row) {
@@ -1094,6 +1116,7 @@ static void settings_defaults(void) {
   s_settings.offset_hedge = OFFSET_HEDGE;
   s_settings.offset_hedge_solo = OFFSET_HEDGE_SOLO;
   s_settings.offset_block = OFFSET_BLOCK;
+  s_settings.offset_block_five = OFFSET_BLOCK_FIVE;
   s_settings.rounding = DEFAULT_ROUNDING;
   s_settings.offset[ROW_RELATION] = OFFSET_RELATION;
   s_settings.offset[ROW_HOUR] = OFFSET_HOUR;
@@ -1229,6 +1252,9 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   if ((t = dict_find(it, MESSAGE_KEY_OffBlock))) {
     s_settings.offset_block = clamp_offset(tuple_int(t));
   }
+  if ((t = dict_find(it, MESSAGE_KEY_OffBlockFive))) {
+    s_settings.offset_block_five = clamp_offset(tuple_int(t));
+  }
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
   read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);
@@ -1277,7 +1303,15 @@ static void init(void) {
   });
   window_stack_push(s_window, true);
   app_message_register_inbox_received(inbox_received);
-  app_message_open(256, 64);
+  /*
+   * Clay sends every setting in ONE dictionary, so the inbox has to hold
+   * the whole page at once: 7 bytes of tuple header each, plus the value.
+   * At 21 keys that is around 225 bytes, and 256 left room for only two or
+   * three more sliders. Overflowing does not fail loudly - the message is
+   * dropped whole and NO setting arrives, which reads as "the new option
+   * isn't in the settings page" rather than as a buffer problem.
+   */
+  app_message_open(512, 64);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 }
 

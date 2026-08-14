@@ -208,10 +208,10 @@ pebble install --emulator emery
 Worth checking a few specific times, since these exercise the trickiest
 parts of the layout at once:
 ```bash
-pebble emu-set-time --emulator emery 00:28   # worst-case 4-row split phrase
-pebble emu-set-time --emulator emery 23:40   # regression check: must show "twenty", not "one"
-pebble emu-set-time --emulator emery 03:00   # the witching-hour easter egg
-pebble emu-set-time --emulator emery 12:00   # solo "midday"
+pebble emu-set-time --emulator emery 00:28:00   # worst-case 4-row split phrase
+pebble emu-set-time --emulator emery 23:40:00   # regression check: must show "twenty", not "one"
+pebble emu-set-time --emulator emery 03:00:00   # the witching-hour easter egg
+pebble emu-set-time --emulator emery 12:00:00   # solo "midday"
 ```
 `pebble logs --emulator emery` shows live log output if anything looks off,
 including anything `src/pkjs/` throws or logs.
@@ -325,11 +325,23 @@ inked in that direction only — `CONTEXT.md` §2 has the measurements. Four
 choices, because four levels per channel is all the screen has: Off, Light,
 Medium (the measured match, and the default) and Solid.
 
-**Whole phrase** and the two hedge sliders are **greyed out** unless the
-reading mode is
-"nearest five, spoken" — `src/pkjs/custom-clay.js` disables them off the
-Rounding select and updates live, so they track the choice without a
-save-and-reopen.
+**Anything that cannot affect what is on the watch is greyed out.** Which
+rows get drawn depends on the reading mode, the "minutes" wording and the
+date toggle: rounding to the nearest five leaves 25 as the only minute in
+the twenties, so nothing splits and the two split sliders are dead; the
+hedge exists only in the spoken mode; with the date off, both the date
+slider and the date format are for something nobody can see. A control that
+does nothing is worse than a missing one, because the reasonable conclusion
+on moving it and seeing nothing happen is that the watchface is broken.
+
+`src/pkjs/custom-clay.js` drives this off all three controls and updates
+live, so it tracks the choice without a save-and-reopen. The table it uses
+is **not hand-written**: `tools/test/harness.c` sweeps every combination
+across all 1440 minutes, records which rows the layout actually draws, and
+writes `tools/test/reachability.json`; `tools/test/clay-slider.test.js` then
+drives the real handler across the same combinations and fails if the page
+greys out anything different. Change what a mode draws and the settings page
+has to be revisited — it cannot quietly go stale.
 
 It changes how solidly the outline is inked, **not how far it extends** —
 the outer edge of the outline sets the apparent width either way, so Solid
@@ -341,7 +353,8 @@ separate on purpose:
 
 | slider | moves |
 |---|---|
-| Whole phrase | the minute, "past"/"to" and the hour together — not the hedge, date or on-the-hour wording. **Spoken mode only** |
+| Whole phrase, with "just gone" / "nearly" | the minute, "past"/"to" and the hour together — not the hedge, date or on-the-hour wording. **Spoken mode only**, where the phrase sits lower to leave the hedge its room |
+| Whole phrase, without the hedge | the same phrase in plain "nearest five", where nothing sits above it and it can ride higher. **That mode only** |
 | "just gone" / "nearly" | the hedge above the stacked phrase, spoken mode only |
 | "just gone" / "nearly", on the hour | the same word above the o'clock wording |
 |---|---|
@@ -351,6 +364,13 @@ separate on purpose:
 | Split number, lower half | the `one` of `twenty-one`, annotated or not |
 | "minute(s)" beside the number | :21–:29, riding next to the split |
 | "minute(s)" on its own line | :01–:20, where nothing else holds it |
+
+The two "whole phrase" sliders are separate because the modes want the
+block in two different places, and one lever would mean every adjustment to
+either mode dragged the other with it. What they must NOT do is change the
+phrase's internal spacing: the harness asserts the two rounded modes differ
+by exactly one rigid translation, so if tuning one of these ever makes a row
+slide relative to its neighbours, that is a bug and the suite will say so.
 
 Keep **"minute(s)" beside the number** at the same value as **Split number,
 lower half** — that is the row it actually sits beside — and the two stay

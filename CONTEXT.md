@@ -318,10 +318,21 @@ Three consequences worth knowing:
 - **:58 and :59 roll the hour forward but not the date.** At 23:58 the face
   reads *nearly midnight* above today's date. The date comes from the real
   time; only the phrase is rounded.
-- **`twenty-five` is set on ONE line in the spoken mode only.** It fits at
-  181px — the same 9px right margin `midnight` already lives with — and that
-  frees the row the hedge needs. The exact mode still has to split, since
-  `twenty-seven` is 206px and would run off the screen.
+- **`twenty-five` is set on ONE line in both rounded modes.** It fits at
+  181px — the same 9px right margin `midnight` already lives with. Rounding
+  leaves 25 as the only minute that can land in the 21–29 band at all, so
+  there is nothing for it to look inconsistent beside, and in the spoken
+  mode it frees the row the hedge needs. The exact mode still has to split,
+  since `twenty-seven` is 206px and would run off the screen.
+- **The two rounded modes are one rigid translation apart.** They say the
+  same thing; the spoken one merely admits which way it rounded. So they
+  draw the same words on the same rows at the same indents, and differ only
+  in that the spoken phrase sits lower to leave the hedge its room. Two
+  block levers, one per mode, so tuning either never moves the other.
+  On the hour is the exception: there the hedge joins the `o'clock` wording
+  and `centre()` centres the group, so adding it moves what it was added to.
+  That is deliberate, and the test exempts the vertical claim there rather
+  than the layout bending to satisfy it.
 
 The hedge sits **flat** above the word it qualifies rather than a step in:
 it modifies that word instead of being a rung of its own, and at one indent
@@ -419,7 +430,9 @@ What it checks:
 | date formats | format 0 compared element-for-element against a verbatim transcription of the pre-refactor builder; format 1's weekday checked against an independent `tm_wday`, and asserted to appear first with no year |
 | minutes modes | presence, absence and singular/plural of `minute(s)` asserted from the spec wording rather than from a copy of the predicate, plus the specific phrases the setting promises (*five minutes past five*, *quarter past one*) |
 | message routing | each settings key drives the field it names and no other, both tuple types, clamping applied on the way in |
-| block lever | in the spoken mode every row that hangs off `REL_TOP` shifts by exactly it, and the hedge, the date and the centred layouts do not move; in the other two reading modes **nothing** moves — with the membership written out by hand in the test rather than read from the code |
+| block levers | in each rounded mode every row that hangs off `REL_TOP` shifts by exactly that mode's lever, and the hedge, the date and the centred layouts do not move; in the exact mode **nothing** moves — with the membership written out by hand in the test rather than read from the code |
+| rounded modes agree | mode 1 and mode 2 draw the same elements, in the same order, at the same x, once the hedge is set aside; every phrase row shifts by the *same* amount as every other; and that amount is exactly the difference between the two block levers. Swept over seven lever pairs, so an equal pair cannot make it pass by collapsing every delta to zero |
+| reachability | the C sweep records which rows each combination of reading mode, `minutes` wording and date toggle actually draws, and writes `tools/test/reachability.json`; the settings-page test then drives the real greying handler across the same 18 combinations and requires the enabled controls to match exactly, both directions |
 | ink overlap | no descender passes more than `INK_OVERLAP_MAX_PCT` of the ascender below it, none reaches the neighbouring x-height, and no ascender reaches the baseline above — on drawn positions, every minute |
 | on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
 | rounding | the spoken minute is always a multiple of five and never more than two minutes from the real one, and the hedge agrees with the direction it moved |
@@ -449,7 +462,12 @@ rounding to the nearest ten, the hedge taking an indent step, the hedge
 leaking into the plain rounded mode, `twenty-five` set on one line in
 every mode, the block lever dragging the date or skipping the hour row, the
 two hedge levers wired to one field, and the centred layouts using the
-stacked hedge row.
+stacked hedge row. And since the second block lever landed: `twenty-five`
+reverted to splitting in the plain rounded mode, the relation row dropped
+out of the block so the phrase stretched instead of translating, the two
+rounded modes sharing one lever, the new lever wired to nothing, the
+settings page greying the two block levers the wrong way round, the greying
+ignoring the date toggle, and the greying inverted outright.
 
 **Two tests that could not fail, both found by injection.** The block
 lever's check computed what it expected by calling `in_phrase_block()` — the

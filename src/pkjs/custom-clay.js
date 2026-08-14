@@ -43,30 +43,93 @@ module.exports = function() {
   var clayConfig = this;
 
   /*
-   * The block lever and the two hedge sliders only do anything in the
-   * spoken reading mode, so
-   * they are greyed out otherwise rather than sitting there inviting a
-   * change that has no effect. Driven off the Rounding select and updated
-   * live, so it tracks the choice without a save-and-reopen.
+   * GREY OUT ANYTHING THAT CANNOT AFFECT WHAT IS ON THE WATCH.
+   *
+   * Which rows get drawn depends on the wording and date settings: rounding
+   * to the nearest five leaves 25 as the only minute in the twenties, so
+   * nothing splits across two lines and the split levers are dead; the hedge
+   * exists only in the spoken mode; with the date switched off both the date
+   * lever and the date format are for something nobody can see.
+   *
+   * A control that does nothing is worse than a missing one, because the
+   * reasonable conclusion on moving it and seeing no change is that the
+   * watchface is broken. So they are greyed rather than left live.
+   *
+   * REACHABLE below is not hand-reasoned. tools/test/harness.c sweeps every
+   * combination of these settings across all 1440 minutes, records which
+   * rows the layout actually draws, and writes tools/test/reachability.json;
+   * tools/test/clay-slider.test.js then drives this very handler across the
+   * same combinations and fails if it greys out anything different. Copy the
+   * emitted table in here when the layout changes - do not reason it out,
+   * the sweep has already done that and will disagree if you get it wrong.
+   *
+   * Keys are "rounding|minutesText|showDate". Any control not named in a
+   * cell is disabled there; anything not named ANYWHERE - the colours, the
+   * mode selects themselves - is always live and never touched.
    */
+  var REACHABLE = {
+    '0|0|0': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit'],
+    '0|0|1': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'DateFormat'],
+    '0|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinuteAlone', 'OffMinuteSplit'],
+    '0|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinuteAlone', 'OffMinuteSplit', 'DateFormat'],
+    '0|2|0': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit'],
+    '0|2|1': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'DateFormat'],
+    '1|0|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffBlockFive'],
+    '1|0|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'DateFormat', 'OffBlockFive'],
+    '1|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffBlockFive'],
+    '1|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'DateFormat', 'OffBlockFive'],
+    '1|2|0': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffMinutesOwn', 'OffMinuteAlone', 'OffBlockFive'],
+    '1|2|1': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinutesOwn', 'OffMinuteAlone', 'DateFormat', 'OffBlockFive'],
+    '2|0|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffBlock'],
+    '2|0|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'DateFormat', 'OffBlock'],
+    '2|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffBlock'],
+    '2|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'DateFormat', 'OffBlock'],
+    '2|2|0': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffMinutesOwn', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffBlock'],
+    '2|2|1': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinutesOwn', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'DateFormat', 'OffBlock']
+  };
+
+  /* Every control the table governs, gathered from the table itself so a
+   * key added to one cell cannot be forgotten in another - it will simply
+   * be absent there, which is what "disabled" means. */
+  var GOVERNED = (function () {
+    var seen = {};
+    var all = [];
+    Object.keys(REACHABLE).forEach(function (cell) {
+      REACHABLE[cell].forEach(function (key) {
+        if (!seen[key]) { seen[key] = true; all.push(key); }
+      });
+    });
+    return all;
+  })();
+
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
     var rounding = clayConfig.getItemByMessageKey('Rounding');
-    var dependents = ['OffBlock', 'OffHedge', 'OffHedgeSolo'];
+    var minutes = clayConfig.getItemByMessageKey('MinutesText');
+    var showDate = clayConfig.getItemByMessageKey('ShowDate');
+    if (!rounding || !minutes || !showDate) { return; }
 
     function sync() {
-      /* Clay hands a select's value back as a string. */
-      var spoken = String(rounding.get()) === '2';
-      dependents.forEach(function (key) {
+      /* Clay hands a select's value back as a string and a toggle as a
+       * boolean, so both are normalised rather than trusted. */
+      var cell = String(rounding.get()) + '|' + String(minutes.get()) + '|' +
+                 (showDate.get() ? '1' : '0');
+      var live = REACHABLE[cell];
+      /* An unknown cell means a mode was added without the table being
+       * regenerated. Leave everything enabled: a stale grey-out hides a
+       * working control, which is the worse of the two failures. */
+      if (!live) { live = GOVERNED; }
+
+      GOVERNED.forEach(function (key) {
         var item = clayConfig.getItemByMessageKey(key);
         if (!item) { return; }
-        if (spoken) { item.enable(); } else { item.disable(); }
+        if (live.indexOf(key) >= 0) { item.enable(); } else { item.disable(); }
       });
     }
 
-    if (rounding) {
-      rounding.on('change', sync);
-      sync();
-    }
+    rounding.on('change', sync);
+    minutes.on('change', sync);
+    showDate.on('change', sync);
+    sync();
   });
 
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {

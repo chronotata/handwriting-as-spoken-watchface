@@ -40,7 +40,8 @@
       "Rounding",
       "OffHedge",
       "OffHedgeSolo",
-      "OffBlock"
+      "OffBlock",
+      "OffBlockFive"
     ],
     "resources": {
       "media": [
