@@ -310,6 +310,36 @@ real hardware the same way `--emulator` does from the simulator.
 
 ---
 
+## 7b. Handwriting
+
+Both typefaces ship. **Lettering** in the settings swaps between them on the
+wrist, with no rebuild - which is the point, because handwriting at 200x228
+can only be judged against the thing it replaces, on the real screen, and a
+reinstall between each look is enough friction that nobody does it honestly.
+
+A word that has not been drawn yet **falls back to the font**, so the two
+tables are always complete and switching is safe at any point. That is what
+lets the vocabulary be drawn a family at a time.
+
+The loop:
+
+```
+python3 tools/make_templates.py TIME     # the pages to draw on
+                                         # draw them on the Nomad, export PDF
+                                         # drop it in handwriting-templates/drawn/
+python3 tools/extract_handwriting.py     # -> resources/images/h_*.png
+python3 tools/tune.py                    # -> geometry.h, package.json
+tools/test/run.sh
+```
+
+`extract_handwriting.py` touches no font, so its output is identical on any
+machine and anyone can run it. `tune.py` still must not be - see section 2.
+
+Each template page carries its family and page number as a row of squares in
+the top corner, so an export can be renamed, split or merged freely. Pages
+drawn before that existed fall back to reading the family out of the
+filename, and say so.
+
 ## 8. Tuning without a rebuild
 
 Open the watchface's settings in the Pebble phone app. Fourteen sliders

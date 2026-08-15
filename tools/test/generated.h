@@ -87,97 +87,289 @@
 #define RESOURCE_ID_W_TWENTYFIVE 81
 #define RESOURCE_ID_W_JUST_GONE 82
 #define RESOURCE_ID_W_NEARLY 83
+#define RESOURCE_ID_H_FOUR 84
+#define RESOURCE_ID_H_FIVE 85
+#define RESOURCE_ID_H_EIGHT 86
+#define RESOURCE_ID_H_ELEVEN 87
+#define RESOURCE_ID_H_FOURTEEN 88
+#define RESOURCE_ID_H_FIFTEEN 89
+#define RESOURCE_ID_H_EIGHTEEN 90
+#define RESOURCE_ID_H_HALF 91
 
 typedef struct { uint8_t asc, desc; } WordInk;
 
-/* Ink above and below the baseline, per word. */
-static const WordInk WORD_INK[] = {
-  {18, 0},        /* one */
-  {26, 0},        /* two */
-  {32, 1},        /* three */
-  {34, 12},        /* four */
-  {34, 12},        /* five */
-  {23, 1},        /* six */
-  {18, 0},        /* seven */
-  {32, 17},        /* eight */
-  {23, 0},        /* nine */
-  {26, 0},        /* ten */
-  {34, 1},        /* eleven */
-  {34, 1},        /* twelve */
-  {32, 1},        /* thirteen */
-  {34, 12},        /* fourteen */
-  {34, 12},        /* fifteen */
-  {26, 1},        /* sixteen */
-  {26, 0},        /* seventeen */
-  {32, 17},        /* eighteen */
-  {26, 0},        /* nineteen */
-  {26, 16},        /* twenty */
-  {26, 16},        /* twenty- */
-  {26, 15},        /* quarter */
-  {34, 12},        /* half */
-  {26, 15},        /* past */
-  {26, 0},        /* to */
-  {33, 17},        /* midnight */
-  {33, 16},        /* midday */
-  {18, 0},        /* noon */
-  {16, 0},        /* minute */
-  {16, 0},        /* minutes */
-  {37, 19},        /* midnight */
-  {37, 18},        /* midday */
-  {12, 0},        /* 0 */
-  {12, 0},        /* 1 */
-  {12, 0},        /* 2 */
-  {12, 0},        /* 3 */
-  {12, 0},        /* 4 */
-  {12, 0},        /* 5 */
-  {12, 0},        /* 6 */
-  {12, 0},        /* 7 */
-  {12, 0},        /* 8 */
-  {12, 0},        /* 9 */
-  {15, 8},        /* Jan. */
-  {17, 3},        /* Feb. */
-  {15, 4},        /* Mar. */
-  {17, 8},        /* Apr. */
-  {15, 9},        /* May */
-  {15, 8},        /* Jun. */
-  {19, 8},        /* Jul. */
-  {17, 9},        /* Aug. */
-  {15, 8},        /* Sep. */
-  {16, 0},        /* Oct. */
-  {16, 1},        /* Nov. */
-  {16, 0},        /* Dec. */
-  {9, 0},         /* st */
-  {11, 0},        /* nd */
-  {11, 0},        /* rd */
-  {11, 0},        /* th */
-  {15, 5},        /* Sun. */
-  {15, 4},        /* Mon. */
-  {15, 0},        /* Tue. */
-  {18, 0},        /* Wed. */
-  {17, 1},        /* Thu. */
-  {15, 3},        /* Fri. */
-  {15, 5},        /* Sat. */
-  {20, 1},        /* one */
-  {29, 0},        /* two */
-  {36, 1},        /* three */
-  {39, 13},        /* four */
-  {39, 13},        /* five */
-  {27, 1},        /* six */
-  {20, 0},        /* seven */
-  {36, 19},        /* eight */
-  {27, 0},        /* nine */
-  {29, 0},        /* ten */
-  {39, 1},        /* eleven */
-  {39, 1},        /* o'|clock */
-  {36, 1},        /* the */
-  {36, 19},        /* witching */
-  {36, 1},        /* hour */
-  {34, 16},        /* twenty-five */
-  {18, 11},        /* just|gone */
-  {21, 10},        /* nearly */
+/* Ink above and below the baseline, per word and per typeface.
+   The shipping WORDS[] carries the family BOX, which is routinely
+   taller than the letters in it, so bounds-checking against that
+   would pass anything. This is what is really visible - and the
+   handwriting's extents are its own, measured off the drawn page. */
+/* Not TYPEFACE_COUNT: this header is included BEFORE
+   geometry.h, so the number is repeated and then asserted
+   equal in harness.c, which sees both. */
+#define GENERATED_TYPEFACES 2
+static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
+  {
+    {18, 0},        /* one */
+    {26, 0},        /* two */
+    {32, 1},        /* three */
+    {34, 12},        /* four */
+    {34, 12},        /* five */
+    {23, 1},        /* six */
+    {18, 0},        /* seven */
+    {32, 17},        /* eight */
+    {23, 0},        /* nine */
+    {26, 0},        /* ten */
+    {34, 1},        /* eleven */
+    {34, 1},        /* twelve */
+    {32, 1},        /* thirteen */
+    {34, 12},        /* fourteen */
+    {34, 12},        /* fifteen */
+    {26, 1},        /* sixteen */
+    {26, 0},        /* seventeen */
+    {32, 17},        /* eighteen */
+    {26, 0},        /* nineteen */
+    {26, 16},        /* twenty */
+    {26, 16},        /* twenty- */
+    {26, 15},        /* quarter */
+    {34, 12},        /* half */
+    {26, 15},        /* past */
+    {26, 0},        /* to */
+    {33, 17},        /* midnight */
+    {33, 16},        /* midday */
+    {18, 0},        /* noon */
+    {16, 0},        /* minute */
+    {16, 0},        /* minutes */
+    {37, 19},        /* midnight */
+    {37, 18},        /* midday */
+    {12, 0},        /* 0 */
+    {12, 0},        /* 1 */
+    {12, 0},        /* 2 */
+    {12, 0},        /* 3 */
+    {12, 0},        /* 4 */
+    {12, 0},        /* 5 */
+    {12, 0},        /* 6 */
+    {12, 0},        /* 7 */
+    {12, 0},        /* 8 */
+    {12, 0},        /* 9 */
+    {15, 8},        /* Jan. */
+    {17, 3},        /* Feb. */
+    {15, 4},        /* Mar. */
+    {17, 8},        /* Apr. */
+    {15, 9},        /* May */
+    {15, 8},        /* Jun. */
+    {19, 8},        /* Jul. */
+    {17, 9},        /* Aug. */
+    {15, 8},        /* Sep. */
+    {16, 0},        /* Oct. */
+    {16, 1},        /* Nov. */
+    {16, 0},        /* Dec. */
+    {9, 0},         /* st */
+    {11, 0},        /* nd */
+    {11, 0},        /* rd */
+    {11, 0},        /* th */
+    {15, 5},        /* Sun. */
+    {15, 4},        /* Mon. */
+    {15, 0},        /* Tue. */
+    {18, 0},        /* Wed. */
+    {17, 1},        /* Thu. */
+    {15, 3},        /* Fri. */
+    {15, 5},        /* Sat. */
+    {20, 1},        /* one */
+    {29, 0},        /* two */
+    {36, 1},        /* three */
+    {39, 13},        /* four */
+    {39, 13},        /* five */
+    {27, 1},        /* six */
+    {20, 0},        /* seven */
+    {36, 19},        /* eight */
+    {27, 0},        /* nine */
+    {29, 0},        /* ten */
+    {39, 1},        /* eleven */
+    {39, 1},        /* o'|clock */
+    {36, 1},        /* the */
+    {36, 19},        /* witching */
+    {36, 1},        /* hour */
+    {34, 16},        /* twenty-five */
+    {18, 11},        /* just|gone */
+    {21, 10},        /* nearly */
+  },
+  {
+    {18, 0},        /* one */
+    {26, 0},        /* two */
+    {32, 1},        /* three */
+    {34, 15},        /* four        drawn */
+    {34, 15},        /* five        drawn */
+    {23, 1},        /* six */
+    {18, 0},        /* seven */
+    {34, 17},        /* eight       drawn */
+    {23, 0},        /* nine */
+    {26, 0},        /* ten */
+    {34, 1},        /* eleven      drawn */
+    {34, 1},        /* twelve */
+    {32, 1},        /* thirteen */
+    {34, 16},        /* fourteen    drawn */
+    {34, 16},        /* fifteen     drawn */
+    {26, 1},        /* sixteen */
+    {26, 0},        /* seventeen */
+    {34, 17},        /* eighteen    drawn */
+    {26, 0},        /* nineteen */
+    {26, 16},        /* twenty */
+    {26, 16},        /* twenty- */
+    {26, 15},        /* quarter */
+    {34, 15},        /* half        drawn */
+    {26, 15},        /* past */
+    {26, 0},        /* to */
+    {33, 17},        /* midnight */
+    {33, 16},        /* midday */
+    {18, 0},        /* noon */
+    {16, 0},        /* minute */
+    {16, 0},        /* minutes */
+    {37, 19},        /* midnight */
+    {37, 18},        /* midday */
+    {12, 0},        /* 0 */
+    {12, 0},        /* 1 */
+    {12, 0},        /* 2 */
+    {12, 0},        /* 3 */
+    {12, 0},        /* 4 */
+    {12, 0},        /* 5 */
+    {12, 0},        /* 6 */
+    {12, 0},        /* 7 */
+    {12, 0},        /* 8 */
+    {12, 0},        /* 9 */
+    {15, 8},        /* Jan. */
+    {17, 3},        /* Feb. */
+    {15, 4},        /* Mar. */
+    {17, 8},        /* Apr. */
+    {15, 9},        /* May */
+    {15, 8},        /* Jun. */
+    {19, 8},        /* Jul. */
+    {17, 9},        /* Aug. */
+    {15, 8},        /* Sep. */
+    {16, 0},        /* Oct. */
+    {16, 1},        /* Nov. */
+    {16, 0},        /* Dec. */
+    {9, 0},         /* st */
+    {11, 0},        /* nd */
+    {11, 0},        /* rd */
+    {11, 0},        /* th */
+    {15, 5},        /* Sun. */
+    {15, 4},        /* Mon. */
+    {15, 0},        /* Tue. */
+    {18, 0},        /* Wed. */
+    {17, 1},        /* Thu. */
+    {15, 3},        /* Fri. */
+    {15, 5},        /* Sat. */
+    {20, 1},        /* one */
+    {29, 0},        /* two */
+    {36, 1},        /* three */
+    {39, 13},        /* four */
+    {39, 13},        /* five */
+    {27, 1},        /* six */
+    {20, 0},        /* seven */
+    {36, 19},        /* eight */
+    {27, 0},        /* nine */
+    {29, 0},        /* ten */
+    {39, 1},        /* eleven */
+    {39, 1},        /* o'|clock */
+    {36, 1},        /* the */
+    {36, 19},        /* witching */
+    {36, 1},        /* hour */
+    {34, 16},        /* twenty-five */
+    {18, 11},        /* just|gone */
+    {21, 10},        /* nearly */
+  },
 };
 
-/* x-height of each word's family - the lowercase body height. */
+/* Has this word been drawn by hand? Independent of WORDS[]. */
+static const uint8_t WORD_DRAWN[] = {
+  0,   /* one */
+  0,   /* two */
+  0,   /* three */
+  1,   /* four */
+  1,   /* five */
+  0,   /* six */
+  0,   /* seven */
+  1,   /* eight */
+  0,   /* nine */
+  0,   /* ten */
+  1,   /* eleven */
+  0,   /* twelve */
+  0,   /* thirteen */
+  1,   /* fourteen */
+  1,   /* fifteen */
+  0,   /* sixteen */
+  0,   /* seventeen */
+  1,   /* eighteen */
+  0,   /* nineteen */
+  0,   /* twenty */
+  0,   /* twenty- */
+  0,   /* quarter */
+  1,   /* half */
+  0,   /* past */
+  0,   /* to */
+  0,   /* midnight */
+  0,   /* midday */
+  0,   /* noon */
+  0,   /* minute */
+  0,   /* minutes */
+  0,   /* midnight */
+  0,   /* midday */
+  0,   /* 0 */
+  0,   /* 1 */
+  0,   /* 2 */
+  0,   /* 3 */
+  0,   /* 4 */
+  0,   /* 5 */
+  0,   /* 6 */
+  0,   /* 7 */
+  0,   /* 8 */
+  0,   /* 9 */
+  0,   /* Jan. */
+  0,   /* Feb. */
+  0,   /* Mar. */
+  0,   /* Apr. */
+  0,   /* May */
+  0,   /* Jun. */
+  0,   /* Jul. */
+  0,   /* Aug. */
+  0,   /* Sep. */
+  0,   /* Oct. */
+  0,   /* Nov. */
+  0,   /* Dec. */
+  0,   /* st */
+  0,   /* nd */
+  0,   /* rd */
+  0,   /* th */
+  0,   /* Sun. */
+  0,   /* Mon. */
+  0,   /* Tue. */
+  0,   /* Wed. */
+  0,   /* Thu. */
+  0,   /* Fri. */
+  0,   /* Sat. */
+  0,   /* one */
+  0,   /* two */
+  0,   /* three */
+  0,   /* four */
+  0,   /* five */
+  0,   /* six */
+  0,   /* seven */
+  0,   /* eight */
+  0,   /* nine */
+  0,   /* ten */
+  0,   /* eleven */
+  0,   /* o'|clock */
+  0,   /* the */
+  0,   /* witching */
+  0,   /* hour */
+  0,   /* twenty-five */
+  0,   /* just|gone */
+  0,   /* nearly */
+};
+
+/* x-height of each word's family - the lowercase body height.
+   Shared by both typefaces: the drawing template's mean line IS
+   this number, so anything drawn to it matches by construction. */
 static const uint8_t WORD_XHEIGHT[] = {
   18,   /* TIME      one */
   18,   /* TIME      two */

@@ -41,7 +41,8 @@
       "OffHedge",
       "OffHedgeSolo",
       "OffBlock",
-      "OffBlockFive"
+      "OffBlockFive",
+      "Typeface"
     ],
     "resources": {
       "media": [
@@ -623,6 +624,62 @@
           "type": "bitmap",
           "name": "W_NEARLY",
           "file": "images/w_nearly.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_FOUR",
+          "file": "images/h_four.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_FIVE",
+          "file": "images/h_five.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_EIGHT",
+          "file": "images/h_eight.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_ELEVEN",
+          "file": "images/h_eleven.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_FOURTEEN",
+          "file": "images/h_fourteen.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_FIFTEEN",
+          "file": "images/h_fifteen.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_EIGHTEEN",
+          "file": "images/h_eighteen.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_HALF",
+          "file": "images/h_half.png",
           "memoryFormat": "4BitPalette",
           "storageFormat": "pbi"
         }

@@ -334,3 +334,15 @@
  * only mode that sets "twenty-five" on one line - it needs the row.
  */
 #define DEFAULT_ROUNDING 0
+
+/*
+ * Which set of word images to draw with - see kTypefaces in handwritten.c.
+ *
+ *   0  font          the rendered script face
+ *   1  handwritten   real handwriting, for the words that have been drawn
+ *
+ * Both ship. A word that has not been drawn yet looks identical either way,
+ * because geometry.h gives it the font's row in both tables, so switching is
+ * safe at any point during the drawing.
+ */
+#define DEFAULT_TYPEFACE 0

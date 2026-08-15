@@ -26,6 +26,10 @@
 #error "src/c/geometry.h has no weekday words. Run: python3 tools/tune.py"
 #endif
 
+#ifndef GEOMETRY_HAS_TYPEFACES
+#error "src/c/geometry.h has one typeface, not two. Run: python3 tools/tune.py"
+#endif
+
 /*
  * Backstop for the vertical budget. tools/tune.py performs the full check with
  * real per-word ink extents and refuses to generate if it fails; this catches
@@ -193,6 +197,7 @@ typedef struct {
   int8_t offset_hedge_solo;     /* ROW_HEDGE_SOLO                        */
   int8_t offset_block;          /* the whole phrase, as one - SPOKEN     */
   int8_t offset_block_five;     /* the same, for the plain rounded mode  */
+  uint8_t typeface;             /* 0 the font, 1 the handwriting         */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -205,6 +210,25 @@ static Face s_face, s_prev;
 static bool s_have_prev;
 
 static GBitmap *s_cache[W_COUNT];   /* only the words on screen are loaded */
+
+/*
+ * THE WORD, IN WHICHEVER TYPEFACE IS SHOWING.
+ *
+ * geometry.h carries two tables - the font and the handwriting - and every
+ * word appears in both. A word nobody has drawn yet has its font row copied
+ * into the handwriting row, so this never has to ask whether a particular
+ * word exists in the chosen typeface: it always does, and an undrawn one
+ * simply looks the same in either. That is what lets the handwriting be
+ * drawn a family at a time with the watchface usable throughout.
+ *
+ * Canvas HEIGHT and BASELINE are identical between the two by construction -
+ * the drawing template is the font's own family box - so switching typeface
+ * changes widths and nothing else. No row moves, which is the whole point:
+ * the two are meant to be compared on the wrist.
+ */
+static const WordGeom *wg(uint8_t word) {
+  return &WORDS[s_settings.typeface][word];
+}
 
 static AppTimer *s_timer;
 static int s_progress, s_total;
@@ -319,6 +343,27 @@ typedef enum {
   ROUND_FIVE,        /* "five past one"                               */
   ROUND_SPOKEN       /* "just gone five past one" / "nearly ten past" */
 } RoundingMode;
+
+/*
+ * Both typefaces ship, and the setting swaps between them on the wrist.
+ *
+ * Not a build flag, because the only way to judge handwriting at 200x228 is
+ * against the thing it is replacing, on the real screen, in real light -
+ * and a rebuild-and-reinstall between each look is enough friction to stop
+ * anyone doing it honestly. The cost is one extra bitmap per drawn word in
+ * the .pbw, which is a few hundred bytes each.
+ */
+static const char *const kTypefaces[] = {
+  "font",
+  "handwritten"
+};
+
+#define TYPEFACE_MODES \
+  ((uint8_t)(sizeof(kTypefaces) / sizeof(kTypefaces[0])))
+
+_Static_assert(TYPEFACE_MODES == TYPEFACE_COUNT,
+               "kTypefaces[] and geometry.h disagree on how many typefaces "
+               "there are");
 
 static const char *const kRoundingModes[] = {
   "exact",
@@ -469,7 +514,7 @@ static GBitmap *bitmap_for(uint8_t word) {
     return NULL;
   }
   if (!s_cache[word]) {
-    s_cache[word] = gbitmap_create_with_resource(WORDS[word].res);
+    s_cache[word] = gbitmap_create_with_resource(wg(word)->res);
     if (s_cache[word]) {
       tint(s_cache[word]);
     }
@@ -567,7 +612,7 @@ static void stack(Face *f, int from, int to, int first_top) {
   int y = first_top;
   for (int i = from; i <= to; i++) {
     f->items[i].top = y;
-    y += WORDS[f->items[i].word].h + ROW_GAP;
+    y += wg(f->items[i].word)->h + ROW_GAP;
   }
 }
 
@@ -608,7 +653,7 @@ static void place_centred(Face *f, int first) {
      * gap between the hedge and the wording is the same ROW_GAP as every
      * other pair of rows on the face. */
     f->items[0].top = f->items[first].top
-                    - (WORDS[f->items[0].word].h + ROW_GAP);
+                    - (wg(f->items[0].word)->h + ROW_GAP);
   }
 }
 
@@ -616,7 +661,7 @@ static void place_centred(Face *f, int first) {
 static void centre(Face *f, int from, int to) {
   int span = 0;
   for (int i = from; i <= to; i++) {
-    span += WORDS[f->items[i].word].h;
+    span += wg(f->items[i].word)->h;
   }
   span += ROW_GAP * (to - from);
   stack(f, from, to, (DATE_TOP_LIMIT - span) / 2);
@@ -747,7 +792,7 @@ static void build_date(Face *f, struct tm *t) {
 
   int total = 0;
   for (int i = 0; i < q.n; i++) {
-    total += WORDS[q.word[i]].w;
+    total += wg(q.word[i])->w;
     if (q.gap[i]) {
       total += DATE_SPACE;
     }
@@ -773,9 +818,9 @@ static void build_date(Face *f, struct tm *t) {
      * landing at a different height.
      */
     e->top = q.raised[i]
-             ? DATE_BASELINE - ORD_RISE - WORDS[q.word[i]].base
-             : DATE_BASELINE - WORDS[q.word[i]].base;
-    x += WORDS[q.word[i]].w;
+             ? DATE_BASELINE - ORD_RISE - wg(q.word[i])->base
+             : DATE_BASELINE - wg(q.word[i])->base;
+    x += wg(q.word[i])->w;
   }
 }
 
@@ -923,7 +968,7 @@ static void build_face(Face *f, struct tm *t) {
     stack(f, rel_idx, last, REL_TOP);
     int y = REL_TOP;
     for (int i = rel_idx - 1; i >= 0; i--) {
-      y -= ROW_GAP + WORDS[f->items[i].word].h;
+      y -= ROW_GAP + wg(f->items[i].word)->h;
       f->items[i].top = y;
     }
 
@@ -940,11 +985,11 @@ static void build_face(Face *f, struct tm *t) {
       e.word = mins == 1 ? W_MINUTE : W_MINUTES;
       e.row = ROW_MINUTES_INLINE;
       e.animate = false;
-      const int after = host->x + WORDS[host->word].w + MIN_TRAIL;
-      const int clamp = SCREEN_W - MARGIN - WORDS[e.word].w;
+      const int after = host->x + wg(host->word)->w + MIN_TRAIL;
+      const int clamp = SCREEN_W - MARGIN - wg(e.word)->w;
       e.x = (after < clamp) ? after : clamp;
       /* Baseline-aligned with the word it follows. */
-      e.top = host->top + WORDS[host->word].base - WORDS[e.word].base;
+      e.top = host->top + wg(host->word)->base - wg(e.word)->base;
       insert_element(f, first + 2, e);
     }
   }
@@ -1005,7 +1050,7 @@ static void collect_leaving(void) {
       continue;
     }
     s_leaving[s_leaving_count++] = *e;
-    s_erase_total += WORDS[e->word].w;
+    s_erase_total += wg(e->word)->w;
   }
 }
 
@@ -1027,7 +1072,7 @@ static void mark_changes(bool date_changed) {
       }
     }
     if (e->animate) {
-      s_total += WORDS[e->word].w;
+      s_total += wg(e->word)->w;
     }
   }
   /* The rub-out is part of the same stroke budget, and comes first: the
@@ -1160,7 +1205,7 @@ static void draw_element(GContext *ctx, const Element *e, int reveal) {
   if (!bmp) {
     return;
   }
-  const WordGeom *g = &WORDS[e->word];
+  const WordGeom *g = wg(e->word);
   const int w = (reveal < g->w) ? reveal : g->w;
   const int y = e->top + row_offset(e->row);
 
@@ -1185,7 +1230,7 @@ static void update_proc(Layer *layer, GContext *ctx) {
    * running off the edge of the screen, which is a different gesture. */
   for (int i = 0; i < s_leaving_count; i++) {
     const Element *e = &s_leaving[i];
-    const int w = WORDS[e->word].w;
+    const int w = wg(e->word)->w;
     draw_element(ctx, e, w - travelled);
     travelled -= w;
     if (travelled < 0) {
@@ -1196,11 +1241,11 @@ static void update_proc(Layer *layer, GContext *ctx) {
   for (int i = 0; i < s_face.count; i++) {
     const Element *e = &s_face.items[i];
     if (!e->animate) {
-      draw_element(ctx, e, WORDS[e->word].w);
+      draw_element(ctx, e, wg(e->word)->w);
       continue;
     }
     draw_element(ctx, e, travelled);
-    travelled -= WORDS[e->word].w;
+    travelled -= wg(e->word)->w;
     if (travelled < 0) {
       travelled = 0;
     }
@@ -1273,6 +1318,7 @@ static void settings_defaults(void) {
   s_settings.minutes_mode = DEFAULT_MINUTES_MODE;
   s_settings.stroke_weight = DEFAULT_STROKE_WEIGHT;
   s_settings.rounding = DEFAULT_ROUNDING;
+  s_settings.typeface = DEFAULT_TYPEFACE;
   /*
    * Every slider starts at ZERO, and zero means the tuned layout - see
    * baked_offset(). Seeding them with the tuned numbers instead would mean a
@@ -1334,6 +1380,10 @@ static int32_t tuple_int(const Tuple *t) {
 
 static uint8_t clamp_date_format(int32_t v) {
   return (v >= 0 && v < DATE_FORMAT_COUNT) ? (uint8_t)v : DEFAULT_DATE_FORMAT;
+}
+
+static uint8_t clamp_typeface(int32_t v) {
+  return (v >= 0 && v < TYPEFACE_MODES) ? (uint8_t)v : DEFAULT_TYPEFACE;
 }
 
 static uint8_t clamp_rounding(int32_t v) {
@@ -1421,6 +1471,9 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   }
   if ((t = dict_find(it, MESSAGE_KEY_OffBlockFive))) {
     s_settings.offset_block_five = clamp_offset(tuple_int(t));
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_Typeface))) {
+    s_settings.typeface = clamp_typeface(tuple_int(t));
   }
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);

@@ -102,12 +102,30 @@ static void fail(const char *what, int h, int m, const char *detail) {
 /* Helpers over the face                                               */
 /* ------------------------------------------------------------------ */
 
-static int baseline_of(const Element *e) { return e->top + WORDS[e->word].base; }
+/*
+ * The word's geometry in whichever typeface is set, indexed here rather than
+ * borrowed from handwritten.c's wg(). The two look the same on the page and
+ * that is the point: a wg() that ignored the setting, or read the wrong row,
+ * would still agree with itself, and every width check would pass while the
+ * watch drew the other typeface.
+ */
+_Static_assert(GENERATED_TYPEFACES == TYPEFACE_COUNT,
+               "generated.h and geometry.h disagree on how many typefaces "
+               "there are - re-run tools/tune.py");
+
+static const WordGeom *gw(uint8_t word) {
+  return &WORDS[s_settings.typeface][word];
+}
+static WordInk gink(uint8_t word) {
+  return WORD_INK[s_settings.typeface][word];
+}
+
+static int baseline_of(const Element *e) { return e->top + gw(e->word)->base; }
 static int ink_top_of(const Element *e) {
-  return baseline_of(e) - WORD_INK[e->word].asc;
+  return baseline_of(e) - gink(e->word).asc;
 }
 static int ink_bottom_of(const Element *e) {
-  return baseline_of(e) + WORD_INK[e->word].desc;
+  return baseline_of(e) + gink(e->word).desc;
 }
 
 /*
@@ -120,10 +138,10 @@ static int drawn_baseline_of(const Element *e) {
   return baseline_of(e) + row_offset(e->row);
 }
 static int drawn_ink_top(const Element *e) {
-  return drawn_baseline_of(e) - WORD_INK[e->word].asc;
+  return drawn_baseline_of(e) - gink(e->word).asc;
 }
 static int drawn_ink_bottom(const Element *e) {
-  return drawn_baseline_of(e) + WORD_INK[e->word].desc;
+  return drawn_baseline_of(e) + gink(e->word).desc;
 }
 
 /*
@@ -177,7 +195,7 @@ static void check_bounds(const Face *f, int h, int m) {
   }
   for (int i = 0; i < f->count; i++) {
     const Element *e = &f->items[i];
-    const WordGeom *g = &WORDS[e->word];
+    const WordGeom *g = gw(e->word);
 
     snprintf(buf, sizeof(buf), "element %d (word %d) x=%d w=%d", i, e->word,
              e->x, g->w);
@@ -236,7 +254,7 @@ static void check_stacking(const Face *f, int h, int m) {
       continue;   /* inline beside its host; leaves the stack chain alone */
     }
     if (prev) {
-      int want = prev->top + WORDS[prev->word].h + ROW_GAP;
+      int want = prev->top + gw(prev->word)->h + ROW_GAP;
       snprintf(buf, sizeof(buf), "element %d top %d, expected %d", i, e->top, want);
       CHECK(e->top == want, "row gap is not ROW_GAP", h, m, buf);
     }
@@ -301,7 +319,7 @@ static void check_date_baseline(const Face *f, int h, int m) {
              e->word, baseline_of(e), want);
     CHECK(baseline_of(e) == want, "date atom off its baseline", h, m, buf);
     if (e->x < lo) lo = e->x;
-    if (e->x + WORDS[e->word].w > hi) hi = e->x + WORDS[e->word].w;
+    if (e->x + gw(e->word)->w > hi) hi = e->x + gw(e->word)->w;
   }
   if (hi > 0) {
     snprintf(buf, sizeof(buf), "spans %d..%d on a %d screen", lo, hi, SCREEN_W);
@@ -348,7 +366,7 @@ static void legacy_format1(const struct tm *t, uint8_t *word, int16_t *xs,
 
   int total = 0;
   for (int i = 0; i < n; i++) {
-    total += WORDS[seq[i]].w;
+    total += gw(seq[i])->w;
   }
   total += DATE_SPACE * 2;
 
@@ -357,9 +375,9 @@ static void legacy_format1(const struct tm *t, uint8_t *word, int16_t *xs,
     word[i] = seq[i];
     xs[i] = (int16_t)x;
     tops[i] = (int16_t)((seq[i] == suf)
-                        ? DATE_BASELINE - ORD_RISE - WORDS[suf].base
-                        : DATE_BASELINE - WORDS[seq[i]].base);
-    x += WORDS[seq[i]].w;
+                        ? DATE_BASELINE - ORD_RISE - gw(suf)->base
+                        : DATE_BASELINE - gw(seq[i])->base);
+    x += gw(seq[i])->w;
     if (seq[i] == suf || seq[i] == mon) {
       x += DATE_SPACE;
     }
@@ -704,6 +722,127 @@ static void check_hedge_does_not_move_the_hour(void) {
 }
 
 /*
+ * TWO TYPEFACES, ONE LAYOUT.
+ *
+ * The font and the handwriting both ship, and the setting swaps between them
+ * on the wrist so the two can be compared on the real screen. Three things
+ * have to hold for that to be worth anything:
+ *
+ *   A word nobody has drawn is IDENTICAL in both - same resource, same
+ *   width, same everything. That is what lets the handwriting be drawn a
+ *   family at a time instead of all at once, and it is checked against
+ *   WORD_DRAWN[], which tune.py writes separately from WORDS[]. Asking
+ *   WORDS[] whether WORDS[] is right would pass whatever it said.
+ *
+ *   A word that HAS been drawn really does change. A wg() that ignored the
+ *   setting would sail through every other check in this file, because a
+ *   layout drawn entirely in the font is a perfectly legal layout.
+ *
+ *   Switching NEVER moves a row. Canvas height and baseline are identical
+ *   between the two by construction - the drawing template is the font's own
+ *   family box - so only widths differ. If a row moved, the comparison the
+ *   setting exists for would be worthless.
+ */
+static void check_typefaces(void) {
+  char buf[200];
+  int drawn = 0, shared = 0;
+
+  for (uint8_t w = 0; w < W_COUNT; w++) {
+    const WordGeom *f = &WORDS[0][w];
+    const WordGeom *h = &WORDS[1][w];
+
+    snprintf(buf, sizeof(buf),
+             "word %d: font {res %u, w %d, h %d, base %d}, "
+             "hand {res %u, w %d, h %d, base %d}", w,
+             (unsigned)f->res, f->w, f->h, f->base,
+             (unsigned)h->res, h->w, h->h, h->base);
+
+    CHECK(f->h == h->h, "the two typefaces disagree on a canvas height",
+          0, 0, buf);
+    CHECK(f->base == h->base, "the two typefaces disagree on a baseline",
+          0, 0, buf);
+
+    if (WORD_DRAWN[w]) {
+      CHECK(f->res != h->res,
+            "a drawn word still points at the font's image", 0, 0, buf);
+      drawn++;
+    } else {
+      CHECK(f->res == h->res && f->w == h->w,
+            "an undrawn word does not fall back to the font", 0, 0, buf);
+      shared++;
+    }
+  }
+
+  /* And the setting actually reaches the DRAWING.
+   *
+   * The first version of this counted words whose two table rows differ,
+   * which proved only that the table differs from itself - it passed
+   * happily with wg() hard-wired to the font. What is needed is something
+   * on the drawn face that could only have come from the chosen row, and
+   * the inline "minute(s)" is exactly that: it is placed one MIN_TRAIL to
+   * the right of the split number it follows, so its x is a function of
+   * that number's WIDTH. Draw "twenty-four" in a narrower hand and the
+   * annotation must move left with it. */
+  int differing_x = 0;
+  for (int t = 0; t < 1440; t += 7) {
+    struct tm tm = make_tm(232, 21, 7, 2026, t / 60, t % 60);
+
+    settings_defaults();
+    s_settings.typeface = 0;
+    s_have_prev = false;
+    refresh(&tm, true);
+    const Face a = s_face;
+
+    settings_defaults();
+    s_settings.typeface = 1;
+    s_have_prev = false;
+    refresh(&tm, true);
+
+    CHECK(s_face.count == a.count, "switching typeface changed the layout",
+          t / 60, t % 60, "element count");
+    for (int i = 0; i < s_face.count && i < a.count; i++) {
+      const Element *e = &s_face.items[i];
+      snprintf(buf, sizeof(buf),
+               "element %d: word %d/%d, row %d/%d, top %d/%d",
+               i, a.items[i].word, e->word, a.items[i].row, e->row,
+               a.items[i].top, e->top);
+      CHECK(e->word == a.items[i].word,
+            "switching typeface changed which word is drawn",
+            t / 60, t % 60, buf);
+      CHECK(e->row == a.items[i].row,
+            "switching typeface moved a word to another row",
+            t / 60, t % 60, buf);
+      if (e->x != a.items[i].x) {
+        differing_x++;
+      }
+      /* The inline annotation, against the width of the word it follows -
+       * in whichever typeface is showing. */
+      if (e->row == ROW_MINUTES_INLINE && i > 0) {
+        const Element *host = &s_face.items[i - 1];
+        const int after = host->x + gw(host->word)->w + MIN_TRAIL;
+        const int clamp = SCREEN_W - MARGIN - gw(e->word)->w;
+        const int want = (after < clamp) ? after : clamp;
+        snprintf(buf, sizeof(buf),
+                 "\"minute(s)\" at x %d, but the word before it is %dpx wide "
+                 "and ends at %d, so it belongs at %d",
+                 e->x, gw(host->word)->w, host->x + gw(host->word)->w, want);
+        CHECK(e->x == want,
+              "the inline annotation is placed off the other typeface's width",
+              t / 60, t % 60, buf);
+      }
+    }
+  }
+  CHECK(differing_x > 0,
+        "switching typeface moved nothing at all, so the setting is not "
+        "reaching the layout", 0, 0,
+        "some drawn word is narrower than its font original and something "
+        "downstream of it should have shifted");
+
+  printf("  typefaces            %d drawn, %d shared with the font\n",
+         drawn, shared);
+}
+
+/*
  * A SLIDER AT ZERO MEANS THE TUNED LAYOUT.
  *
  * The offsets in config.h are part of the design, not the sliders' starting
@@ -832,7 +971,7 @@ static void check_hedge_erase(void) {
           if (prev.items[i].row == ROW_HEDGE
               || prev.items[i].row == ROW_HEDGE_SOLO) {
             want_leaving++;
-            want_total += WORDS[prev.items[i].word].w;
+            want_total += gw(prev.items[i].word)->w;
           }
         }
       }
@@ -858,7 +997,7 @@ static void check_hedge_erase(void) {
 
       if (s_leaving_count == 1) {
         const Element *e = &s_leaving[0];
-        const int w = WORDS[e->word].w;
+        const int w = gw(e->word)->w;
         const int x = e->x, y = e->top + row_offset(e->row);
         CHECK(s_total >= w, "the animation is too short to finish the erase",
               h, m, buf);
@@ -932,7 +1071,7 @@ static void check_hedge_erase(void) {
   CHECK(hedge_i >= 0, "no hedge at 00:06", 0, 6, "");
   if (hedge_i >= 0) {
     const Element *e = &s_face.items[hedge_i];
-    const int w = WORDS[e->word].w;
+    const int w = gw(e->word)->w;
     const int x = e->x, y = e->top + row_offset(e->row);
     CHECK(e->animate, "the returning hedge is not being written", 0, 6, "");
     int prev_w = -1;
@@ -1432,8 +1571,8 @@ static void check_hour_family(const Face *f, int h, int m) {
       continue;
     }
     snprintf(buf, sizeof(buf), "word %d has canvas height %d, SOLO_BOX_H is %d",
-             e->word, WORDS[e->word].h, SOLO_BOX_H);
-    CHECK(WORDS[e->word].h == SOLO_BOX_H,
+             e->word, gw(e->word)->h, SOLO_BOX_H);
+    CHECK(gw(e->word)->h == SOLO_BOX_H,
           "an on-the-hour word is not set in the SOLO family", h, m, buf);
     CHECK(e->row == ROW_SOLO,
           "an on-the-hour word is not on ROW_SOLO", h, m,
@@ -1477,7 +1616,7 @@ static void check_ink_overlap(const Face *f, int h, int m) {
     if (prev) {
       const int upper_bottom = drawn_ink_bottom(prev);
       const int lower_base = drawn_baseline_of(e);
-      const int lower_asc = WORD_INK[e->word].asc;
+      const int lower_asc = gink(e->word).asc;
       const int lower_top = lower_base - lower_asc;
       const int overlap = upper_bottom - lower_top;
       const int limit = (lower_asc * INK_OVERLAP_MAX_PCT) / 100;
@@ -1525,7 +1664,7 @@ static void check_ink_overlap(const Face *f, int h, int m) {
  * are supposed to preserve, not about particular pixel values.
  */
 static int drawn_baseline(const Element *e) {
-  return e->top + WORDS[e->word].base + row_offset(e->row);
+  return e->top + gw(e->word)->base + row_offset(e->row);
 }
 
 /*
@@ -1839,6 +1978,11 @@ static void check_message_routing(void) {
   CHECK(s_settings.rounding == 2, "Rounding did not arrive", 0, 0, "");
 
   settings_defaults();
+  send_setting_str(MESSAGE_KEY_Typeface, "1");
+  CHECK(s_settings.typeface == 1, "Typeface did not arrive", 0, 0,
+        "as a cstring, which is how Clay's select sends it");
+
+  settings_defaults();
   send_setting(MESSAGE_KEY_StrokeWeight, 14);
   CHECK(s_settings.stroke_weight == 14, "StrokeWeight did not arrive", 0, 0, "");
 
@@ -1886,12 +2030,14 @@ static void play_reveal(void) {
   }
 }
 
-static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding) {
+static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding,
+                          uint8_t typeface) {
   int redrawn = 0, moved = 0, elements = 0, peak_bitmaps = 0;
 
   s_settings.date_format = fmt;
   s_settings.minutes_mode = mode;
   s_settings.rounding = rounding;
+  s_settings.typeface = typeface;
   s_have_prev = false;
   s_last_yday = -1;
   drop_all_bitmaps();
@@ -2078,6 +2224,15 @@ static void check_settings(void) {
     CHECK(clamp_minutes_mode(f) == f, "minutes mode clamp", 0, 0, "in range");
   }
 
+  CHECK(clamp_typeface(-1) == DEFAULT_TYPEFACE, "typeface clamp", 0, 0,
+        "negative");
+  CHECK(clamp_typeface(TYPEFACE_MODES) == DEFAULT_TYPEFACE, "typeface clamp",
+        0, 0, "one past the end - a watch sent a typeface this build has no "
+        "images for would index off WORDS[]");
+  for (uint8_t f = 0; f < TYPEFACE_MODES; f++) {
+    CHECK(clamp_typeface(f) == f, "typeface clamp", 0, 0, "in range");
+  }
+
   CHECK(clamp_rounding(-1) == DEFAULT_ROUNDING, "rounding clamp", 0, 0, "negative");
   CHECK(clamp_rounding(ROUNDING_COUNT) == DEFAULT_ROUNDING, "rounding clamp",
         0, 0, "one past the end");
@@ -2219,10 +2374,16 @@ int main(void) {
   for (uint8_t fmt = 0; fmt < DATE_FORMAT_COUNT; fmt++) {
     for (uint8_t mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
       for (uint8_t rnd = 0; rnd < ROUNDING_COUNT; rnd++) {
-        printf("\ndate %d \"%s\"  x  minutes \"%s\"  x  reading \"%s\"\n",
-               fmt, kDateFormats[fmt].sample, kMinutesModes[mode],
-               kRoundingModes[rnd]);
-        sweep_minutes(fmt, mode, rnd);
+        /* Both typefaces, because their WIDTHS differ and width is what the
+         * indent, bounds and date-line checks are about. A layout that fits
+         * in the font is not evidence that it fits in the handwriting. */
+        for (uint8_t tf = 0; tf < TYPEFACE_COUNT; tf++) {
+          printf("\ndate %d \"%s\"  x  minutes \"%s\"  x  reading \"%s\""
+                 "  x  %s\n",
+                 fmt, kDateFormats[fmt].sample, kMinutesModes[mode],
+                 kRoundingModes[rnd], kTypefaces[tf]);
+          sweep_minutes(fmt, mode, rnd, tf);
+        }
       }
     }
     sweep_dates(fmt);
@@ -2236,6 +2397,7 @@ int main(void) {
   check_offset_independence();
   check_rounded_modes_agree();
   check_hedge_does_not_move_the_hour();
+  check_typefaces();
   check_baked_baseline();
   check_hedge_erase();
   check_message_routing();

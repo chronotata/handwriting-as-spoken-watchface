@@ -11,6 +11,12 @@
    built against silently - the same trick as TIME_BOX_H. */
 #define GEOMETRY_HAS_WEEKDAYS 1
 
+/* Marks a geometry.h that carries BOTH typefaces. Same guard
+   trick again: a stale file would compile with one table where
+   the watchface expects two, and index off the end of it. */
+#define GEOMETRY_HAS_TYPEFACES 1
+#define TYPEFACE_COUNT 2
+
 /* Family boxes: ascent + descent, and the shared baseline offset. */
 #define TIME_BOX_H 51
 #define TIME_BOX_BASE 34
@@ -123,88 +129,179 @@ typedef enum {
   W_COUNT
 } WordId;
 
-static const WordGeom WORDS[W_COUNT] = {
-  {RESOURCE_ID_W_ONE, 52, 51, 34},
-  {RESOURCE_ID_W_TWO, 55, 51, 34},
-  {RESOURCE_ID_W_THREE, 83, 51, 34},
-  {RESOURCE_ID_W_FOUR, 64, 51, 34},
-  {RESOURCE_ID_W_FIVE, 60, 51, 34},
-  {RESOURCE_ID_W_SIX, 45, 51, 34},
-  {RESOURCE_ID_W_SEVEN, 85, 51, 34},
-  {RESOURCE_ID_W_EIGHT, 82, 51, 34},
-  {RESOURCE_ID_W_NINE, 69, 51, 34},
-  {RESOURCE_ID_W_TEN, 51, 51, 34},
-  {RESOURCE_ID_W_ELEVEN, 99, 51, 34},
-  {RESOURCE_ID_W_TWELVE, 103, 51, 34},
-  {RESOURCE_ID_W_THIRTEEN, 129, 51, 34},
-  {RESOURCE_ID_W_FOURTEEN, 132, 51, 34},
-  {RESOURCE_ID_W_FIFTEEN, 110, 51, 34},
-  {RESOURCE_ID_W_SIXTEEN, 114, 51, 34},
-  {RESOURCE_ID_W_SEVENTEEN, 153, 51, 34},
-  {RESOURCE_ID_W_EIGHTEEN, 135, 51, 34},
-  {RESOURCE_ID_W_NINETEEN, 137, 51, 34},
-  {RESOURCE_ID_W_TWENTY, 111, 51, 34},
-  {RESOURCE_ID_W_TWENTYDASH, 122, 51, 34},
-  {RESOURCE_ID_W_QUARTER, 121, 51, 34},
-  {RESOURCE_ID_W_HALF, 73, 51, 34},
-  {RESOURCE_ID_W_PAST, 74, 51, 34},
-  {RESOURCE_ID_W_TO, 29, 51, 34},
-  {RESOURCE_ID_W_MIDNIGHT, 154, 51, 34},
-  {RESOURCE_ID_W_MIDDAY, 132, 51, 34},
-  {RESOURCE_ID_W_NOON, 69, 51, 34},
-  {RESOURCE_ID_W_MINUTE, 70, 16, 16},
-  {RESOURCE_ID_W_MINUTES, 79, 16, 16},
-  {RESOURCE_ID_W_SOLO_MIDNIGHT, 174, 58, 39},
-  {RESOURCE_ID_W_SOLO_MIDDAY, 150, 58, 39},
-  {RESOURCE_ID_W_D0, 11, 28, 19},
-  {RESOURCE_ID_W_D1, 6, 28, 19},
-  {RESOURCE_ID_W_D2, 12, 28, 19},
-  {RESOURCE_ID_W_D3, 10, 28, 19},
-  {RESOURCE_ID_W_D4, 10, 28, 19},
-  {RESOURCE_ID_W_D5, 11, 28, 19},
-  {RESOURCE_ID_W_D6, 10, 28, 19},
-  {RESOURCE_ID_W_D7, 9, 28, 19},
-  {RESOURCE_ID_W_D8, 11, 28, 19},
-  {RESOURCE_ID_W_D9, 10, 28, 19},
-  {RESOURCE_ID_W_MON1, 43, 28, 19},
-  {RESOURCE_ID_W_MON2, 37, 28, 19},
-  {RESOURCE_ID_W_MON3, 39, 28, 19},
-  {RESOURCE_ID_W_MON4, 41, 28, 19},
-  {RESOURCE_ID_W_MON5, 41, 28, 19},
-  {RESOURCE_ID_W_MON6, 43, 28, 19},
-  {RESOURCE_ID_W_MON7, 38, 28, 19},
-  {RESOURCE_ID_W_MON8, 44, 28, 19},
-  {RESOURCE_ID_W_MON9, 39, 28, 19},
-  {RESOURCE_ID_W_MON10, 34, 28, 19},
-  {RESOURCE_ID_W_MON11, 34, 28, 19},
-  {RESOURCE_ID_W_MON12, 36, 28, 19},
-  {RESOURCE_ID_W_ST, 10, 11, 11},
-  {RESOURCE_ID_W_ND, 16, 11, 11},
-  {RESOURCE_ID_W_RD, 15, 11, 11},
-  {RESOURCE_ID_W_TH, 11, 11, 11},
-  {RESOURCE_ID_W_DOW_SUN, 40, 28, 19},
-  {RESOURCE_ID_W_DOW_MON, 41, 28, 19},
-  {RESOURCE_ID_W_DOW_TUE, 31, 28, 19},
-  {RESOURCE_ID_W_DOW_WED, 40, 28, 19},
-  {RESOURCE_ID_W_DOW_THU, 36, 28, 19},
-  {RESOURCE_ID_W_DOW_FRI, 32, 28, 19},
-  {RESOURCE_ID_W_DOW_SAT, 37, 28, 19},
-  {RESOURCE_ID_W_SOLO_ONE, 59, 58, 39},
-  {RESOURCE_ID_W_SOLO_TWO, 63, 58, 39},
-  {RESOURCE_ID_W_SOLO_THREE, 94, 58, 39},
-  {RESOURCE_ID_W_SOLO_FOUR, 73, 58, 39},
-  {RESOURCE_ID_W_SOLO_FIVE, 68, 58, 39},
-  {RESOURCE_ID_W_SOLO_SIX, 52, 58, 39},
-  {RESOURCE_ID_W_SOLO_SEVEN, 96, 58, 39},
-  {RESOURCE_ID_W_SOLO_EIGHT, 93, 58, 39},
-  {RESOURCE_ID_W_SOLO_NINE, 79, 58, 39},
-  {RESOURCE_ID_W_SOLO_TEN, 58, 58, 39},
-  {RESOURCE_ID_W_SOLO_ELEVEN, 112, 58, 39},
-  {RESOURCE_ID_W_SOLO_OCLOCK, 122, 58, 39},
-  {RESOURCE_ID_W_SOLO_THE, 57, 58, 39},
-  {RESOURCE_ID_W_SOLO_WITCHING, 158, 58, 39},
-  {RESOURCE_ID_W_SOLO_HOUR, 78, 58, 39},
-  {RESOURCE_ID_W_TWENTYFIVE, 181, 51, 34},
-  {RESOURCE_ID_W_JUST_GONE, 98, 32, 21},
-  {RESOURCE_ID_W_NEARLY, 63, 32, 21},
+/* [0] the font, [1] the handwriting. A word nobody has drawn yet
+   repeats its font row, so the two typefaces can be swapped at any
+   time and an undrawn word simply does not change. Nothing in the
+   watchface has to know which words exist in which typeface. */
+static const WordGeom WORDS[TYPEFACE_COUNT][W_COUNT] = {
+  {
+    {RESOURCE_ID_W_ONE, 52, 51, 34},
+    {RESOURCE_ID_W_TWO, 55, 51, 34},
+    {RESOURCE_ID_W_THREE, 83, 51, 34},
+    {RESOURCE_ID_W_FOUR, 64, 51, 34},
+    {RESOURCE_ID_W_FIVE, 60, 51, 34},
+    {RESOURCE_ID_W_SIX, 45, 51, 34},
+    {RESOURCE_ID_W_SEVEN, 85, 51, 34},
+    {RESOURCE_ID_W_EIGHT, 82, 51, 34},
+    {RESOURCE_ID_W_NINE, 69, 51, 34},
+    {RESOURCE_ID_W_TEN, 51, 51, 34},
+    {RESOURCE_ID_W_ELEVEN, 99, 51, 34},
+    {RESOURCE_ID_W_TWELVE, 103, 51, 34},
+    {RESOURCE_ID_W_THIRTEEN, 129, 51, 34},
+    {RESOURCE_ID_W_FOURTEEN, 132, 51, 34},
+    {RESOURCE_ID_W_FIFTEEN, 110, 51, 34},
+    {RESOURCE_ID_W_SIXTEEN, 114, 51, 34},
+    {RESOURCE_ID_W_SEVENTEEN, 153, 51, 34},
+    {RESOURCE_ID_W_EIGHTEEN, 135, 51, 34},
+    {RESOURCE_ID_W_NINETEEN, 137, 51, 34},
+    {RESOURCE_ID_W_TWENTY, 111, 51, 34},
+    {RESOURCE_ID_W_TWENTYDASH, 122, 51, 34},
+    {RESOURCE_ID_W_QUARTER, 121, 51, 34},
+    {RESOURCE_ID_W_HALF, 73, 51, 34},
+    {RESOURCE_ID_W_PAST, 74, 51, 34},
+    {RESOURCE_ID_W_TO, 29, 51, 34},
+    {RESOURCE_ID_W_MIDNIGHT, 154, 51, 34},
+    {RESOURCE_ID_W_MIDDAY, 132, 51, 34},
+    {RESOURCE_ID_W_NOON, 69, 51, 34},
+    {RESOURCE_ID_W_MINUTE, 70, 16, 16},
+    {RESOURCE_ID_W_MINUTES, 79, 16, 16},
+    {RESOURCE_ID_W_SOLO_MIDNIGHT, 174, 58, 39},
+    {RESOURCE_ID_W_SOLO_MIDDAY, 150, 58, 39},
+    {RESOURCE_ID_W_D0, 11, 28, 19},
+    {RESOURCE_ID_W_D1, 6, 28, 19},
+    {RESOURCE_ID_W_D2, 12, 28, 19},
+    {RESOURCE_ID_W_D3, 10, 28, 19},
+    {RESOURCE_ID_W_D4, 10, 28, 19},
+    {RESOURCE_ID_W_D5, 11, 28, 19},
+    {RESOURCE_ID_W_D6, 10, 28, 19},
+    {RESOURCE_ID_W_D7, 9, 28, 19},
+    {RESOURCE_ID_W_D8, 11, 28, 19},
+    {RESOURCE_ID_W_D9, 10, 28, 19},
+    {RESOURCE_ID_W_MON1, 43, 28, 19},
+    {RESOURCE_ID_W_MON2, 37, 28, 19},
+    {RESOURCE_ID_W_MON3, 39, 28, 19},
+    {RESOURCE_ID_W_MON4, 41, 28, 19},
+    {RESOURCE_ID_W_MON5, 41, 28, 19},
+    {RESOURCE_ID_W_MON6, 43, 28, 19},
+    {RESOURCE_ID_W_MON7, 38, 28, 19},
+    {RESOURCE_ID_W_MON8, 44, 28, 19},
+    {RESOURCE_ID_W_MON9, 39, 28, 19},
+    {RESOURCE_ID_W_MON10, 34, 28, 19},
+    {RESOURCE_ID_W_MON11, 34, 28, 19},
+    {RESOURCE_ID_W_MON12, 36, 28, 19},
+    {RESOURCE_ID_W_ST, 10, 11, 11},
+    {RESOURCE_ID_W_ND, 16, 11, 11},
+    {RESOURCE_ID_W_RD, 15, 11, 11},
+    {RESOURCE_ID_W_TH, 11, 11, 11},
+    {RESOURCE_ID_W_DOW_SUN, 40, 28, 19},
+    {RESOURCE_ID_W_DOW_MON, 41, 28, 19},
+    {RESOURCE_ID_W_DOW_TUE, 31, 28, 19},
+    {RESOURCE_ID_W_DOW_WED, 40, 28, 19},
+    {RESOURCE_ID_W_DOW_THU, 36, 28, 19},
+    {RESOURCE_ID_W_DOW_FRI, 32, 28, 19},
+    {RESOURCE_ID_W_DOW_SAT, 37, 28, 19},
+    {RESOURCE_ID_W_SOLO_ONE, 59, 58, 39},
+    {RESOURCE_ID_W_SOLO_TWO, 63, 58, 39},
+    {RESOURCE_ID_W_SOLO_THREE, 94, 58, 39},
+    {RESOURCE_ID_W_SOLO_FOUR, 73, 58, 39},
+    {RESOURCE_ID_W_SOLO_FIVE, 68, 58, 39},
+    {RESOURCE_ID_W_SOLO_SIX, 52, 58, 39},
+    {RESOURCE_ID_W_SOLO_SEVEN, 96, 58, 39},
+    {RESOURCE_ID_W_SOLO_EIGHT, 93, 58, 39},
+    {RESOURCE_ID_W_SOLO_NINE, 79, 58, 39},
+    {RESOURCE_ID_W_SOLO_TEN, 58, 58, 39},
+    {RESOURCE_ID_W_SOLO_ELEVEN, 112, 58, 39},
+    {RESOURCE_ID_W_SOLO_OCLOCK, 122, 58, 39},
+    {RESOURCE_ID_W_SOLO_THE, 57, 58, 39},
+    {RESOURCE_ID_W_SOLO_WITCHING, 158, 58, 39},
+    {RESOURCE_ID_W_SOLO_HOUR, 78, 58, 39},
+    {RESOURCE_ID_W_TWENTYFIVE, 181, 51, 34},
+    {RESOURCE_ID_W_JUST_GONE, 98, 32, 21},
+    {RESOURCE_ID_W_NEARLY, 63, 32, 21},
+  },
+  {
+    {RESOURCE_ID_W_ONE, 52, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_TWO, 55, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_THREE, 83, 51, 34},   /* not drawn */
+    {RESOURCE_ID_H_FOUR, 67, 51, 34},
+    {RESOURCE_ID_H_FIVE, 57, 51, 34},
+    {RESOURCE_ID_W_SIX, 45, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_SEVEN, 85, 51, 34},   /* not drawn */
+    {RESOURCE_ID_H_EIGHT, 75, 51, 34},
+    {RESOURCE_ID_W_NINE, 69, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_TEN, 51, 51, 34},   /* not drawn */
+    {RESOURCE_ID_H_ELEVEN, 94, 51, 34},
+    {RESOURCE_ID_W_TWELVE, 103, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_THIRTEEN, 129, 51, 34},   /* not drawn */
+    {RESOURCE_ID_H_FOURTEEN, 121, 51, 34},
+    {RESOURCE_ID_H_FIFTEEN, 99, 51, 34},
+    {RESOURCE_ID_W_SIXTEEN, 114, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_SEVENTEEN, 153, 51, 34},   /* not drawn */
+    {RESOURCE_ID_H_EIGHTEEN, 117, 51, 34},
+    {RESOURCE_ID_W_NINETEEN, 137, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_TWENTY, 111, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_TWENTYDASH, 122, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_QUARTER, 121, 51, 34},   /* not drawn */
+    {RESOURCE_ID_H_HALF, 66, 51, 34},
+    {RESOURCE_ID_W_PAST, 74, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_TO, 29, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_MIDNIGHT, 154, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_MIDDAY, 132, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_NOON, 69, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_MINUTE, 70, 16, 16},   /* not drawn */
+    {RESOURCE_ID_W_MINUTES, 79, 16, 16},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_MIDNIGHT, 174, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_MIDDAY, 150, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_D0, 11, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D1, 6, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D2, 12, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D3, 10, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D4, 10, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D5, 11, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D6, 10, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D7, 9, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D8, 11, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_D9, 10, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON1, 43, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON2, 37, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON3, 39, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON4, 41, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON5, 41, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON6, 43, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON7, 38, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON8, 44, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON9, 39, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON10, 34, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON11, 34, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_MON12, 36, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_ST, 10, 11, 11},   /* not drawn */
+    {RESOURCE_ID_W_ND, 16, 11, 11},   /* not drawn */
+    {RESOURCE_ID_W_RD, 15, 11, 11},   /* not drawn */
+    {RESOURCE_ID_W_TH, 11, 11, 11},   /* not drawn */
+    {RESOURCE_ID_W_DOW_SUN, 40, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_DOW_MON, 41, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_DOW_TUE, 31, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_DOW_WED, 40, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_DOW_THU, 36, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_DOW_FRI, 32, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_DOW_SAT, 37, 28, 19},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_ONE, 59, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_TWO, 63, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_THREE, 94, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_FOUR, 73, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_FIVE, 68, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_SIX, 52, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_SEVEN, 96, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_EIGHT, 93, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_NINE, 79, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_TEN, 58, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_ELEVEN, 112, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_OCLOCK, 122, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_THE, 57, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_WITCHING, 158, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_SOLO_HOUR, 78, 58, 39},   /* not drawn */
+    {RESOURCE_ID_W_TWENTYFIVE, 181, 51, 34},   /* not drawn */
+    {RESOURCE_ID_W_JUST_GONE, 98, 32, 21},   /* not drawn */
+    {RESOURCE_ID_W_NEARLY, 63, 32, 21},   /* not drawn */
+  },
 };

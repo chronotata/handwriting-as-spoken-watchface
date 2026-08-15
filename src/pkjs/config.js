@@ -82,6 +82,24 @@ module.exports = [
     type: 'section',
     items: [
       { type: 'heading', defaultValue: 'Wording' },
+      // Values index kTypefaces[] in src/c/handwritten.c - wire format,
+      // never reordered. Both sets of images ship, so this swaps instantly
+      // and needs no rebuild; that is the point of it, since handwriting at
+      // this size can only be judged against the font on the real screen.
+      {
+        type: 'select',
+        messageKey: 'Typeface',
+        label: 'Lettering',
+        description:
+          'Words not yet drawn by hand fall back to the font, so this is ' +
+          'safe to switch at any time — they simply look the same either ' +
+          'way.',
+        defaultValue: '0',
+        options: [
+          { label: 'Font', value: '0' },
+          { label: 'Handwritten', value: '1' }
+        ]
+      },
       // Values are indices into kMinutesModes[] in src/c/handwritten.c and
       // are the wire format - never reordered, new modes on the end.
       // Values index kRoundingModes[] in src/c/handwritten.c - wire format,

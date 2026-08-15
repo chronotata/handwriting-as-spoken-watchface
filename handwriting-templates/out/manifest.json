@@ -1,0 +1,1579 @@
+[
+ {
+  "word": "w_d0",
+  "family": "DATE",
+  "page": 0,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 99,
+  "target": [
+   11,
+   28
+  ]
+ },
+ {
+  "word": "w_d1",
+  "family": "DATE",
+  "page": 0,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 54,
+  "target": [
+   6,
+   28
+  ]
+ },
+ {
+  "word": "w_d2",
+  "family": "DATE",
+  "page": 1,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 108,
+  "target": [
+   12,
+   28
+  ]
+ },
+ {
+  "word": "w_d3",
+  "family": "DATE",
+  "page": 1,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 90,
+  "target": [
+   10,
+   28
+  ]
+ },
+ {
+  "word": "w_d4",
+  "family": "DATE",
+  "page": 2,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 90,
+  "target": [
+   10,
+   28
+  ]
+ },
+ {
+  "word": "w_d5",
+  "family": "DATE",
+  "page": 2,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 99,
+  "target": [
+   11,
+   28
+  ]
+ },
+ {
+  "word": "w_d6",
+  "family": "DATE",
+  "page": 3,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 90,
+  "target": [
+   10,
+   28
+  ]
+ },
+ {
+  "word": "w_d7",
+  "family": "DATE",
+  "page": 3,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 81,
+  "target": [
+   9,
+   28
+  ]
+ },
+ {
+  "word": "w_d8",
+  "family": "DATE",
+  "page": 4,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 99,
+  "target": [
+   11,
+   28
+  ]
+ },
+ {
+  "word": "w_d9",
+  "family": "DATE",
+  "page": 4,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 90,
+  "target": [
+   10,
+   28
+  ]
+ },
+ {
+  "word": "w_dow_fri",
+  "family": "DATE",
+  "page": 5,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 288,
+  "target": [
+   32,
+   28
+  ]
+ },
+ {
+  "word": "w_dow_mon",
+  "family": "DATE",
+  "page": 5,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 369,
+  "target": [
+   41,
+   28
+  ]
+ },
+ {
+  "word": "w_dow_sat",
+  "family": "DATE",
+  "page": 6,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 333,
+  "target": [
+   37,
+   28
+  ]
+ },
+ {
+  "word": "w_dow_sun",
+  "family": "DATE",
+  "page": 6,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 360,
+  "target": [
+   40,
+   28
+  ]
+ },
+ {
+  "word": "w_dow_thu",
+  "family": "DATE",
+  "page": 7,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 324,
+  "target": [
+   36,
+   28
+  ]
+ },
+ {
+  "word": "w_dow_tue",
+  "family": "DATE",
+  "page": 7,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 279,
+  "target": [
+   31,
+   28
+  ]
+ },
+ {
+  "word": "w_dow_wed",
+  "family": "DATE",
+  "page": 8,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 360,
+  "target": [
+   40,
+   28
+  ]
+ },
+ {
+  "word": "w_mon1",
+  "family": "DATE",
+  "page": 8,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 387,
+  "target": [
+   43,
+   28
+  ]
+ },
+ {
+  "word": "w_mon10",
+  "family": "DATE",
+  "page": 9,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 306,
+  "target": [
+   34,
+   28
+  ]
+ },
+ {
+  "word": "w_mon11",
+  "family": "DATE",
+  "page": 9,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 306,
+  "target": [
+   34,
+   28
+  ]
+ },
+ {
+  "word": "w_mon12",
+  "family": "DATE",
+  "page": 10,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 324,
+  "target": [
+   36,
+   28
+  ]
+ },
+ {
+  "word": "w_mon2",
+  "family": "DATE",
+  "page": 10,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 333,
+  "target": [
+   37,
+   28
+  ]
+ },
+ {
+  "word": "w_mon3",
+  "family": "DATE",
+  "page": 11,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 351,
+  "target": [
+   39,
+   28
+  ]
+ },
+ {
+  "word": "w_mon4",
+  "family": "DATE",
+  "page": 11,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 369,
+  "target": [
+   41,
+   28
+  ]
+ },
+ {
+  "word": "w_mon5",
+  "family": "DATE",
+  "page": 12,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 369,
+  "target": [
+   41,
+   28
+  ]
+ },
+ {
+  "word": "w_mon6",
+  "family": "DATE",
+  "page": 12,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 387,
+  "target": [
+   43,
+   28
+  ]
+ },
+ {
+  "word": "w_mon7",
+  "family": "DATE",
+  "page": 13,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 342,
+  "target": [
+   38,
+   28
+  ]
+ },
+ {
+  "word": "w_mon8",
+  "family": "DATE",
+  "page": 13,
+  "box": [
+   60,
+   1540,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 396,
+  "target": [
+   44,
+   28
+  ]
+ },
+ {
+  "word": "w_mon9",
+  "family": "DATE",
+  "page": 14,
+  "box": [
+   60,
+   428,
+   531,
+   252
+  ],
+  "scale": 9,
+  "baseline": 171,
+  "xheight": 90,
+  "font_width": 351,
+  "target": [
+   39,
+   28
+  ]
+ },
+ {
+  "word": "w_eight",
+  "family": "TIME",
+  "page": 0,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 410,
+  "target": [
+   82,
+   51
+  ]
+ },
+ {
+  "word": "w_eighteen",
+  "family": "TIME",
+  "page": 0,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 675,
+  "target": [
+   135,
+   51
+  ]
+ },
+ {
+  "word": "w_eleven",
+  "family": "TIME",
+  "page": 1,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 495,
+  "target": [
+   99,
+   51
+  ]
+ },
+ {
+  "word": "w_fifteen",
+  "family": "TIME",
+  "page": 1,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 550,
+  "target": [
+   110,
+   51
+  ]
+ },
+ {
+  "word": "w_five",
+  "family": "TIME",
+  "page": 2,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 300,
+  "target": [
+   60,
+   51
+  ]
+ },
+ {
+  "word": "w_four",
+  "family": "TIME",
+  "page": 2,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 320,
+  "target": [
+   64,
+   51
+  ]
+ },
+ {
+  "word": "w_fourteen",
+  "family": "TIME",
+  "page": 3,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 660,
+  "target": [
+   132,
+   51
+  ]
+ },
+ {
+  "word": "w_half",
+  "family": "TIME",
+  "page": 3,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 365,
+  "target": [
+   73,
+   51
+  ]
+ },
+ {
+  "word": "w_midday",
+  "family": "TIME",
+  "page": 4,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 660,
+  "target": [
+   132,
+   51
+  ]
+ },
+ {
+  "word": "w_midnight",
+  "family": "TIME",
+  "page": 4,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 770,
+  "target": [
+   154,
+   51
+  ]
+ },
+ {
+  "word": "w_nine",
+  "family": "TIME",
+  "page": 5,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 345,
+  "target": [
+   69,
+   51
+  ]
+ },
+ {
+  "word": "w_nineteen",
+  "family": "TIME",
+  "page": 5,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 685,
+  "target": [
+   137,
+   51
+  ]
+ },
+ {
+  "word": "w_noon",
+  "family": "TIME",
+  "page": 6,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 345,
+  "target": [
+   69,
+   51
+  ]
+ },
+ {
+  "word": "w_one",
+  "family": "TIME",
+  "page": 6,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 260,
+  "target": [
+   52,
+   51
+  ]
+ },
+ {
+  "word": "w_past",
+  "family": "TIME",
+  "page": 7,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 370,
+  "target": [
+   74,
+   51
+  ]
+ },
+ {
+  "word": "w_quarter",
+  "family": "TIME",
+  "page": 7,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 605,
+  "target": [
+   121,
+   51
+  ]
+ },
+ {
+  "word": "w_seven",
+  "family": "TIME",
+  "page": 8,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 425,
+  "target": [
+   85,
+   51
+  ]
+ },
+ {
+  "word": "w_seventeen",
+  "family": "TIME",
+  "page": 8,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 765,
+  "target": [
+   153,
+   51
+  ]
+ },
+ {
+  "word": "w_six",
+  "family": "TIME",
+  "page": 9,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 225,
+  "target": [
+   45,
+   51
+  ]
+ },
+ {
+  "word": "w_sixteen",
+  "family": "TIME",
+  "page": 9,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 570,
+  "target": [
+   114,
+   51
+  ]
+ },
+ {
+  "word": "w_ten",
+  "family": "TIME",
+  "page": 10,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 255,
+  "target": [
+   51,
+   51
+  ]
+ },
+ {
+  "word": "w_thirteen",
+  "family": "TIME",
+  "page": 10,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 645,
+  "target": [
+   129,
+   51
+  ]
+ },
+ {
+  "word": "w_three",
+  "family": "TIME",
+  "page": 11,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 415,
+  "target": [
+   83,
+   51
+  ]
+ },
+ {
+  "word": "w_to",
+  "family": "TIME",
+  "page": 11,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 145,
+  "target": [
+   29,
+   51
+  ]
+ },
+ {
+  "word": "w_twelve",
+  "family": "TIME",
+  "page": 12,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 515,
+  "target": [
+   103,
+   51
+  ]
+ },
+ {
+  "word": "w_twenty",
+  "family": "TIME",
+  "page": 12,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 555,
+  "target": [
+   111,
+   51
+  ]
+ },
+ {
+  "word": "w_twentydash",
+  "family": "TIME",
+  "page": 13,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 610,
+  "target": [
+   122,
+   51
+  ]
+ },
+ {
+  "word": "w_twentyfive",
+  "family": "TIME",
+  "page": 13,
+  "box": [
+   60,
+   1537,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 905,
+  "target": [
+   181,
+   51
+  ]
+ },
+ {
+  "word": "w_two",
+  "family": "TIME",
+  "page": 14,
+  "box": [
+   60,
+   431,
+   905,
+   255
+  ],
+  "scale": 5,
+  "baseline": 170,
+  "xheight": 90,
+  "font_width": 275,
+  "target": [
+   55,
+   51
+  ]
+ },
+ {
+  "word": "w_just_gone",
+  "family": "HEDGE",
+  "page": 0,
+  "box": [
+   60,
+   432,
+   1056,
+   256
+  ],
+  "scale": 8,
+  "baseline": 168,
+  "xheight": 88,
+  "font_width": 784,
+  "target": [
+   98,
+   32
+  ]
+ },
+ {
+  "word": "w_nearly",
+  "family": "HEDGE",
+  "page": 0,
+  "box": [
+   60,
+   1536,
+   1056,
+   256
+  ],
+  "scale": 8,
+  "baseline": 168,
+  "xheight": 88,
+  "font_width": 504,
+  "target": [
+   63,
+   32
+  ]
+ },
+ {
+  "word": "w_minute",
+  "family": "MINS",
+  "page": 0,
+  "box": [
+   60,
+   304,
+   856,
+   128
+  ],
+  "scale": 8,
+  "baseline": 128,
+  "xheight": 88,
+  "font_width": 560,
+  "target": [
+   70,
+   16
+  ]
+ },
+ {
+  "word": "w_minutes",
+  "family": "MINS",
+  "page": 0,
+  "box": [
+   60,
+   757,
+   856,
+   128
+  ],
+  "scale": 8,
+  "baseline": 128,
+  "xheight": 88,
+  "font_width": 632,
+  "target": [
+   79,
+   16
+  ]
+ },
+ {
+  "word": "w_nd",
+  "family": "ORD",
+  "page": 0,
+  "box": [
+   60,
+   341,
+   330,
+   165
+  ],
+  "scale": 15,
+  "baseline": 165,
+  "xheight": 90,
+  "font_width": 240,
+  "target": [
+   16,
+   11
+  ]
+ },
+ {
+  "word": "w_rd",
+  "family": "ORD",
+  "page": 0,
+  "box": [
+   60,
+   984,
+   330,
+   165
+  ],
+  "scale": 15,
+  "baseline": 165,
+  "xheight": 90,
+  "font_width": 225,
+  "target": [
+   15,
+   11
+  ]
+ },
+ {
+  "word": "w_st",
+  "family": "ORD",
+  "page": 0,
+  "box": [
+   60,
+   1627,
+   330,
+   165
+  ],
+  "scale": 15,
+  "baseline": 165,
+  "xheight": 90,
+  "font_width": 150,
+  "target": [
+   10,
+   11
+  ]
+ },
+ {
+  "word": "w_th",
+  "family": "ORD",
+  "page": 1,
+  "box": [
+   60,
+   341,
+   330,
+   165
+  ],
+  "scale": 15,
+  "baseline": 165,
+  "xheight": 90,
+  "font_width": 165,
+  "target": [
+   11,
+   11
+  ]
+ },
+ {
+  "word": "w_solo_eight",
+  "family": "SOLO",
+  "page": 0,
+  "box": [
+   60,
+   408,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 372,
+  "target": [
+   93,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_eleven",
+  "family": "SOLO",
+  "page": 0,
+  "box": [
+   60,
+   984,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 448,
+  "target": [
+   112,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_five",
+  "family": "SOLO",
+  "page": 0,
+  "box": [
+   60,
+   1560,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 272,
+  "target": [
+   68,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_four",
+  "family": "SOLO",
+  "page": 1,
+  "box": [
+   60,
+   408,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 292,
+  "target": [
+   73,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_hour",
+  "family": "SOLO",
+  "page": 1,
+  "box": [
+   60,
+   984,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 312,
+  "target": [
+   78,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_midday",
+  "family": "SOLO",
+  "page": 1,
+  "box": [
+   60,
+   1560,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 600,
+  "target": [
+   150,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_midnight",
+  "family": "SOLO",
+  "page": 2,
+  "box": [
+   60,
+   408,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 696,
+  "target": [
+   174,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_nine",
+  "family": "SOLO",
+  "page": 2,
+  "box": [
+   60,
+   984,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 316,
+  "target": [
+   79,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_oclock",
+  "family": "SOLO",
+  "page": 2,
+  "box": [
+   60,
+   1560,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 488,
+  "target": [
+   122,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_one",
+  "family": "SOLO",
+  "page": 3,
+  "box": [
+   60,
+   408,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 236,
+  "target": [
+   59,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_seven",
+  "family": "SOLO",
+  "page": 3,
+  "box": [
+   60,
+   984,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 384,
+  "target": [
+   96,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_six",
+  "family": "SOLO",
+  "page": 3,
+  "box": [
+   60,
+   1560,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 208,
+  "target": [
+   52,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_ten",
+  "family": "SOLO",
+  "page": 4,
+  "box": [
+   60,
+   408,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 232,
+  "target": [
+   58,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_the",
+  "family": "SOLO",
+  "page": 4,
+  "box": [
+   60,
+   984,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 228,
+  "target": [
+   57,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_three",
+  "family": "SOLO",
+  "page": 4,
+  "box": [
+   60,
+   1560,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 376,
+  "target": [
+   94,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_two",
+  "family": "SOLO",
+  "page": 5,
+  "box": [
+   60,
+   408,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 252,
+  "target": [
+   63,
+   58
+  ]
+ },
+ {
+  "word": "w_solo_witching",
+  "family": "SOLO",
+  "page": 5,
+  "box": [
+   60,
+   984,
+   724,
+   232
+  ],
+  "scale": 4,
+  "baseline": 156,
+  "xheight": 84,
+  "font_width": 632,
+  "target": [
+   158,
+   58
+  ]
+ }
+]
