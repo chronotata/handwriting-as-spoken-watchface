@@ -571,7 +571,7 @@ def main():
     # whichever one is showing - and a taller ascender is the tighter case.
     split_asc = next(b for _n, f, t, _c, b, _bd in rendered
                      if f == "TIME" and t == "twenty-")
-    if "W_TWENTYDASH" in hand:
+    if "w_twentydash" in hand:
         split_asc = max(split_asc, hand["w_twentydash"]["asc"])
     out.append("#define SPLIT_HEAD_ASC %d" % split_asc)
     out += ["",
