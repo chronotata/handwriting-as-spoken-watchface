@@ -25,6 +25,16 @@ if [ ../../src/c/geometry.h -nt generated.h ]; then
   echo "warning: geometry.h is newer than generated.h; re-run tools/tune.py" >&2
 fi
 
+# The handwriting has its own staleness to catch, and it is the quiet kind:
+# words that were extracted after the last tune.py run are simply absent from
+# geometry.h, and the watchface draws them in the font without complaint.
+INK=../../handwriting-templates/ink/index.json
+if [ -f "$INK" ] && [ "$INK" -nt ../../src/c/geometry.h ]; then
+  echo "warning: handwriting was extracted after geometry.h was written." >&2
+  echo "         Those words will silently draw in the font."             >&2
+  echo "         Re-run: python3 tools/tune.py"                           >&2
+fi
+
 OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 

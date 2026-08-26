@@ -475,6 +475,22 @@ def handwriting():
     """
     if not INKINDEX.exists():
         return {}
+
+    # An index older than the pages it was made from is a silent way to ship
+    # half the handwriting: the images sit in resources/images/ looking
+    # complete, geometry.h points at only the ones the index knew about, and
+    # nothing anywhere says so. That is exactly what happened the first time -
+    # 83 images on disk, 50 in geometry.h, and the date drawn in the font
+    # with no error from any tool.
+    drawn = ROOT / "handwriting-templates" / "drawn"
+    if drawn.is_dir():
+        newest = max((f.stat().st_mtime for f in drawn.glob("*.pdf")),
+                     default=0)
+        if newest > INKINDEX.stat().st_mtime:
+            sys.exit("handwriting-templates/ink/index.json is older than the "
+                     "drawn pages.\nRun this first, or the new words will be "
+                     "left out silently:\n"
+                     "    python3 tools/extract_handwriting.py")
     # Keyed by the C enum name, because that is what everything downstream
     # has. The index is written from the template PNG stems, which are the
     # same names lowercased - matching the two by eye rather than upper()ing
@@ -623,6 +639,26 @@ def main():
     widest = max(rows, key=lambda r: r[1])
     print("\nwrote %d images, %.1f kB -> resources/images/" % (len(rows), total / 1024))
     print("wrote src/c/geometry.h and package.json")
+
+    # Report the handwriting per family, and how much of each is still the
+    # font. A bare total hides the case that actually bit: every TIME word
+    # drawn, every DATE word missing, and a single number that looked
+    # plausible either way.
+    counts = {}
+    for name, fam, _text in words():
+        got, want = counts.get(fam, (0, 0))
+        counts[fam] = (got + (1 if name in hand else 0), want + 1)
+    if hand:
+        print("handwriting embedded:  " + "  ".join(
+            "%s %d/%d" % (f, counts[f][0], counts[f][1])
+            for f in ("TIME", "SOLO", "MINS", "DATE", "ORD", "HEDGE")))
+        short = [f for f in counts if counts[f][0] and
+                 counts[f][0] < counts[f][1]]
+        if short:
+            print("  part-drawn, so those families mix the two: %s"
+                  % ", ".join(sorted(short)))
+    else:
+        print("handwriting embedded:  none - the second typeface is all font")
     print("wrote %d templates -> handwriting-templates/  (draw over these for v2)"
           % len(rows))
     if orphans:

@@ -87,14 +87,89 @@
 #define RESOURCE_ID_W_TWENTYFIVE 81
 #define RESOURCE_ID_W_JUST_GONE 82
 #define RESOURCE_ID_W_NEARLY 83
-#define RESOURCE_ID_H_FOUR 84
-#define RESOURCE_ID_H_FIVE 85
-#define RESOURCE_ID_H_EIGHT 86
-#define RESOURCE_ID_H_ELEVEN 87
-#define RESOURCE_ID_H_FOURTEEN 88
-#define RESOURCE_ID_H_FIFTEEN 89
-#define RESOURCE_ID_H_EIGHTEEN 90
-#define RESOURCE_ID_H_HALF 91
+#define RESOURCE_ID_H_ONE 84
+#define RESOURCE_ID_H_TWO 85
+#define RESOURCE_ID_H_THREE 86
+#define RESOURCE_ID_H_FOUR 87
+#define RESOURCE_ID_H_FIVE 88
+#define RESOURCE_ID_H_SIX 89
+#define RESOURCE_ID_H_SEVEN 90
+#define RESOURCE_ID_H_EIGHT 91
+#define RESOURCE_ID_H_NINE 92
+#define RESOURCE_ID_H_TEN 93
+#define RESOURCE_ID_H_ELEVEN 94
+#define RESOURCE_ID_H_TWELVE 95
+#define RESOURCE_ID_H_THIRTEEN 96
+#define RESOURCE_ID_H_FOURTEEN 97
+#define RESOURCE_ID_H_FIFTEEN 98
+#define RESOURCE_ID_H_SIXTEEN 99
+#define RESOURCE_ID_H_SEVENTEEN 100
+#define RESOURCE_ID_H_EIGHTEEN 101
+#define RESOURCE_ID_H_NINETEEN 102
+#define RESOURCE_ID_H_TWENTY 103
+#define RESOURCE_ID_H_TWENTYDASH 104
+#define RESOURCE_ID_H_QUARTER 105
+#define RESOURCE_ID_H_HALF 106
+#define RESOURCE_ID_H_PAST 107
+#define RESOURCE_ID_H_TO 108
+#define RESOURCE_ID_H_MIDNIGHT 109
+#define RESOURCE_ID_H_MIDDAY 110
+#define RESOURCE_ID_H_NOON 111
+#define RESOURCE_ID_H_MINUTE 112
+#define RESOURCE_ID_H_MINUTES 113
+#define RESOURCE_ID_H_SOLO_MIDNIGHT 114
+#define RESOURCE_ID_H_SOLO_MIDDAY 115
+#define RESOURCE_ID_H_D0 116
+#define RESOURCE_ID_H_D1 117
+#define RESOURCE_ID_H_D2 118
+#define RESOURCE_ID_H_D3 119
+#define RESOURCE_ID_H_D4 120
+#define RESOURCE_ID_H_D5 121
+#define RESOURCE_ID_H_D6 122
+#define RESOURCE_ID_H_D7 123
+#define RESOURCE_ID_H_D8 124
+#define RESOURCE_ID_H_D9 125
+#define RESOURCE_ID_H_MON1 126
+#define RESOURCE_ID_H_MON2 127
+#define RESOURCE_ID_H_MON3 128
+#define RESOURCE_ID_H_MON4 129
+#define RESOURCE_ID_H_MON5 130
+#define RESOURCE_ID_H_MON6 131
+#define RESOURCE_ID_H_MON7 132
+#define RESOURCE_ID_H_MON8 133
+#define RESOURCE_ID_H_MON9 134
+#define RESOURCE_ID_H_MON10 135
+#define RESOURCE_ID_H_MON11 136
+#define RESOURCE_ID_H_MON12 137
+#define RESOURCE_ID_H_ST 138
+#define RESOURCE_ID_H_ND 139
+#define RESOURCE_ID_H_RD 140
+#define RESOURCE_ID_H_TH 141
+#define RESOURCE_ID_H_DOW_SUN 142
+#define RESOURCE_ID_H_DOW_MON 143
+#define RESOURCE_ID_H_DOW_TUE 144
+#define RESOURCE_ID_H_DOW_WED 145
+#define RESOURCE_ID_H_DOW_THU 146
+#define RESOURCE_ID_H_DOW_FRI 147
+#define RESOURCE_ID_H_DOW_SAT 148
+#define RESOURCE_ID_H_SOLO_ONE 149
+#define RESOURCE_ID_H_SOLO_TWO 150
+#define RESOURCE_ID_H_SOLO_THREE 151
+#define RESOURCE_ID_H_SOLO_FOUR 152
+#define RESOURCE_ID_H_SOLO_FIVE 153
+#define RESOURCE_ID_H_SOLO_SIX 154
+#define RESOURCE_ID_H_SOLO_SEVEN 155
+#define RESOURCE_ID_H_SOLO_EIGHT 156
+#define RESOURCE_ID_H_SOLO_NINE 157
+#define RESOURCE_ID_H_SOLO_TEN 158
+#define RESOURCE_ID_H_SOLO_ELEVEN 159
+#define RESOURCE_ID_H_SOLO_OCLOCK 160
+#define RESOURCE_ID_H_SOLO_THE 161
+#define RESOURCE_ID_H_SOLO_WITCHING 162
+#define RESOURCE_ID_H_SOLO_HOUR 163
+#define RESOURCE_ID_H_TWENTYFIVE 164
+#define RESOURCE_ID_H_JUST_GONE 165
+#define RESOURCE_ID_H_NEARLY 166
 
 typedef struct { uint8_t asc, desc; } WordInk;
 
@@ -142,7 +217,7 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {37, 19},        /* midnight */
     {37, 18},        /* midday */
     {12, 0},        /* 0 */
-    {12, 0},        /* 1 */
+    {13, 0},        /* 1 */
     {12, 0},        /* 2 */
     {12, 0},        /* 3 */
     {12, 0},        /* 4 */
@@ -152,14 +227,14 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {12, 0},        /* 8 */
     {12, 0},        /* 9 */
     {15, 8},        /* Jan. */
-    {17, 3},        /* Feb. */
-    {15, 4},        /* Mar. */
+    {18, 3},        /* Feb. */
+    {16, 4},        /* Mar. */
     {17, 8},        /* Apr. */
-    {15, 9},        /* May */
+    {16, 9},        /* May */
     {15, 8},        /* Jun. */
     {19, 8},        /* Jul. */
-    {17, 9},        /* Aug. */
-    {15, 8},        /* Sep. */
+    {17, 10},        /* Aug. */
+    {16, 8},        /* Sep. */
     {16, 0},        /* Oct. */
     {16, 1},        /* Nov. */
     {16, 0},        /* Dec. */
@@ -167,22 +242,22 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {11, 0},        /* nd */
     {11, 0},        /* rd */
     {11, 0},        /* th */
-    {15, 5},        /* Sun. */
-    {15, 4},        /* Mon. */
-    {15, 0},        /* Tue. */
+    {16, 5},        /* Sun. */
+    {16, 4},        /* Mon. */
+    {16, 0},        /* Tue. */
     {18, 0},        /* Wed. */
-    {17, 1},        /* Thu. */
+    {18, 1},        /* Thu. */
     {15, 3},        /* Fri. */
-    {15, 5},        /* Sat. */
-    {20, 1},        /* one */
+    {16, 5},        /* Sat. */
+    {20, 0},        /* one */
     {29, 0},        /* two */
     {36, 1},        /* three */
     {39, 13},        /* four */
     {39, 13},        /* five */
-    {27, 1},        /* six */
+    {26, 1},        /* six */
     {20, 0},        /* seven */
     {36, 19},        /* eight */
-    {27, 0},        /* nine */
+    {26, 0},        /* nine */
     {29, 0},        /* ten */
     {39, 1},        /* eleven */
     {39, 1},        /* o'|clock */
@@ -194,177 +269,177 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {21, 10},        /* nearly */
   },
   {
-    {18, 0},        /* one */
-    {26, 0},        /* two */
-    {32, 1},        /* three */
-    {34, 15},        /* four        drawn */
-    {34, 15},        /* five        drawn */
-    {23, 1},        /* six */
-    {18, 0},        /* seven */
-    {34, 17},        /* eight       drawn */
-    {23, 0},        /* nine */
-    {26, 0},        /* ten */
-    {34, 1},        /* eleven      drawn */
-    {34, 1},        /* twelve */
-    {32, 1},        /* thirteen */
-    {34, 16},        /* fourteen    drawn */
-    {34, 16},        /* fifteen     drawn */
-    {26, 1},        /* sixteen */
-    {26, 0},        /* seventeen */
-    {34, 17},        /* eighteen    drawn */
-    {26, 0},        /* nineteen */
-    {26, 16},        /* twenty */
-    {26, 16},        /* twenty- */
-    {26, 15},        /* quarter */
-    {34, 15},        /* half        drawn */
-    {26, 15},        /* past */
-    {26, 0},        /* to */
-    {33, 17},        /* midnight */
-    {33, 16},        /* midday */
-    {18, 0},        /* noon */
-    {16, 0},        /* minute */
-    {16, 0},        /* minutes */
-    {37, 19},        /* midnight */
-    {37, 18},        /* midday */
-    {12, 0},        /* 0 */
-    {12, 0},        /* 1 */
-    {12, 0},        /* 2 */
-    {12, 0},        /* 3 */
-    {12, 0},        /* 4 */
-    {12, 0},        /* 5 */
-    {12, 0},        /* 6 */
-    {12, 0},        /* 7 */
-    {12, 0},        /* 8 */
-    {12, 0},        /* 9 */
-    {15, 8},        /* Jan. */
-    {17, 3},        /* Feb. */
-    {15, 4},        /* Mar. */
-    {17, 8},        /* Apr. */
-    {15, 9},        /* May */
-    {15, 8},        /* Jun. */
-    {19, 8},        /* Jul. */
-    {17, 9},        /* Aug. */
-    {15, 8},        /* Sep. */
-    {16, 0},        /* Oct. */
-    {16, 1},        /* Nov. */
-    {16, 0},        /* Dec. */
-    {9, 0},         /* st */
-    {11, 0},        /* nd */
-    {11, 0},        /* rd */
-    {11, 0},        /* th */
-    {15, 5},        /* Sun. */
-    {15, 4},        /* Mon. */
-    {15, 0},        /* Tue. */
-    {18, 0},        /* Wed. */
-    {17, 1},        /* Thu. */
-    {15, 3},        /* Fri. */
-    {15, 5},        /* Sat. */
-    {20, 1},        /* one */
-    {29, 0},        /* two */
-    {36, 1},        /* three */
-    {39, 13},        /* four */
-    {39, 13},        /* five */
-    {27, 1},        /* six */
-    {20, 0},        /* seven */
-    {36, 19},        /* eight */
-    {27, 0},        /* nine */
-    {29, 0},        /* ten */
-    {39, 1},        /* eleven */
-    {39, 1},        /* o'|clock */
-    {36, 1},        /* the */
-    {36, 19},        /* witching */
-    {36, 1},        /* hour */
-    {34, 16},        /* twenty-five */
-    {18, 11},        /* just|gone */
-    {21, 10},        /* nearly */
+    {18, 1},        /* one         drawn */
+    {32, 1},        /* two         drawn */
+    {34, 0},        /* three       drawn */
+    {33, 16},        /* four        drawn */
+    {33, 16},        /* five        drawn */
+    {22, 0},        /* six         drawn */
+    {18, 1},        /* seven       drawn */
+    {33, 14},        /* eight       drawn */
+    {23, 1},        /* nine        drawn */
+    {32, 1},        /* ten         drawn */
+    {33, 0},        /* eleven      drawn */
+    {33, 1},        /* twelve      drawn */
+    {34, 1},        /* thirteen    drawn */
+    {34, 15},        /* fourteen    drawn */
+    {33, 16},        /* fifteen     drawn */
+    {34, 1},        /* sixteen     drawn */
+    {34, 1},        /* seventeen   drawn */
+    {34, 15},        /* eighteen    drawn */
+    {34, 0},        /* nineteen    drawn */
+    {33, 17},        /* twenty      drawn */
+    {33, 17},        /* twenty-     drawn */
+    {34, 17},        /* quarter     drawn */
+    {33, 15},        /* half        drawn */
+    {33, 17},        /* past        drawn */
+    {33, 0},        /* to          drawn */
+    {34, 16},        /* midnight    drawn */
+    {34, 17},        /* midday      drawn */
+    {18, 1},        /* noon        drawn */
+    {16, 0},        /* minute      drawn */
+    {16, 0},        /* minutes     drawn */
+    {39, 18},        /* midnight    drawn */
+    {37, 19},        /* midday      drawn */
+    {15, 0},        /* 0           drawn */
+    {17, 1},        /* 1           drawn */
+    {16, 0},        /* 2           drawn */
+    {17, 1},        /* 3           drawn */
+    {16, 3},        /* 4           drawn */
+    {17, 0},        /* 5           drawn */
+    {16, 0},        /* 6           drawn */
+    {15, 0},        /* 7           drawn */
+    {17, 0},        /* 8           drawn */
+    {17, 0},        /* 9           drawn */
+    {18, 9},        /* Jan.        drawn */
+    {19, 0},        /* Feb.        drawn */
+    {19, 0},        /* Mar.        drawn */
+    {18, 9},        /* Apr.        drawn */
+    {19, 9},        /* May         drawn */
+    {19, 7},        /* Jun.        drawn */
+    {18, 8},        /* Jul.        drawn */
+    {18, 9},        /* Aug.        drawn */
+    {19, 9},        /* Sep.        drawn */
+    {18, 0},        /* Oct.        drawn */
+    {19, 0},        /* Nov.        drawn */
+    {18, 0},        /* Dec.        drawn */
+    {10, 0},        /* st          drawn */
+    {10, 0},        /* nd          drawn */
+    {11, 0},        /* rd          drawn */
+    {11, 0},        /* th          drawn */
+    {19, 0},        /* Sun.        drawn */
+    {19, 0},        /* Mon.        drawn */
+    {19, 0},        /* Tue.        drawn */
+    {19, 1},        /* Wed.        drawn */
+    {19, 0},        /* Thu.        drawn */
+    {19, 1},        /* Fri.        drawn */
+    {19, 0},        /* Sat.        drawn */
+    {22, 1},        /* one         drawn */
+    {38, 2},        /* two         drawn */
+    {39, 0},        /* three       drawn */
+    {37, 19},        /* four        drawn */
+    {37, 16},        /* five        drawn */
+    {29, 1},        /* six         drawn */
+    {22, 1},        /* seven       drawn */
+    {38, 19},        /* eight       drawn */
+    {28, 0},        /* nine        drawn */
+    {37, 0},        /* ten         drawn */
+    {37, 1},        /* eleven      drawn */
+    {39, 1},        /* o'|clock    drawn */
+    {39, 0},        /* the         drawn */
+    {39, 19},        /* witching    drawn */
+    {39, 2},        /* hour        drawn */
+    {33, 17},        /* twenty-five drawn */
+    {21, 10},        /* just|gone   drawn */
+    {21, 9},        /* nearly      drawn */
   },
 };
 
 /* Has this word been drawn by hand? Independent of WORDS[]. */
 static const uint8_t WORD_DRAWN[] = {
-  0,   /* one */
-  0,   /* two */
-  0,   /* three */
+  1,   /* one */
+  1,   /* two */
+  1,   /* three */
   1,   /* four */
   1,   /* five */
-  0,   /* six */
-  0,   /* seven */
+  1,   /* six */
+  1,   /* seven */
   1,   /* eight */
-  0,   /* nine */
-  0,   /* ten */
+  1,   /* nine */
+  1,   /* ten */
   1,   /* eleven */
-  0,   /* twelve */
-  0,   /* thirteen */
+  1,   /* twelve */
+  1,   /* thirteen */
   1,   /* fourteen */
   1,   /* fifteen */
-  0,   /* sixteen */
-  0,   /* seventeen */
+  1,   /* sixteen */
+  1,   /* seventeen */
   1,   /* eighteen */
-  0,   /* nineteen */
-  0,   /* twenty */
-  0,   /* twenty- */
-  0,   /* quarter */
+  1,   /* nineteen */
+  1,   /* twenty */
+  1,   /* twenty- */
+  1,   /* quarter */
   1,   /* half */
-  0,   /* past */
-  0,   /* to */
-  0,   /* midnight */
-  0,   /* midday */
-  0,   /* noon */
-  0,   /* minute */
-  0,   /* minutes */
-  0,   /* midnight */
-  0,   /* midday */
-  0,   /* 0 */
-  0,   /* 1 */
-  0,   /* 2 */
-  0,   /* 3 */
-  0,   /* 4 */
-  0,   /* 5 */
-  0,   /* 6 */
-  0,   /* 7 */
-  0,   /* 8 */
-  0,   /* 9 */
-  0,   /* Jan. */
-  0,   /* Feb. */
-  0,   /* Mar. */
-  0,   /* Apr. */
-  0,   /* May */
-  0,   /* Jun. */
-  0,   /* Jul. */
-  0,   /* Aug. */
-  0,   /* Sep. */
-  0,   /* Oct. */
-  0,   /* Nov. */
-  0,   /* Dec. */
-  0,   /* st */
-  0,   /* nd */
-  0,   /* rd */
-  0,   /* th */
-  0,   /* Sun. */
-  0,   /* Mon. */
-  0,   /* Tue. */
-  0,   /* Wed. */
-  0,   /* Thu. */
-  0,   /* Fri. */
-  0,   /* Sat. */
-  0,   /* one */
-  0,   /* two */
-  0,   /* three */
-  0,   /* four */
-  0,   /* five */
-  0,   /* six */
-  0,   /* seven */
-  0,   /* eight */
-  0,   /* nine */
-  0,   /* ten */
-  0,   /* eleven */
-  0,   /* o'|clock */
-  0,   /* the */
-  0,   /* witching */
-  0,   /* hour */
-  0,   /* twenty-five */
-  0,   /* just|gone */
-  0,   /* nearly */
+  1,   /* past */
+  1,   /* to */
+  1,   /* midnight */
+  1,   /* midday */
+  1,   /* noon */
+  1,   /* minute */
+  1,   /* minutes */
+  1,   /* midnight */
+  1,   /* midday */
+  1,   /* 0 */
+  1,   /* 1 */
+  1,   /* 2 */
+  1,   /* 3 */
+  1,   /* 4 */
+  1,   /* 5 */
+  1,   /* 6 */
+  1,   /* 7 */
+  1,   /* 8 */
+  1,   /* 9 */
+  1,   /* Jan. */
+  1,   /* Feb. */
+  1,   /* Mar. */
+  1,   /* Apr. */
+  1,   /* May */
+  1,   /* Jun. */
+  1,   /* Jul. */
+  1,   /* Aug. */
+  1,   /* Sep. */
+  1,   /* Oct. */
+  1,   /* Nov. */
+  1,   /* Dec. */
+  1,   /* st */
+  1,   /* nd */
+  1,   /* rd */
+  1,   /* th */
+  1,   /* Sun. */
+  1,   /* Mon. */
+  1,   /* Tue. */
+  1,   /* Wed. */
+  1,   /* Thu. */
+  1,   /* Fri. */
+  1,   /* Sat. */
+  1,   /* one */
+  1,   /* two */
+  1,   /* three */
+  1,   /* four */
+  1,   /* five */
+  1,   /* six */
+  1,   /* seven */
+  1,   /* eight */
+  1,   /* nine */
+  1,   /* ten */
+  1,   /* eleven */
+  1,   /* o'|clock */
+  1,   /* the */
+  1,   /* witching */
+  1,   /* hour */
+  1,   /* twenty-five */
+  1,   /* just|gone */
+  1,   /* nearly */
 };
 
 /* x-height of each word's family - the lowercase body height.
@@ -401,8 +476,8 @@ static const uint8_t WORD_XHEIGHT[] = {
   18,   /* TIME      noon */
   11,   /* MINS      minute */
   11,   /* MINS      minutes */
-  21,   /* SOLO      midnight */
-  21,   /* SOLO      midday */
+  20,   /* SOLO      midnight */
+  20,   /* SOLO      midday */
   10,   /* DATE      0 */
   10,   /* DATE      1 */
   10,   /* DATE      2 */
@@ -436,21 +511,21 @@ static const uint8_t WORD_XHEIGHT[] = {
   10,   /* DATE      Thu. */
   10,   /* DATE      Fri. */
   10,   /* DATE      Sat. */
-  21,   /* SOLO      one */
-  21,   /* SOLO      two */
-  21,   /* SOLO      three */
-  21,   /* SOLO      four */
-  21,   /* SOLO      five */
-  21,   /* SOLO      six */
-  21,   /* SOLO      seven */
-  21,   /* SOLO      eight */
-  21,   /* SOLO      nine */
-  21,   /* SOLO      ten */
-  21,   /* SOLO      eleven */
-  21,   /* SOLO      o'|clock */
-  21,   /* SOLO      the */
-  21,   /* SOLO      witching */
-  21,   /* SOLO      hour */
+  20,   /* SOLO      one */
+  20,   /* SOLO      two */
+  20,   /* SOLO      three */
+  20,   /* SOLO      four */
+  20,   /* SOLO      five */
+  20,   /* SOLO      six */
+  20,   /* SOLO      seven */
+  20,   /* SOLO      eight */
+  20,   /* SOLO      nine */
+  20,   /* SOLO      ten */
+  20,   /* SOLO      eleven */
+  20,   /* SOLO      o'|clock */
+  20,   /* SOLO      the */
+  20,   /* SOLO      witching */
+  20,   /* SOLO      hour */
   18,   /* TIME      twenty-five */
   11,   /* HEDGE     just|gone */
   11,   /* HEDGE     nearly */

@@ -629,6 +629,27 @@
         },
         {
           "type": "bitmap",
+          "name": "H_ONE",
+          "file": "images/h_one.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TWO",
+          "file": "images/h_two.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_THREE",
+          "file": "images/h_three.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
           "name": "H_FOUR",
           "file": "images/h_four.png",
           "memoryFormat": "4BitPalette",
@@ -643,6 +664,20 @@
         },
         {
           "type": "bitmap",
+          "name": "H_SIX",
+          "file": "images/h_six.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SEVEN",
+          "file": "images/h_seven.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
           "name": "H_EIGHT",
           "file": "images/h_eight.png",
           "memoryFormat": "4BitPalette",
@@ -650,8 +685,36 @@
         },
         {
           "type": "bitmap",
+          "name": "H_NINE",
+          "file": "images/h_nine.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TEN",
+          "file": "images/h_ten.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
           "name": "H_ELEVEN",
           "file": "images/h_eleven.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TWELVE",
+          "file": "images/h_twelve.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_THIRTEEN",
+          "file": "images/h_thirteen.png",
           "memoryFormat": "4BitPalette",
           "storageFormat": "pbi"
         },
@@ -671,6 +734,20 @@
         },
         {
           "type": "bitmap",
+          "name": "H_SIXTEEN",
+          "file": "images/h_sixteen.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SEVENTEEN",
+          "file": "images/h_seventeen.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
           "name": "H_EIGHTEEN",
           "file": "images/h_eighteen.png",
           "memoryFormat": "4BitPalette",
@@ -678,8 +755,456 @@
         },
         {
           "type": "bitmap",
+          "name": "H_NINETEEN",
+          "file": "images/h_nineteen.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TWENTY",
+          "file": "images/h_twenty.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TWENTYDASH",
+          "file": "images/h_twentydash.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_QUARTER",
+          "file": "images/h_quarter.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
           "name": "H_HALF",
           "file": "images/h_half.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_PAST",
+          "file": "images/h_past.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TO",
+          "file": "images/h_to.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MIDNIGHT",
+          "file": "images/h_midnight.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MIDDAY",
+          "file": "images/h_midday.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_NOON",
+          "file": "images/h_noon.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MINUTE",
+          "file": "images/h_minute.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MINUTES",
+          "file": "images/h_minutes.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_MIDNIGHT",
+          "file": "images/h_solo_midnight.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_MIDDAY",
+          "file": "images/h_solo_midday.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D0",
+          "file": "images/h_d0.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D1",
+          "file": "images/h_d1.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D2",
+          "file": "images/h_d2.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D3",
+          "file": "images/h_d3.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D4",
+          "file": "images/h_d4.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D5",
+          "file": "images/h_d5.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D6",
+          "file": "images/h_d6.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D7",
+          "file": "images/h_d7.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D8",
+          "file": "images/h_d8.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_D9",
+          "file": "images/h_d9.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON1",
+          "file": "images/h_mon1.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON2",
+          "file": "images/h_mon2.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON3",
+          "file": "images/h_mon3.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON4",
+          "file": "images/h_mon4.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON5",
+          "file": "images/h_mon5.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON6",
+          "file": "images/h_mon6.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON7",
+          "file": "images/h_mon7.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON8",
+          "file": "images/h_mon8.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON9",
+          "file": "images/h_mon9.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON10",
+          "file": "images/h_mon10.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON11",
+          "file": "images/h_mon11.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_MON12",
+          "file": "images/h_mon12.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_ST",
+          "file": "images/h_st.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_ND",
+          "file": "images/h_nd.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_RD",
+          "file": "images/h_rd.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TH",
+          "file": "images/h_th.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_DOW_SUN",
+          "file": "images/h_dow_sun.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_DOW_MON",
+          "file": "images/h_dow_mon.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_DOW_TUE",
+          "file": "images/h_dow_tue.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_DOW_WED",
+          "file": "images/h_dow_wed.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_DOW_THU",
+          "file": "images/h_dow_thu.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_DOW_FRI",
+          "file": "images/h_dow_fri.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_DOW_SAT",
+          "file": "images/h_dow_sat.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_ONE",
+          "file": "images/h_solo_one.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_TWO",
+          "file": "images/h_solo_two.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_THREE",
+          "file": "images/h_solo_three.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_FOUR",
+          "file": "images/h_solo_four.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_FIVE",
+          "file": "images/h_solo_five.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_SIX",
+          "file": "images/h_solo_six.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_SEVEN",
+          "file": "images/h_solo_seven.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_EIGHT",
+          "file": "images/h_solo_eight.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_NINE",
+          "file": "images/h_solo_nine.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_TEN",
+          "file": "images/h_solo_ten.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_ELEVEN",
+          "file": "images/h_solo_eleven.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_OCLOCK",
+          "file": "images/h_solo_oclock.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_THE",
+          "file": "images/h_solo_the.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_WITCHING",
+          "file": "images/h_solo_witching.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_SOLO_HOUR",
+          "file": "images/h_solo_hour.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_TWENTYFIVE",
+          "file": "images/h_twentyfive.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_JUST_GONE",
+          "file": "images/h_just_gone.png",
+          "memoryFormat": "4BitPalette",
+          "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "H_NEARLY",
+          "file": "images/h_nearly.png",
           "memoryFormat": "4BitPalette",
           "storageFormat": "pbi"
         }
