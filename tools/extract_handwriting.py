@@ -53,7 +53,18 @@ Ink outside the band is ink the watchface would clip, so it is reported and
 then dropped.
 
 Horizontally the crop IS the ink, because a word's width is its own - that
-is the whole reason WORDS[] carries a width per word.
+is the whole reason WORDS[] carries a width per word. But it is the ink
+INSIDE THE BAND, not inside the padded region that the band is measured in.
+Those are not the same thing, and the difference is a hazard: the pad
+reaches roughly a box-height above and below, so a note scribbled in the gap
+between two blocks - which is a perfectly reasonable thing to do on a page
+you are working from - would stretch the word's bounding box out to reach it
+and pad the bitmap with blank space. Worse, near an EMPTY box it could pass
+the "is anything drawn here" test and conjure a word out of a doodle.
+
+So: ink outside the box is ignored in both axes. The pad exists only to
+measure how much was lost, and even that is measured over the word's own
+columns, so a note beside the word is not reported as the word overrunning.
 """
 
 import json
@@ -219,11 +230,21 @@ def extract(alpha, entry, box_h, box_base):
                  % (name, entry["family"]))
 
     ink = region.point(lambda v: 255 if v > EDGE else 0)
-    left, top, right, bot = ink.getbbox()       # right/bot are exclusive
-    # Measured against the BAND, because the band is what survives. The box
-    # the rules were drawn at is only where the pen was aimed.
-    over_top = max(0, band_top - (top + y0))
-    over_bot = max(0, (bot + y0) - band_bot)
+
+    # The word is whatever ink lies in the BAND. Anything in the pad above or
+    # below belongs to something else - a note, a doodle, the tail of a
+    # neighbouring word - and must not widen this one. See the docstring.
+    inband = ink.crop((0, band_top - y0, ink.width, band_bot - y0)).getbbox()
+    if inband is None:
+        return None, None                       # only stray ink in the pad
+    left, right = inband[0], inband[2]          # right is exclusive
+
+    # How much of THIS word was lost to the band edges. Measured over the
+    # word's own columns only, so a note to one side is not reported as this
+    # word overrunning.
+    column = ink.crop((left, 0, right, ink.height)).getbbox()
+    over_top = max(0, band_top - (column[1] + y0))
+    over_bot = max(0, (column[3] + y0) - band_bot)
 
     # Vertically the canvas band, horizontally the ink - see the docstring.
     band = region.crop((left, band_top - y0, right, band_bot - y0))
