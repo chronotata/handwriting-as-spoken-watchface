@@ -70,6 +70,8 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "handwriting-templates"
 OUT = SRC / "out"
+GEOM = ROOT / "src" / "c" / "geometry.h"
+INKINDEX = SRC / "ink" / "index.json"
 
 # --- the page, in ink pixels -------------------------------------------
 PAGE_W, PAGE_H = 1404, 1872
@@ -77,15 +79,40 @@ PAGE_PT = (612, 816)          # 3:4, as used by the sample Nomad export
 MARGIN = 60
 
 # --- families ----------------------------------------------------------
-# box height -> (name, baseline from top, x-height above baseline)
-FAMILY = {
-    51: ("TIME",  34, 18),
-    58: ("SOLO",  39, 21),
-    32: ("HEDGE", 21, 11),
-    16: ("MINS",  16, 11),
-    28: ("DATE",  19, 10),
-    11: ("ORD",   11,  6),
-}
+#
+# The canvas heights and baselines are READ FROM geometry.h, never written
+# down here. They used to be a hardcoded table keyed by the template PNG's
+# height, and it went stale exactly as you would expect: the DATE box grew
+# from 28px to 29, this table did not, and every date word was drawn against
+# a box a pixel shorter than the one the watchface reserves for it. The
+# weekdays - the only DATE words whose ink reaches the top of the box -
+# sprouted a repeated row underneath on the real screen.
+#
+# One number is genuinely not in geometry.h: the x-height, which is a
+# property of the typeface rather than of the canvas. It stays here, keyed by
+# NAME rather than by height so that it cannot silently attach itself to the
+# wrong family when a box changes size.
+X_HEIGHT = {"TIME": 18, "SOLO": 21, "HEDGE": 11,
+            "MINS": 11, "DATE": 10, "ORD": 6}
+
+
+def family_boxes():
+    """{family: (canvas height, baseline from top)} out of geometry.h."""
+    if not GEOM.exists():
+        sys.exit("src/c/geometry.h is missing - run tools/tune.py first")
+    text = GEOM.read_text()
+    out = {}
+    for fam in X_HEIGHT:
+        h = re.search(r"^#define %s_BOX_H\s+(\d+)" % fam, text, re.M)
+        b = re.search(r"^#define %s_BOX_BASE\s+(\d+)" % fam, text, re.M)
+        if not h or not b:
+            sys.exit("geometry.h has no %s box - run tools/tune.py" % fam)
+        out[fam] = (int(h.group(1)), int(b.group(1)))
+    heights = [v[0] for v in out.values()]
+    if len(set(heights)) != len(heights):
+        sys.exit("two families now share a canvas height, so a template PNG "
+                 "no longer says which family it belongs to: %r" % (out,))
+    return out
 
 # How wide the box to write in should be, per family.
 #
@@ -213,16 +240,37 @@ def png_size(path):
     return struct.unpack(">II", b[16:24])
 
 
-def load_words():
+def load_words(boxes):
     """(name, family, width, height, path), grouped by family."""
+    by_height = {v[0]: fam for fam, v in boxes.items()}
     out = {}
     for f in sorted(SRC.glob("*.png")):
         w, h = png_size(f)
-        if h not in FAMILY:
-            sys.exit("%s is %dpx tall, which is no family I know" % (f.name, h))
-        fam = FAMILY[h][0]
+        if h not in by_height:
+            sys.exit("%s is %dpx tall, which matches no family in "
+                     "geometry.h (%s).\nThe word images are older than "
+                     "geometry.h - re-run tools/tune.py first."
+                     % (f.name, h, ", ".join("%s %d" % (k, v[0])
+                                             for k, v in sorted(boxes.items()))))
+        fam = by_height[h]
         out.setdefault(fam, []).append((f.stem, fam, w, h, f))
     return out
+
+
+def already_drawn():
+    """Families that have ink extracted from them already.
+
+    Regenerating a template moves every box on the page, so any drawing done
+    against the old one would be cropped from the wrong places. That is worth
+    refusing rather than warning about: the damage is silent, and it looks
+    like bad handwriting rather than like a tooling mistake.
+    """
+    if not INKINDEX.exists():
+        return set()
+    try:
+        return {r["family"] for r in json.loads(INKINDEX.read_text())}
+    except (ValueError, KeyError):
+        return set()
 
 
 def budget_for(fam, widest):
@@ -233,8 +281,7 @@ def budget_for(fam, widest):
 
 def scale_for(fam, widest):
     """One pen width for the whole job - see the module docstring."""
-    _, _, xheight = next(v for v in FAMILY.values() if v[0] == fam)
-    s = max(2, round(PEN_PX / (INK_RATIO * xheight)))
+    s = max(2, round(PEN_PX / (INK_RATIO * X_HEIGHT[fam])))
     # ...but never so wide that the box runs off the page, which binds for
     # TIME and SOLO and for nothing else.
     return min(s, (PAGE_W - 2 * MARGIN) // budget_for(fam, widest))
@@ -298,10 +345,10 @@ def draw_rules(d, top, base, xheight, box_h, scale, x0, x1, faint=False):
     return y_base, y_mean
 
 
-def build(fam, words, scale, budget):
+def build(fam, words, scale, budget, boxes):
     """One PDF per family. Returns (pages, manifest)."""
-    _, base, xheight = next(v for v in FAMILY.values() if v[0] == fam)
-    box_h = next(k for k, v in FAMILY.items() if v[0] == fam)
+    box_h, base = boxes[fam]
+    xheight = X_HEIGHT[fam]
 
     f_label = font(30)
     f_small = font(22)
@@ -377,10 +424,34 @@ def build(fam, words, scale, budget):
 
 
 def main():
-    want = sys.argv[1:] or None
+    args = [a for a in sys.argv[1:] if a != "--force"]
+    force = "--force" in sys.argv[1:]
+    want = args or None
+
     OUT.mkdir(parents=True, exist_ok=True)
-    grouped = load_words()
+    boxes = family_boxes()
+    grouped = load_words(boxes)
+    drawn = already_drawn()
     everything = []
+
+    # Regenerating a family that has already been drawn would move every box
+    # on its pages, so the existing ink would be cropped from the wrong
+    # places. Refuse by default; --force is there for when the redraw is the
+    # intention. Note this rewrites the manifest for EVERY family it runs
+    # for, so a partial run still has to leave the untouched families' boxes
+    # exactly where they were - which it does, because their inputs and
+    # arithmetic have not changed.
+    blocked = sorted(f for f in (want or grouped) if f in drawn)
+    if blocked and not force:
+        sys.exit(
+            "refusing to regenerate %s: those families already have drawn "
+            "ink.\nRegenerating moves the boxes on the page, so pages drawn "
+            "against the old\ntemplate would be cropped from the wrong "
+            "places.\n\nIf you mean to redraw them, pass --force. If you "
+            "only wanted to pick up a\nchanged canvas size, you do not need "
+            "to: tools/extract_handwriting.py anchors\non the baseline and "
+            "copes with a template whose box no longer matches."
+            % ", ".join(blocked))
 
     for fam, words in grouped.items():
         if want and fam not in want:
@@ -388,15 +459,20 @@ def main():
         widest = max(w for (_, _, w, _, _) in words)
         scale = scale_for(fam, widest)
         budget = budget_for(fam, widest)
-        pages, manifest = build(fam, words, scale, budget)
+        pages, manifest = build(fam, words, scale, budget, boxes)
         pdf = OUT / ("handwritten_%s.pdf" % fam)
         write_pdf(pdf, pages, PAGE_PT)
         everything += manifest
-        print("%-6s %2d words  widest %3dpx  box %3dpx  scale %2dx  "
+        print("%-6s %2d words  widest %3dpx  box %3dpx x %2dpx  scale %2dx  "
               "x-height %3dpx  %2d pages"
-              % (fam, len(words), widest, budget, scale,
-                 next(v[2] for v in FAMILY.values() if v[0] == fam) * scale,
-                 len(pages)))
+              % (fam, len(words), widest, budget, boxes[fam][0], scale,
+                 X_HEIGHT[fam] * scale, len(pages)))
+
+    # A partial run must not drop the other families out of the manifest.
+    if want and (OUT / "manifest.json").exists():
+        keep = [e for e in json.loads((OUT / "manifest.json").read_text())
+                if e["family"] not in want]
+        everything = keep + everything
 
     (OUT / "manifest.json").write_text(json.dumps(everything, indent=1))
     print("manifest: %d words -> %s" % (len(everything), OUT / "manifest.json"))

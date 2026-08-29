@@ -32,10 +32,25 @@ physical size. The templates are laid out in exactly those pixels, so the
 box a word was drawn in IS the box to crop, with no registration step and no
 rescaling. handwriting-templates/out/manifest.json holds the boxes.
 
-Vertically the crop is the box exactly, never the ink: the box is the
-family's canvas, so cropping to it is what puts the baseline where the
-watchface expects it. Ink outside the box is ink the watchface would clip,
-so it is reported and then dropped.
+Vertically the crop is anchored on the BASELINE, never on the ink and never
+on the box the page was drawn with. The band taken is exactly the family's
+canvas - box_h * scale rows - positioned so the drawn baseline lands on
+box_base * scale, which makes the reduction a clean integer division and
+puts the baseline exactly where the watchface expects it.
+
+Anchoring on the box instead was a real bug and worth remembering. The DATE
+box grew from 28px to 29 at some point; the templates still said 28; so a
+252-row band was being squeezed into a 29-row image. That is a 29/28 stretch
+which drops the baseline two thirds of a pixel, and - because the resize
+took its height from geometry.h while the crop took its height from the
+manifest - it also emitted DATE images ONE PIXEL SHORT of the height
+WORDS[] declared for them. On the watch, a bitmap drawn into a rect a pixel
+taller than itself shows an extra row, and every weekday sprouted a smear
+underneath. The baseline is the only thing both ends agree about, so it is
+the only sane thing to anchor to.
+
+Ink outside the band is ink the watchface would clip, so it is reported and
+then dropped.
 
 Horizontally the crop IS the ink, because a word's width is its own - that
 is the whole reason WORDS[] carries a width per word.
@@ -183,20 +198,35 @@ def extract(alpha, entry, box_h, box_base):
     scale = entry["scale"]
     name = entry["word"]
 
+    # Where the baseline of this box sits on the PAGE. Everything else is
+    # measured from here - see the module docstring for why.
+    base_page = by + entry["baseline"]
+    band_top = base_page - box_base * scale
+    band_bot = band_top + box_h * scale
+
     # A generous margin, only so overrun can be MEASURED before it is dropped.
     pad = box_h * scale
-    y0, y1 = max(0, by - pad), min(alpha.height, by + bh + pad)
+    y0 = max(0, min(by, band_top) - pad)
+    y1 = min(alpha.height, max(by + bh, band_bot) + pad)
     region = alpha.crop((bx, y0, bx + bw, y1))
     if sum(region.histogram()[129:]) < 200:
         return None, None                       # nothing drawn here
 
+    if band_top < y0 or band_bot > y1:
+        sys.exit("%s: the canvas band runs off the page. The template and "
+                 "geometry.h disagree by more than the page can absorb - "
+                 "re-run tools/make_templates.py and redraw %s."
+                 % (name, entry["family"]))
+
     ink = region.point(lambda v: 255 if v > EDGE else 0)
     left, top, right, bot = ink.getbbox()       # right/bot are exclusive
-    over_top = max(0, by - (top + y0))
-    over_bot = max(0, (bot + y0) - (by + bh))
+    # Measured against the BAND, because the band is what survives. The box
+    # the rules were drawn at is only where the pen was aimed.
+    over_top = max(0, band_top - (top + y0))
+    over_bot = max(0, (bot + y0) - band_bot)
 
-    # Vertically the box, horizontally the ink - see the module docstring.
-    band = region.crop((left, by - y0, right, by - y0 + bh))
+    # Vertically the canvas band, horizontally the ink - see the docstring.
+    band = region.crop((left, band_top - y0, right, band_bot - y0))
     small = band.resize((max(1, round(band.width / scale)), box_h),
                         Image.LANCZOS)
 
@@ -212,6 +242,10 @@ def extract(alpha, entry, box_h, box_base):
     desc = seen[3] - box_base if seen else 0
 
     return img, {
+        # How the band was cut. tune.py refuses an index without it, because
+        # an image cut the old way is the RIGHT SIZE and merely sits two
+        # thirds of a pixel low - nothing downstream can tell by looking.
+        "anchor": "baseline",
         "word": name, "family": entry["family"],
         "w": img.width, "h": img.height, "base": box_base,
         "asc": asc, "desc": desc,
