@@ -48,33 +48,39 @@ word at a time, rather than reading digits off a clock face.
 
 ## Status
 
-**v1.2 — feature complete for the rendered typeface.** Builds clean, and
-has been installed and confirmed correct on both the Pebble emulator and a
-real Pebble Time 2. Emery (Pebble Time 2, 200×228) is the only target
-platform for now; other Pebble hardware is deferred.
+**Working, in the maintainer's own handwriting.** All 83 words are drawn by
+hand and running on a real Pebble Time 2. The rendered typeface it replaced
+is still in the build — **Lettering** in the settings swaps between the two
+on the wrist, so the handwriting can be judged against the thing it replaced
+without a reinstall.
 
-Added since v1.1:
+Emery (Pebble Time 2, 200×228) is the only target platform; other Pebble
+hardware is deferred.
+
+What the watchface does:
 
 - **Two date formats** — `10th Aug. 2026` or `Mon. 10th Aug.`
 - **Three ways to say `minute(s)`** — only on non-fives, never, or after
   any number
 - **Three ways to read the minute** — the exact minute, the nearest five,
   or the nearest five with *just gone* / *nearly* saying which way it went
-- **Larger type throughout**, with rows deliberately interwoven rather than
-  held clear, and everything on the hour set in the large wording
-- **Stroke-weight compensation** for dark ink on a light background, which
-  renders about 20% thinner on this panel
-- **Ten independent nudge sliders**, and a settings page whose sliders can
-  no longer be moved by brushing past them
+- **Two typefaces** — the rendered face and the handwriting
+- **Fourteen nudge sliders**, greyed out individually when the current
+  settings mean they cannot affect anything on screen
+- Words are **rubbed out right-to-left** when they leave with nothing
+  written in their place, rather than blinking out
 
-Treat this as the stable point to branch further changes from.
+### Known, and not yet done
 
-**Next planned step (v2):** replacing the rendered typeface with the
-maintainer's own handwriting. The rendering pipeline already exports a full
-set of correctly-sized template images for this — the 83 PNGs in
-`handwriting-templates/`, each at the exact canvas size its finished
-artwork needs to be. Swapping them in is a resources-and-`geometry.h`
-change; no layout, anchoring, or animation code should need to move.
+- **Resources are 263.6 kB against a 256 kB publishing limit.** A warning,
+  not an error — it builds, installs and runs. Publishing needs the font
+  typeface dropped behind a build switch, which takes it to about 132 kB.
+- Offsets tuned on the watch since the handwriting landed are still in the
+  settings sliders rather than baked into `config.h`.
+- Every date fits with 59px to spare, proven by the test sweep. A pass by
+  eye over the date line in handwriting is still outstanding.
+
+`CONTEXT.md` §8 is the working list.
 
 ## Building it yourself
 
@@ -121,5 +127,5 @@ below) is released under the [MIT License](LICENSE).
 licensed separately under the **SIL Open Font License 1.1** by Denis
 Masharov and Marck Fogel. Its full license text is bundled at
 [`resources/fonts/OFL.txt`](resources/fonts/OFL.txt), as the license
-requires. If you swap in your own handwriting (v2) or a different font,
+requires. If you swap in different artwork or a different font,
 that file only needs to travel with the font it actually describes.

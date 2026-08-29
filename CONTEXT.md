@@ -90,7 +90,7 @@ directly above a full ascender (*"eight o' clock"*); elsewhere it opens up
 by whatever ink the two words leave unused, to `ROW_GAP + 31` for *to*
 above *one*. Even ink gaps were traded for even baselines because ruled
 paper is the better model for a handwriting face, and because it is a far
-better substrate to draw v2 artwork over — a tight *one* was 16px tall with
+better substrate to draw handwriting over — a tight *one* was 16px tall with
 nowhere to put a flourish; on the family box it is 47px.
 
 Per-row spacing is still tunable the same way: add blank rows to a word's
@@ -601,7 +601,7 @@ perception even when the stroke core is genuinely white. Fixed with a
 contrast stretch in `tune.py` (`INK_LO`/`INK_HI`, 70/150) that pushes
 faint coverage to background and strong coverage to full ink, keeping
 only a 1px soft edge. This is the crisp-vs-soft tuning knob for both v1
-and, later, scanned handwriting in v2.
+and, later, the scanned handwriting.
 
 **`:20`/`:40` showing "one" instead of "twenty".** `kOnes[]` holds 19
 entries (*one*..*nineteen*); `mins == 20` read `kOnes[19]`, one past the
@@ -647,65 +647,186 @@ this in any project, not just this one:
 
 ---
 
-## 7. Version 2 — the user's own handwriting
+## 7. The handwriting
 
-Not started. The architecture is already shaped for it:
+**Done.** Every one of the 83 words is drawn by hand, and both typefaces
+ship: **Lettering** in the settings swaps between them on the wrist.
 
-- `tools/tune.py` exports `handwriting-templates/` — all 69 words as plain
-  PNGs at their exact final canvas sizes, ready to draw over. Since the
-  family-box change these are uniform per family (47px for time words, 29px
-  for date atoms) with the baseline at a fixed offset in every one, so they
-  behave like ruled paper and leave real room above and below the baseline.
-- Keep the canvas height and the baseline position when redrawing. Widths
-  are free — they are per-word and only affect horizontal spacing.
-- `minute`/`minutes` are the exception at 15px with the baseline flush to
-  the bottom: the rendered font has no descender there, so no room was
-  reserved. If hand-drawn versions want a looping *y*, that family's box
-  needs padding first (add blank rows to both PNGs and re-run `tune.py`).
-- Swapping in real handwriting is a resource-and-`geometry.h` change; no
-  layout, anchoring, or animation code should need to move.
-- The seven weekday words (`Sun.`–`Sat.`) are templates too, and are only
-  drawn by date format 1. They sit in the `DATE` box like the months, so
-  they need no special treatment — but they do bring the set to 69.
-- The same four-level colour ceiling applies to scanned artwork as to the
-  rendered font — bold, high-contrast strokes will reproduce far better
-  than soft pencil gradations.
-- User has a further idea for the drawing/scanning pipeline itself, not
-  yet discussed.
+### 7.1 Why both
 
----
+Handwriting at 200×228 can only be judged against the thing it replaces, on
+the real screen, in real light. A rebuild-and-reinstall between each look is
+enough friction that nobody does that honestly, so the font stays in the
+build and the comparison is a tap away.
+
+`geometry.h` carries `WORDS[2][W_COUNT]` — row 0 the font, row 1 the
+handwriting. A word nobody has drawn has its font row **copied** into the
+handwriting row, so nothing in the watchface ever asks whether a word exists
+in the chosen typeface: it always does. That is what let the vocabulary be
+drawn one family at a time with the watchface usable throughout.
+
+Canvas height and baseline are identical between the two by construction —
+the drawing template *is* the font's own family box — so switching changes
+widths and nothing else. No row moves.
+
+### 7.2 The pipeline
+
+```
+tools/make_templates.py       the pages to draw on          (PDF, per family)
+   ↓                          draw on the Nomad, export PDF
+tools/extract_handwriting.py  ink -> resources/images/h_*.png
+   ↓
+tools/tune.py                 geometry.h, package.json
+```
+
+The split is on one line: **anything touching FreeType runs only on the
+maintainer's machine.** `extract_handwriting.py` never opens a font, so its
+output is byte-identical anywhere and anyone can run it; `tune.py` rasterises
+the TTF and its output must come from one machine (§5).
+
+Three things about the tablet that shaped the design:
+
+- The Nomad exports annotations as a **separate transparent image** over the
+  page — RGB ink plus an 8-bit alpha mask. The template underneath simply is
+  not in that layer, so the guidelines and the printed reference word cannot
+  contaminate the scan and never have to be filtered out.
+- That layer is **1404×1872 whatever the page size**, because it is the
+  screen buffer. So the page is 3:4 and laid out in exactly those pixels:
+  one template pixel is one ink pixel, and the box a word was drawn in is the
+  box the pipeline crops. No registration marks, no rescaling.
+- Each page carries its **family and page number as a row of squares** in the
+  corner, read back out of the background. Exports can be renamed, split or
+  merged freely. Without it, page 1 of TIME and page 1 of SOLO are both
+  "page 1", and the extractor cheerfully cropped one family's boxes out of
+  another's pages.
+
+### 7.3 Scale, and the pen
+
+A word drawn at scale S is reduced by S on the way back, and the pen line
+thins with it. The font draws at a constant 2.83px with an 18px x-height, so
+each family is scaled to make **one pen setting correct for all of them** —
+TIME 5×, SOLO 4×, DATE 9×, ORD 15× — putting the x-height at 84–90px
+everywhere.
+
+Measured off real drawn pages: the Nomad's 1.5 pressure pen gives 1.13px at
+the thin end, 2.40 median, 3.77 at the thick end. That **brackets** the
+font's flat 2.83 rather than sitting under it, which is why the result reads
+as handwriting rather than as a wonky font.
+
+### 7.4 The crop is anchored on the baseline
+
+Not on the ink, and not on the box the page was drawn with. The band taken
+is `box_h × scale` rows positioned so the drawn baseline lands on
+`box_base × scale`. That makes the reduction a clean integer division and
+puts the baseline exactly where the watchface expects it.
+
+Anchoring on the box instead cost a real bug — see §6.
+
+Horizontally the crop is the ink, but **the ink inside the band**. Ink in the
+padding above or below belongs to something else — a note in the margin, a
+neighbouring word's tail — and must not widen this word. Notes anywhere
+outside a box are safe in both axes.
 
 ## 8. Open items
 
-None blocking. Possible future directions, none committed: extending
-`OFFSET_*` tuning to include per-row size multipliers (currently sizes are
-build-time only, per §4); other Pebble platforms; v2 artwork.
+Nothing is broken. This is the list to pick up from.
 
-Both date formats are confirmed on hardware. The format machinery is built
-for more than two — `UPGRADING.md` §10 is the recipe — but no third format
-is planned.
+### Pending — planned, not started
 
-**Dark ink on light paper is better, not settled.** The emboldening outline
-(§2) at Medium reads "a little bit clearer" on the watch; Solid is bolder
-but the edges go crunchy, which is what a four-level screen does when an
-antialiased edge is pushed to full ink. So the current setting is a balance
-rather than a match, and the remaining thinness is unresolved.
+**Bake the current offsets into `config.h`.** Offsets tuned on the watch
+since switching to the handwriting are still sitting in the Clay sliders.
+`OFFSET_*` are the baked baseline and the sliders are **deviations** from
+them, so the new constant is the old one *plus* the slider value; then zero
+the sliders and save. No `tune.py` or `extract_handwriting.py` run — offsets
+are not an input to anything generated. Do run `tools/test/run.sh`: the sweep
+covers both typefaces, so it will say if an offset tuned against the
+handwriting pushes the *font* layout into a collision.
 
-Deliberately left there for now. The obvious next lever is raising
-`BOLD_BLEND` past 0.26 toward 0.40, which targets white-on-black's apparent
-weight instead of the nominal one — but the whole question changes with v2
-(§7), because hand-drawn strokes will have their own weight and the
-rendered-font measurements stop applying. Worth revisiting then rather than
-tuning twice.
+**Trim the build.** The `.pbw` reports **263.6 kB of resources against a
+256 kB publishing limit** — a warning, not an error, so it installs and runs;
+it just cannot be published. Roughly 140 kB of that is the font and 132 kB
+the handwriting, so dropping the font lands around 132 kB, half the limit.
 
-**Two working copies.** The git folder is the only place anything is
-authored or generated: edits, `tune.py`, `run.sh`. A separate build folder
-on the Linux filesystem receives a one-way copy, because `pebble build` is
-far slower over `/mnt/c`. The direction is fixed deliberately.
-`package.json` is both hand-authored (`messageKeys`) and generated
-(`resources.media`), so when each folder generated its own, each ended up
-holding half the truth — one had the weekday bitmaps declared but not the
-`DateFormat` key, the other the reverse, and the build failed on a symbol
-that was sitting in the other copy. Any file with two authors in two places
-will find that bug. The local sync helper is not committed; it has absolute
-paths in it.
+Do it as a **build switch, not a deletion**: the font images and the TTF stay
+in the repo so anyone can rebuild the two-typeface version. `tune.py`
+already knows which words have handwriting, so emitting one table instead of
+two — and compiling out the typeface index, its setting and its message key —
+is contained. One consequence: with the font gone the per-word fallback goes
+too, so every word must be drawn. All 83 are, but adding a word to the
+vocabulary would then need ink before it could ship. Worth a guard.
+
+**Look at every date.** The harness already proves they *fit* — it sweeps all
+366 dates in both formats and reports the widest line:
+
+| format | widest | on | margin |
+|---|---|---|---|
+| `10th Aug. 2026` | 141px | 22/08 | 59px |
+| `Mon. 10th Aug.` | 138px | 22/08 | 62px |
+
+Format 1's figure is checked against **all seven weekdays** for every date,
+not just the pairing one year happens to give, since the widest line is a
+property of the vocabulary rather than of a year. With 59px to spare there is
+no crowding risk, so the remaining pass is **aesthetic** — does the
+handwriting read well — and 22/08 is where to start rather than stepping
+through all 366.
+
+`tools/date_sweep.sh` does the pass: twelve dates that between them cover
+every month, every weekday, every ordinal form including the 11th–13th
+exception, and every digit 0–9. 22 August goes first because it is the
+widest. Run it once per typeface and compare the two sets.
+
+**The clock trap.** `pebble emu-set-time` takes *"HH:MM:SS (today) or Unix
+UTC seconds"*, and `--utc` is ignored for the seconds form — so a timestamp
+is read as UTC, while nothing documents which zone the emulator *displays*
+in. Building the epoch from local time, as the obvious one-liner does, is
+therefore off by the local offset:
+
+```
+# WRONG at UTC+7: 00:28 local is 17:28 the PREVIOUS DAY in UTC
+python3 -c "from datetime import datetime; print(int(datetime(2026,8,22,0,28).timestamp()))"
+```
+
+The sweep sidesteps it by setting **midday UTC**, which lands on the right
+date for any display zone from UTC−11 to UTC+11. Setting a time near
+midnight would silently sweep the wrong dates, most visibly at month ends.
+
+### Watching, not planned
+
+**One set of offsets, two typefaces.** They share canvas heights and
+baselines, so a vertical offset means the same thing in both — but the
+handwriting's ascenders and descenders sit differently from the font's, so an
+offset tuned against one can crowd the other. If they start pulling apart,
+the fix is per-typeface offsets, the same shape as the per-reading-mode block
+lever. Not built speculatively.
+
+**The fallback path is now untested.** The harness reports "83 drawn, 0
+shared with the font" — with the whole vocabulary drawn, the undrawn-word
+branch has nothing to exercise. Not broken, vacant. That counter is the
+signal, and it returns the moment a word joins the vocabulary.
+
+**`BOLD_BLEND` is now a font-only question.** It exists to put weight back
+into a rendered face that draws ~20% thin on this panel (§2). A pressure pen
+brings its own weight, so it no longer applies to the handwriting at all, and
+the handwriting is what ships. The old plan to raise it past 0.26 toward 0.40
+is moot unless the font becomes the primary face again.
+
+**Dark ink on light paper.** Still a balance rather than a match: Medium
+reads "a little bit clearer" on the watch, Solid is crunchy. Unchanged, and
+now largely superseded by the point above.
+
+### Settled
+
+Both date formats confirmed on hardware. The format machinery is built for
+more than two — `UPGRADING.md` §10 is the recipe — but no third is planned.
+Other Pebble platforms remain deferred; Emery is the only target.
+
+**Two working copies.** The git folder is the only place anything is authored
+or generated: edits, `tune.py`, `extract_handwriting.py`, `run.sh`. A
+separate build folder on the Linux filesystem receives a one-way copy,
+because `pebble build` is far slower over `/mnt/c`. The direction is fixed
+deliberately. `package.json` is both hand-authored (`messageKeys`) and
+generated (`resources.media`), so when each folder generated its own, each
+ended up holding half the truth — one had the weekday bitmaps declared but
+not the `DateFormat` key, the other the reverse, and the build failed on a
+symbol sitting in the other copy. Any file with two authors in two places
+will find that bug. The sync helper is not committed; it has absolute paths.

@@ -493,10 +493,71 @@ written for you. Add one, and prove it can fail before believing it.
 
 ---
 
-## 11. What's next: version 2
+## 11. Checking every date
 
-Draw over the templates in `handwriting-templates/` — each is already
-sized exactly for its slot in the layout. Swapping them in is a resources
-change, not a code change; see `CONTEXT.md` §7 for the constraints (the
-same 4-level colour ceiling that shaped the current font rendering applies
-to scanned artwork too).
+The date line is the one part of the layout that changes shape daily, and
+the handwriting is newest there. The harness already proves every date
+**fits** — it sweeps all 366 in both formats and reports the widest line:
+
+```
+dates swept          366
+widest date line     format 0: 141px on 22/08, 59px of the screen to spare
+widest date line     format 1: 138px on 22/08, 62px of the screen to spare
+```
+
+Format 1 is checked against all seven weekdays for every date, not just the
+pairing a given year happens to produce, so that figure is the true worst
+case rather than one year's.
+
+With 59px spare there is no crowding risk, so what is left is **aesthetic** —
+does the handwriting read well — and **22/08 is where to start**, not a walk
+through all 366.
+
+Run the sweep:
+
+```
+tools/date_sweep.sh                       # the twelve covering dates
+tools/date_sweep.sh 2026-02-28 2026-02-29 # or any dates you name
+```
+
+It writes `shots/<date>.png`. Twelve dates cover every month, every weekday,
+every ordinal form — including the 11th–13th exception — and every digit
+0–9. Do it once with **Lettering: Font** and once with **Handwritten**, then
+compare the two sets side by side. Judging one screenshot at a time hides
+exactly the inconsistency you are looking for.
+
+### The clock trap
+
+`pebble emu-set-time` takes *"HH:MM:SS (today) or Unix UTC seconds"*, and
+`--utc` is **ignored** for the seconds form. So a timestamp is interpreted as
+UTC, while nothing says which zone the emulator *displays* in. The obvious
+one-liner builds its epoch from **local** time:
+
+```
+# WRONG at UTC+7 — 00:28 local is 17:28 on the PREVIOUS DAY in UTC
+TS=$(python3 -c "from datetime import datetime; print(int(datetime(2026,8,22,0,28).timestamp()))")
+```
+
+`date_sweep.sh` avoids the whole question by setting **midday UTC**, which
+lands on the requested date for any display zone from UTC−11 to UTC+11. A
+time near midnight would sweep the wrong dates without any sign of it,
+worst at month ends where the month word changes too.
+
+The consequence is that the *time of day* on screen varies by machine. That
+is fine — the date line is what is being checked, and a different phrase
+above it each time is a bonus.
+
+If the first screenshot does not read 22 August, set `SWEEP_HOUR` and
+re-run.
+
+## 12. What is still outstanding
+
+The full list, with reasoning, is `CONTEXT.md` §8. In short:
+
+- **Bake the offsets** currently sitting in the Clay sliders into
+  `config.h` — add the slider value to the constant, then zero the slider.
+  No regeneration needed; do run `tools/test/run.sh`.
+- **Trim the build** for publishing: 263.6 kB of resources against a 256 kB
+  limit. Dropping the font typeface behind a build switch takes it to about
+  132 kB, keeping the images in the repo.
+- **Look at the dates**, per §11 above.
