@@ -770,25 +770,47 @@ no crowding risk, so the remaining pass is **aesthetic** — does the
 handwriting read well — and 22/08 is where to start rather than stepping
 through all 366.
 
-`tools/date_sweep.sh` does the pass: twelve dates that between them cover
-every month, every weekday, every ordinal form including the 11th–13th
-exception, and every digit 0–9. 22 August goes first because it is the
-widest. Run it once per typeface and compare the two sets.
+`tools/date_sweep.sh` does the pass in three sets: **31 days** — every day
+number in one month, because days 10–31 are exactly the twenty-two possible
+digit pairings and each digit is its own bitmap; **twelve dates** covering
+every month, weekday and ordinal form; and **twenty-three times** covering
+every distinct layout rather than every distinct wording. The times are pinned to
+22 August so the widest date line sits under every phrase. Run it once per
+typeface *and* per reading mode, then compare the sets side by side.
 
-**The clock trap.** `pebble emu-set-time` takes *"HH:MM:SS (today) or Unix
-UTC seconds"*, and `--utc` is ignored for the seconds form — so a timestamp
-is read as UTC, while nothing documents which zone the emulator *displays*
-in. Building the epoch from local time, as the obvious one-liner does, is
-therefore off by the local offset:
+It waits `SETTLE` seconds before each shot, defaulting to 3.5 — `run.sh`
+reports the worst-case reveal as 2.42s, and the first version of the script
+waited 1s and captured half-drawn faces.
 
-```
-# WRONG at UTC+7: 00:28 local is 17:28 the PREVIOUS DAY in UTC
-python3 -c "from datetime import datetime; print(int(datetime(2026,8,22,0,28).timestamp()))"
-```
+**Timezones.** The watchface calls `localtime()` — correct, and not
+negotiable: a watch shows the time where its wearer is. Nothing in it
+assumes a zone, so it is already portable. The *sweep script* is what has to
+speak local time back to the emulator, and `pebble emu-set-time` takes UTC
+seconds — which is how the first version of it asked for 00:00 and got a
+screenshot reading 07:00. `TZ_OFFSET` names the emulator's offset and
+defaults to the host's; the script prints its assumption so a wrong one is
+visible in one glance rather than in thirty-five mislabelled files.
 
-The sweep sidesteps it by setting **midday UTC**, which lands on the right
-date for any display zone from UTC−11 to UTC+11. Setting a time near
-midnight would silently sweep the wrong dates, most visibly at month ends.
+**The generated files move together.** `resources/images/`, `geometry.h` and
+`generated.h` are outputs of one `tune.py` run and only mean anything as a
+set. Restoring any of them from git alone leaves `geometry.h` describing
+images that no longer exist at that size, and a bitmap drawn into a rect
+bigger than itself repeats rather than erroring — so it surfaces as a smeared
+letter. `tools/check_resources.py` is the guard; `run.sh` and `date_sweep.sh`
+both refuse when it fires.
+
+They also only describe **the machine that made them**. The family boxes are
+measured from rendered ink, and FreeType differs by a pixel between builds:
+this tree's `geometry.h` said `DATE_BOX_H 29` while the same `tune.py` on the
+owner's machine measured 28. That is not a bug in either — it is why the
+generated files are supposed to come from one machine and be committed from
+there.
+
+It does deadlock the two tools, though, because `extract_handwriting.py` cuts
+to whatever `geometry.h` says and `tune.py` will not write `geometry.h` while
+the ink disagrees. `tune.py --rebox` breaks the circle in the safe direction:
+write the new geometry, leave the mis-cut words on the font, name every one
+of them, then re-cut and re-embed. See `UPGRADING.md` §11c.
 
 ### Watching, not planned
 

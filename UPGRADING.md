@@ -516,39 +516,198 @@ through all 366.
 Run the sweep:
 
 ```
-tools/date_sweep.sh                       # the twelve covering dates
-tools/date_sweep.sh 2026-02-28 2026-02-29 # or any dates you name
+tools/date_sweep.sh          # days, dates, then times — 66 shots, ~4 min
+tools/date_sweep.sh days     # every day number, 1st to 31st
+tools/date_sweep.sh dates    # one date per month
+tools/date_sweep.sh times    # just the phrase
+tools/date_sweep.sh 2026-02-29 14:35   # anything you name
 ```
 
-It writes `shots/<date>.png`. Twelve dates cover every month, every weekday,
-every ordinal form — including the 11th–13th exception — and every digit
-0–9. Do it once with **Lettering: Font** and once with **Handwritten**, then
-compare the two sets side by side. Judging one screenshot at a time hides
-exactly the inconsistency you are looking for.
+It writes `shots/`. Three sets, each isolating one variable:
 
-### The clock trap
+**days** — all 31 day numbers in one month. Each digit is its own bitmap, so
+a two-digit day sets two side by side and the *pairing* is a thing in its own
+right. There is no clever subset: days 10–31 **are** the twenty-two possible
+pairs, and 1–9 are the single-digit cases. All in August, so the only thing
+changing is the number, and August is the widest month word — every pairing
+is seen in the tightest line it will appear in.
 
-`pebble emu-set-time` takes *"HH:MM:SS (today) or Unix UTC seconds"*, and
-`--utc` is **ignored** for the seconds form. So a timestamp is interpreted as
-UTC, while nothing says which zone the emulator *displays* in. The obvious
-one-liner builds its epoch from **local** time:
+**dates** — twelve dates covering every month, weekday and ordinal form,
+including the 11th–13th exception.
+
+**times** — twenty-three times covering every distinct layout rather than
+every distinct wording: centred vs stacked, split vs whole, with and without
+the annotation, both sides of the hour, and the rollovers into midnight and
+midday. Pinned to 22 August so the widest date line sits under every phrase.
+
+The **year** is not swept — four fixed digits that change once a year. If a
+later year looks wrong, name a date in it.
+
+Do it once per **Lettering** setting and once per **reading mode**. The
+phrase shapes genuinely differ between the three modes, and three of the
+times only show a hedge in "nearest five, spoken". Compare the sets side by
+side; judging one screenshot at a time hides exactly the inconsistency you
+are looking for.
+
+### Why it waits
+
+A screenshot taken too early catches the reveal mid-stroke — the first
+version of this script produced shots with the year still going down.
+`run.sh` reports the worst case:
 
 ```
-# WRONG at UTC+7 — 00:28 local is 17:28 on the PREVIOUS DAY in UTC
-TS=$(python3 -c "from datetime import datetime; print(int(datetime(2026,8,22,0,28).timestamp()))")
+longest reveal       629px of stroke, 2.42s at WRITE_SPEED 260
 ```
 
-`date_sweep.sh` avoids the whole question by setting **midday UTC**, which
-lands on the requested date for any display zone from UTC−11 to UTC+11. A
-time near midnight would sweep the wrong dates without any sign of it,
-worst at month ends where the month word changes too.
+`SETTLE` defaults to 3.5s from that figure. If `WRITE_SPEED` changes in
+`config.h`, re-read that line and adjust. If a shot still looks half-drawn,
+raise it.
 
-The consequence is that the *time of day* on screen varies by machine. That
-is fine — the date line is what is being checked, and a different phrase
-above it each time is a bonus.
+### Timezones
 
-If the first screenshot does not read 22 August, set `SWEEP_HOUR` and
-re-run.
+The watchface calls `localtime()`, which is correct and not up for
+negotiation — a watch shows the time where its wearer is. The emulator
+therefore displays **local** time, and the sweep has to speak local time
+back to it.
+
+`pebble emu-set-time` takes *"Unix UTC seconds"* and ignores `--utc` for
+that form, so an epoch built as UTC arrives on screen shifted by the
+emulator's offset. That was a real bug in the first version of this script:
+it asked for 00:00 and the watch displayed 07:00, putting every shot in the
+time sweep seven hours off the name on its own file.
+
+`TZ_OFFSET` is the offset the **emulator** displays, in hours east of UTC.
+It defaults to this machine's, which is right when the emulator inherits the
+host zone — an assumption, and not a documented one, so the script prints
+what it assumed:
+
+```
+emulator emery, 3.5s settle, assuming it displays UTC+7
+```
+
+**Check one shot against its own filename.** If the time is wrong, set the
+offset and re-run:
+
+```
+TZ_OFFSET=7 tools/date_sweep.sh
+```
+
+The date sweep still uses midday, now for a smaller reason: if `TZ_OFFSET`
+is wrong the times will be off, but the **date** on screen holds for any
+error up to 11 hours. A month sweep landing on the wrong month is a worse
+failure than one landing on the wrong hour.
+
+## 11b. Generated files and `git checkout`
+
+**Never restore `resources/images/`, `src/c/geometry.h` or
+`tools/test/generated.h` from git on their own.** They are four outputs of
+one run of `tune.py` and are only meaningful together — restoring some of
+them leaves `geometry.h` describing images that are not there any more, and
+the watchface then draws each bitmap into a rect that is not its size. A rect
+larger than the image **repeats** it, so the result is a smeared or doubled
+letter, not an error.
+
+If a run of `tune.py` produced output you do not want, the fix is to run it
+again — not to check the previous output back in. `tools/check_resources.py`
+catches the mismatch either way, and both `run.sh` and `date_sweep.sh` refuse
+to proceed when it fires.
+
+## 11c. When a family box changes size: `tune.py --rebox`
+
+`extract_handwriting.py` cuts every word to the family box it reads out of
+`geometry.h`. `tune.py` writes `geometry.h`, and refuses to write it while
+the images on disk disagree with it. So the moment a family box changes
+size, **neither tool can go first**: the ink is stale until `geometry.h`
+moves, and `geometry.h` will not move until the ink is re-cut.
+
+Two ordinary things change the box. Adding a word can widen a family — the
+weekdays did. And the box is measured from *real ink*, so a machine whose
+FreeType rasterises one descender a row shorter measures a box one pixel
+shorter; **the generated files only describe the machine that made them.**
+That second case is what anyone picking the project up on a new machine
+walks straight into.
+
+Three steps, in this order:
+
+```
+python3 tools/tune.py --rebox          # new geometry; the mis-cut words
+                                       # fall back to the font for now
+python3 tools/extract_handwriting.py   # re-cut them to the new box
+python3 tools/tune.py                  # embed them again — no flag
+```
+
+Nothing is lost. The ink lives in `handwriting-templates/drawn/` and is
+re-cut from the PDFs every time; a word on the font in between is legible and
+correct, just not yet handwritten. `--rebox` names every word it sets aside,
+so it cannot half-drop the handwriting quietly — which is the failure this
+whole guard exists to prevent.
+
+The flag is only ever needed for the *first* of those runs. If the third one
+still refuses, the box moved again, which means something other than the box
+size is wrong.
+
+## 11d. The whole loop, in order
+
+From new ink on a drawn page to screenshots to the watch. Two folders are
+involved and it matters which one you are in: everything is **authored and
+generated in the git folder**, and the build folder only ever receives a
+copy (§ `tools/sync.sh`).
+
+**Do not paste this as one block.** Steps 2 and 5 are meant to be read
+before continuing, and `run.sh` currently exits non-zero — see below.
+
+```bash
+# 1. Regenerate, in the git folder
+cd /mnt/c/Users/chron/Documents/GitHub/handwriting-as-spoken-watchface
+python3 tools/extract_handwriting.py    # re-cut the ink from the PDFs
+python3 tools/tune.py                   # geometry.h, generated.h, images
+
+# 2. Check the numbers describe the files
+python3 tools/check_resources.py        # must say "N word images match"
+tools/test/run.sh                       # layout suite
+
+# 3. Copy to the build folder and build
+bash tools/sync.sh
+cd /home/chrono/handwritten-british
+pebble build
+
+# 4. Emulator
+pebble install --emulator emery
+
+# 5. Screenshot sweep, back in the git folder
+cd /mnt/c/Users/chron/Documents/GitHub/handwriting-as-spoken-watchface
+tools/date_sweep.sh                     # days, dates, times -> shots/
+
+# 6. The real watch, from the build folder
+cd /home/chrono/handwritten-british
+pebble install --cloudpebble
+```
+
+**If step 1 refuses** with words "cut against a different box", the family
+box has moved — run §11c's three-step `--rebox` sequence in place of step 1,
+then carry on from step 2.
+
+**`run.sh` currently fails**, on the handwriting interweave check, pending
+the layout-versus-limit decision in `CONTEXT.md` §8. That is a known state
+and not a reason to stop, but it does mean `run.sh` must not be chained with
+`&&` — everything after it would be skipped.
+
+**`pebble build` may refuse on size**: 263.6 kB of resources against a
+256 kB limit, with both typefaces shipping. §12.
+
+Step 5 needs the emulator from step 4 still running, and it re-runs
+`check_resources.py` first — it refuses to photograph a tree whose images
+and geometry disagree, because a sweep of smeared digits that is then
+trusted is worse than no sweep.
+
+Step 6 needs `pebble login` and Dev Connect on the phone, both one-off; §7.
+It installs the same build as step 4, so there is no need to rebuild between
+them.
+
+**Then commit** what `tune.py` wrote — `src/c/geometry.h`,
+`tools/test/generated.h`, `package.json` and all of `resources/images/`.
+They only describe the machine that made them (§11c), so they have to be
+committed from the machine that runs this loop.
 
 ## 12. What is still outstanding
 

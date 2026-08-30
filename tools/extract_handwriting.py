@@ -127,40 +127,56 @@ def family_boxes():
 def annotation_layers(pdf):
     """-> {page number (1-based): (page background, ink alpha)}
 
-    The ink is the SMASK of the overlay image, which pdfimages writes as a
-    separate greyscale file; a page with no annotation has no mask at all.
+    Classified by what pdfimages REPORTS each image to be, not by the mode
+    Pillow gives the extracted file. Those are different things, and the
+    difference broke this once: the templates were RGB when this was written,
+    so "greyscale means it is the mask" held. Then the template writer
+    started emitting DeviceGray - and the page BACKGROUND became greyscale
+    too, got filed as a mask, and the mark reader was handed the ink's colour
+    slab instead. A flat field has no marks in it, so every page fell back to
+    reading the family off the filename and said so.
 
-    The background is wanted too, because that is where the page says which
-    family and page it is. Of the two RGB images on an annotated page, the
-    ink's colour layer is a flat slab - it carries no picture, only the pen
-    colour - so the background is the one with any variation in it. Picking
-    by variance rather than by position means this does not depend on the
-    order the exporter happens to write objects in.
+    pdfimages lists one row per image per page and writes the extracted files
+    in that same order, so the row's type column maps straight onto the file.
     """
-    out = {}
     listing = subprocess.run(["pdfimages", "-list", str(pdf)],
                              capture_output=True, text=True, check=True).stdout
-    pages = sorted({int(line.split()[0])
-                    for line in listing.splitlines()[2:]
-                    if len(line.split()) > 2 and line.split()[2] == "smask"})
-    if not pages:
-        return out
+    per_page = {}
+    for line in listing.splitlines()[2:]:
+        f = line.split()
+        if len(f) > 2 and f[0].isdigit():
+            per_page.setdefault(int(f[0]), []).append(f[2])
+
+    out = {}
     with tempfile.TemporaryDirectory() as td:
-        for p in pages:
-            subprocess.run(["pdfimages", "-png", "-f", str(p), "-l", str(p),
-                            str(pdf), "%s/p%d" % (td, p)], check=True)
-            files = sorted(Path(td).glob("p%d-*.png" % p))
-            masks = [f for f in files if Image.open(f).mode == "L"]
-            colour = [f for f in files if Image.open(f).mode != "L"]
-            if not masks or not colour:
-                continue
+        for page, types in sorted(per_page.items()):
+            if "smask" not in types:
+                continue                       # nothing drawn on this page
+            subprocess.run(["pdfimages", "-png", "-f", str(page),
+                            "-l", str(page), str(pdf), "%s/p%d" % (td, page)],
+                           check=True)
+            files = sorted(Path(td).glob("p%d-*.png" % page))
+            if len(files) != len(types):
+                sys.exit("pdfimages listed %d images on page %d of %s but "
+                         "wrote %d files - cannot tell which is which"
+                         % (len(types), page, pdf.name, len(files)))
+
+            alpha = None
             best, spread = None, -1
-            for f in colour:
-                im = Image.open(f).convert("L")
-                lo, hi = im.getextrema()
+            for kind, f in zip(types, files):
+                im = Image.open(f)
+                if kind == "smask":
+                    alpha = im.convert("L")
+                    continue
+                # Of the remaining images one is the page, the other is the
+                # ink's colour - a flat slab carrying no picture. The page is
+                # whichever has any variation in it.
+                g = im.convert("L")
+                lo, hi = g.getextrema()
                 if hi - lo > spread:
-                    best, spread = im, hi - lo
-            out[p] = (best, Image.open(masks[-1]).convert("L"))
+                    best, spread = g, hi - lo
+            if alpha is not None and best is not None:
+                out[page] = (best, alpha)
     return out
 
 

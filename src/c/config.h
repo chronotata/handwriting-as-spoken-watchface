@@ -146,8 +146,8 @@
   * The last two started as copies of OFFSET_MINUTE so that separating them
   * moved nothing on screen; they are independent from here on.
   */
-#define OFFSET_MINUTE -3  /* number WITH "minute(s)" stacked below   */
-#define OFFSET_MINUTE_ALONE 4  /* number with nothing below it            */
+#define OFFSET_MINUTE -12  /* number WITH "minute(s)" stacked below   */
+#define OFFSET_MINUTE_ALONE -1  /* number with nothing below it            */
 #define OFFSET_MINUTE_SPLIT 4  /* the lower half of a split word          */
 
  /*
@@ -159,9 +159,9 @@
   * OFFSET_MINUTES_OWN is free.
   */
 #define OFFSET_MINUTES 4  /* "minute(s)" beside a split number       */
-#define OFFSET_MINUTES_OWN -3  /* "minute(s)" on a line of its own        */
+#define OFFSET_MINUTES_OWN -11  /* "minute(s)" on a line of its own        */
 
-#define OFFSET_RELATION -5  /* "past" / "to"                     */
+#define OFFSET_RELATION -1  /* "past" / "to"                     */
 #define OFFSET_HOUR -9  /* the hour word                     */
 #define OFFSET_SOLO      0  /* solo midnight / midday            */
 #define OFFSET_DATE      0  /* the date line                     */
@@ -345,4 +345,4 @@
  * because geometry.h gives it the font's row in both tables, so switching is
  * safe at any point during the drawing.
  */
-#define DEFAULT_TYPEFACE 0
+#define DEFAULT_TYPEFACE 1

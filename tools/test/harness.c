@@ -1389,6 +1389,8 @@ static void check_rounded_modes_agree(void) {
 static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
                                uint8_t rnd) {
   char buf[210];
+  /* Put back on the way out - see the note in sweep_minutes(). */
+  const uint8_t was_typeface = s_settings.typeface;
   static const int kShifts[] = {-11, 6, 15};
   struct tm tm = make_tm(232, 21, 7, 2026, h, m);
 
@@ -1454,6 +1456,7 @@ static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
   s_settings.date_format = fmt;
   s_settings.minutes_mode = mode;
   s_settings.rounding = rnd;
+  s_settings.typeface = was_typeface;
 }
 
 /*
@@ -1604,6 +1607,114 @@ static void check_hour_family(const Face *f, int h, int m) {
  * x-height flagged a layout that is perfectly fine. */
 static int x_height_of(uint8_t word) { return WORD_XHEIGHT[word]; }
 
+/*
+ * THE TIGHTEST INTERWEAVES, REPORTED RATHER THAN ASSERTED.
+ *
+ * check_ink_overlap() below proves nothing crosses INK_OVERLAP_MAX_PCT. That
+ * is a correctness floor; it says nothing about whether a pair LOOKS good.
+ * With handwriting the difference matters - a descender that stops 1px short
+ * of the limit passes every check and can still read as a mess, which is
+ * what "the bottom of eight against to" turned out to be.
+ *
+ * So the sweep also records the tightest pairing it sees for each
+ * combination of words, and prints the worst. Those are the times worth
+ * putting on the emulator: the layout is legal everywhere, so what is left
+ * is taste, and taste needs the extreme cases in front of it.
+ *
+ * Kept per word PAIR rather than as a flat top-N, because a flat list fills
+ * up with twenty variants of the same collision at twenty different minutes
+ * and hides the pairing that only happens once.
+ */
+#define MAX_TIGHT 512
+
+typedef struct {
+  uint8_t upper, lower;
+  int overlap, limit, h, m;
+} Interweave;
+
+/* One table PER TYPEFACE. A single shared one filled up with the font's
+ * pairs before the handwriting sweep began, and reported the handwriting as
+ * having no interweaves at all - which is the opposite of the truth and
+ * exactly the sort of quiet nothing that reads as good news. */
+static Interweave s_tight[TYPEFACE_COUNT][MAX_TIGHT];
+static int s_tight_n[TYPEFACE_COUNT];
+static int s_tight_dropped[TYPEFACE_COUNT];
+
+static void note_interweave(uint8_t upper, uint8_t lower, int overlap,
+                            int limit, int h, int m) {
+  /* Recorded even when the rows do NOT overlap. The handwriting's
+   * descenders are shorter than the font's, so nothing of it crosses into
+   * the row below at all - and skipping those left the handwriting with an
+   * empty report, which reads as "nothing to look at" when what it means is
+   * "everything is close but clear". A negative overlap is a gap. */
+  const uint8_t tf = s_settings.typeface;
+  for (int i = 0; i < s_tight_n[tf]; i++) {
+    if (s_tight[tf][i].upper == upper && s_tight[tf][i].lower == lower) {
+      if (limit - overlap < s_tight[tf][i].limit - s_tight[tf][i].overlap) {
+        s_tight[tf][i].overlap = overlap;
+        s_tight[tf][i].limit = limit;
+        s_tight[tf][i].h = h;
+        s_tight[tf][i].m = m;
+      }
+      return;
+    }
+  }
+  if (s_tight_n[tf] >= MAX_TIGHT) {
+    s_tight_dropped[tf]++;
+    return;
+  }
+  Interweave *w = &s_tight[tf][s_tight_n[tf]++];
+  w->upper = upper; w->lower = lower;
+  w->overlap = overlap; w->limit = limit;
+  w->h = h; w->m = m;
+}
+
+static void report_interweaves(void) {
+  printf("  stacked pairs seen   font %d, handwritten %d\n",
+         s_tight_n[0], s_tight_n[1]);
+  for (uint8_t tf = 0; tf < TYPEFACE_COUNT; tf++) {
+    int n = s_tight_n[tf];
+    if (!n) {
+      continue;
+    }
+    /* Tightest first: least room left before the limit. */
+    for (int i = 1; i < n; i++) {
+      for (int j = i; j > 0; j--) {
+        const int a = s_tight[tf][j].limit - s_tight[tf][j].overlap;
+        const int b = s_tight[tf][j - 1].limit - s_tight[tf][j - 1].overlap;
+        if (a >= b) {
+          break;
+        }
+        const Interweave tmp = s_tight[tf][j];
+        s_tight[tf][j] = s_tight[tf][j - 1];
+        s_tight[tf][j - 1] = tmp;
+      }
+    }
+    printf("\n  closest stacked pairs, %s - the times worth looking at\n",
+           kTypefaces[tf]);
+    printf("  %-6s %-14s %-14s %s\n",
+           "time", "descender of", "over", "reaches");
+    for (int i = 0; i < n && i < 8; i++) {
+      const Interweave *w = &s_tight[tf][i];
+      if (w->overlap > 0) {
+        printf("  %02d:%02d  %-14s %-14s %dpx INTO it, limit %d\n",
+               w->h, w->m, WORD_TEXT[w->upper], WORD_TEXT[w->lower],
+               w->overlap, w->limit);
+      } else {
+        printf("  %02d:%02d  %-14s %-14s stops %dpx short\n",
+               w->h, w->m, WORD_TEXT[w->upper], WORD_TEXT[w->lower],
+               -w->overlap);
+      }
+    }
+    printf("  %d stacked pairs in all", n);
+    if (s_tight_dropped[tf]) {
+      printf(", plus %d not recorded - raise MAX_TIGHT",
+             s_tight_dropped[tf]);
+    }
+    printf("\n");
+  }
+}
+
 static void check_ink_overlap(const Face *f, int h, int m) {
   char buf[220];
   const Element *prev = NULL;
@@ -1626,6 +1737,7 @@ static void check_ink_overlap(const Face *f, int h, int m) {
                "%d ascender (limit %d)", prev->word, upper_bottom, e->word,
                lower_top, overlap, lower_asc, limit);
       CHECK(overlap <= limit, "rows interweave too deeply", h, m, buf);
+      note_interweave(prev->word, e->word, overlap, limit, h, m);
 
       /* and neither may reach the other's x-height band */
       const int lower_xtop = lower_base - x_height_of(e->word);
@@ -2016,7 +2128,19 @@ static int s_twentydash_top = INT16_MIN;
  * sub-bitmap slicing and tint() would all go untested. Running the real
  * update_proc() under ASAN is what proves prune_cache() actually frees what
  * it drops - the 2014 original leaked a layer per word. */
+/* The longest the reveal can ever take, in pixels of stroke.
+ *
+ * Wanted for a practical reason rather than a correctness one: a screenshot
+ * taken while the reveal is still running catches the face half-drawn, and
+ * tools/date_sweep.sh has to wait longer than the worst case. Recording it
+ * here means the wait is derived from the real animation budget rather than
+ * guessed at - the first guess was one second, and it was not enough. */
+static int s_max_reveal;
+
 static void play_reveal(void) {
+  if (s_total > s_max_reveal) {
+    s_max_reveal = s_total;
+  }
   s_progress = 0;
   for (;;) {
     update_proc(NULL, NULL);
@@ -2045,6 +2169,34 @@ static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding,
   for (int t = 0; t < 1440; t++) {
     const int h = t / 60, m = t % 60;
     struct tm tm = make_tm(232, 21, 7, 2026, h, m);   /* 21 Aug 2026 */
+
+    /*
+     * The sweep's own settings, asserted before being restated.
+     *
+     * Several checks below call settings_defaults() to build a comparison
+     * face and have to put back what they changed. check_block_offset() put
+     * back four of the five, and the fifth was the typeface - so from the
+     * first minute divisible by seven, the entire "handwritten" pass ran in
+     * the font. Eighteen sweeps reported themselves as covering the
+     * handwriting and covered one minute of it.
+     *
+     * Nothing caught that because every check still passed: a layout drawn
+     * entirely in the font is a perfectly legal layout. Only the interweave
+     * REPORT noticed, by coming back empty.
+     */
+    char sbuf[140];
+    snprintf(sbuf, sizeof(sbuf),
+             "wanted fmt %d mode %d rounding %d typeface %d, found "
+             "%d %d %d %d", fmt, mode, rounding, typeface,
+             s_settings.date_format, s_settings.minutes_mode,
+             s_settings.rounding, s_settings.typeface);
+    CHECK(s_settings.date_format == fmt && s_settings.minutes_mode == mode &&
+          s_settings.rounding == rounding && s_settings.typeface == typeface,
+          "a check left the sweep's settings changed behind it", h, m, sbuf);
+    s_settings.date_format = fmt;
+    s_settings.minutes_mode = mode;
+    s_settings.rounding = rounding;
+    s_settings.typeface = typeface;
 
     Face before = s_face;
     const bool had_prev = s_have_prev;
@@ -2118,6 +2270,49 @@ static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding,
 
 /* Every date of a leap year, so all twelve months, both ordinal edge cases
  * (11th-13th take "th") and the 1/2/3 suffixes are all placed. */
+/*
+ * The widest date line each format can produce, and on which date.
+ *
+ * Reported rather than asserted: the bounds checks already prove every date
+ * FITS. This is for the eye. Sweeping all 366 dates on the emulator to see
+ * whether the handwriting reads well is a long afternoon; the widest handful
+ * is where crowding would show, so this says which ones to actually look at.
+ */
+static int s_widest[2], s_wide_mon[2], s_wide_day[2];
+
+static void report_widest_date(uint8_t fmt, const Face *f, int mon, int day) {
+  if (fmt > 1) {
+    return;
+  }
+  int lo = SCREEN_W, hi = 0;
+  for (int i = 0; i < f->count; i++) {
+    if (f->items[i].row != ROW_DATE) {
+      continue;
+    }
+    const int x = f->items[i].x;
+    if (x < lo) lo = x;
+    if (x + gw(f->items[i].word)->w > hi) hi = x + gw(f->items[i].word)->w;
+  }
+  if (hi <= lo) {
+    return;
+  }
+  if (hi - lo > s_widest[fmt]) {
+    s_widest[fmt] = hi - lo;
+    s_wide_mon[fmt] = mon;
+    s_wide_day[fmt] = day;
+  }
+}
+
+static void flush_widest_date(uint8_t fmt) {
+  if (fmt > 1 || !s_widest[fmt]) {
+    return;
+  }
+  printf("  widest date line     format %d: %3dpx on %02d/%02d, "
+         "%dpx of the screen to spare\n",
+         fmt, s_widest[fmt], s_wide_day[fmt], s_wide_mon[fmt],
+         SCREEN_W - s_widest[fmt]);
+}
+
 static void sweep_dates(uint8_t fmt) {
   static const int kDays[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
   int yday = 0;
@@ -2136,6 +2331,23 @@ static void sweep_dates(uint8_t fmt) {
       refresh(&tm, true);
       check_bounds(&s_face, mon + 1, day);
       check_date_baseline(&s_face, mon + 1, day);
+      /* Every weekday against this date, not just the one 2028 happens to
+       * give it. build_date() indexes kWeekdays[] with tm_wday directly, so
+       * forcing it is exactly what a different year would do - and the
+       * widest line is a property of the vocabulary, not of one year. */
+      if (fmt == 1) {
+        for (int w = 0; w < 7; w++) {
+          struct tm alt = tm;
+          alt.tm_wday = w;
+          s_have_prev = false;
+          refresh(&alt, true);
+          report_widest_date(fmt, &s_face, mon + 1, day);
+        }
+        s_have_prev = false;
+        refresh(&tm, true);      /* leave the sweep as it found it */
+      } else {
+        report_widest_date(fmt, &s_face, mon + 1, day);
+      }
       if (fmt == 0) {
         check_format1_unchanged(&s_face, &tm, mon + 1, day);
       } else if (fmt == 1) {
@@ -2169,6 +2381,7 @@ static void sweep_dates(uint8_t fmt) {
   }
 
   printf("  dates swept          %d\n", yday);
+  flush_widest_date(fmt);
 }
 
 /*
@@ -2409,6 +2622,10 @@ int main(void) {
   CHECK(stub_live_bitmaps() == 0, "bitmap leak", 0, 0, "");
 
   print_fail_kinds();
+  report_interweaves();
+  printf("  longest reveal       %dpx of stroke, %.2fs at WRITE_SPEED %d\n",
+         s_max_reveal, (double)s_max_reveal / WRITE_SPEED, WRITE_SPEED);
+
   printf("\n%d checks, %d failures\n", s_checks, s_failures);
   if (s_failures) {
     printf("FAILED\n");

@@ -217,7 +217,7 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {37, 19},        /* midnight */
     {37, 18},        /* midday */
     {12, 0},        /* 0 */
-    {13, 0},        /* 1 */
+    {12, 0},        /* 1 */
     {12, 0},        /* 2 */
     {12, 0},        /* 3 */
     {12, 0},        /* 4 */
@@ -227,14 +227,14 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {12, 0},        /* 8 */
     {12, 0},        /* 9 */
     {15, 8},        /* Jan. */
-    {18, 3},        /* Feb. */
-    {16, 4},        /* Mar. */
+    {17, 3},        /* Feb. */
+    {15, 4},        /* Mar. */
     {17, 8},        /* Apr. */
-    {16, 9},        /* May */
+    {15, 9},        /* May */
     {15, 8},        /* Jun. */
     {19, 8},        /* Jul. */
-    {17, 10},        /* Aug. */
-    {16, 8},        /* Sep. */
+    {17, 9},        /* Aug. */
+    {15, 8},        /* Sep. */
     {16, 0},        /* Oct. */
     {16, 1},        /* Nov. */
     {16, 0},        /* Dec. */
@@ -242,22 +242,22 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {11, 0},        /* nd */
     {11, 0},        /* rd */
     {11, 0},        /* th */
-    {16, 5},        /* Sun. */
-    {16, 4},        /* Mon. */
-    {16, 0},        /* Tue. */
+    {15, 5},        /* Sun. */
+    {15, 4},        /* Mon. */
+    {15, 0},        /* Tue. */
     {18, 0},        /* Wed. */
-    {18, 1},        /* Thu. */
+    {17, 1},        /* Thu. */
     {15, 3},        /* Fri. */
-    {16, 5},        /* Sat. */
-    {20, 0},        /* one */
+    {15, 5},        /* Sat. */
+    {20, 1},        /* one */
     {29, 0},        /* two */
     {36, 1},        /* three */
     {39, 13},        /* four */
     {39, 13},        /* five */
-    {26, 1},        /* six */
+    {27, 1},        /* six */
     {20, 0},        /* seven */
     {36, 19},        /* eight */
-    {26, 0},        /* nine */
+    {27, 0},        /* nine */
     {29, 0},        /* ten */
     {39, 1},        /* eleven */
     {39, 1},        /* o'|clock */
@@ -279,7 +279,7 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {33, 14},        /* eight       drawn */
     {23, 1},        /* nine        drawn */
     {32, 1},        /* ten         drawn */
-    {33, 0},        /* eleven      drawn */
+    {34, 1},        /* eleven      drawn */
     {33, 1},        /* twelve      drawn */
     {34, 1},        /* thirteen    drawn */
     {34, 15},        /* fourteen    drawn */
@@ -301,16 +301,16 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {16, 0},        /* minutes     drawn */
     {39, 18},        /* midnight    drawn */
     {37, 19},        /* midday      drawn */
-    {15, 0},        /* 0           drawn */
-    {17, 1},        /* 1           drawn */
-    {16, 0},        /* 2           drawn */
-    {17, 1},        /* 3           drawn */
-    {16, 3},        /* 4           drawn */
-    {17, 0},        /* 5           drawn */
-    {16, 0},        /* 6           drawn */
+    {15, 1},        /* 0           drawn */
+    {14, 1},        /* 1           drawn */
+    {15, 1},        /* 2           drawn */
+    {15, 0},        /* 3           drawn */
+    {15, 1},        /* 4           drawn */
+    {15, 1},        /* 5           drawn */
+    {14, 1},        /* 6           drawn */
     {15, 0},        /* 7           drawn */
-    {17, 0},        /* 8           drawn */
-    {17, 0},        /* 9           drawn */
+    {15, 0},        /* 8           drawn */
+    {15, 0},        /* 9           drawn */
     {18, 9},        /* Jan.        drawn */
     {19, 0},        /* Feb.        drawn */
     {19, 0},        /* Mar.        drawn */
@@ -353,6 +353,93 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {21, 10},        /* just|gone   drawn */
     {21, 9},        /* nearly      drawn */
   },
+};
+
+/* The words themselves, for readable failure messages. */
+static const char *const WORD_TEXT[] = {
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+  "twenty",
+  "twenty-",
+  "quarter",
+  "half",
+  "past",
+  "to",
+  "midnight",
+  "midday",
+  "noon",
+  "minute",
+  "minutes",
+  "midnight",
+  "midday",
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "Jan.",
+  "Feb.",
+  "Mar.",
+  "Apr.",
+  "May",
+  "Jun.",
+  "Jul.",
+  "Aug.",
+  "Sep.",
+  "Oct.",
+  "Nov.",
+  "Dec.",
+  "st",
+  "nd",
+  "rd",
+  "th",
+  "Sun.",
+  "Mon.",
+  "Tue.",
+  "Wed.",
+  "Thu.",
+  "Fri.",
+  "Sat.",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "o' clock",
+  "the",
+  "witching",
+  "hour",
+  "twenty-five",
+  "just gone",
+  "nearly",
 };
 
 /* Has this word been drawn by hand? Independent of WORDS[]. */
@@ -476,8 +563,8 @@ static const uint8_t WORD_XHEIGHT[] = {
   18,   /* TIME      noon */
   11,   /* MINS      minute */
   11,   /* MINS      minutes */
-  20,   /* SOLO      midnight */
-  20,   /* SOLO      midday */
+  21,   /* SOLO      midnight */
+  21,   /* SOLO      midday */
   10,   /* DATE      0 */
   10,   /* DATE      1 */
   10,   /* DATE      2 */
@@ -511,21 +598,21 @@ static const uint8_t WORD_XHEIGHT[] = {
   10,   /* DATE      Thu. */
   10,   /* DATE      Fri. */
   10,   /* DATE      Sat. */
-  20,   /* SOLO      one */
-  20,   /* SOLO      two */
-  20,   /* SOLO      three */
-  20,   /* SOLO      four */
-  20,   /* SOLO      five */
-  20,   /* SOLO      six */
-  20,   /* SOLO      seven */
-  20,   /* SOLO      eight */
-  20,   /* SOLO      nine */
-  20,   /* SOLO      ten */
-  20,   /* SOLO      eleven */
-  20,   /* SOLO      o'|clock */
-  20,   /* SOLO      the */
-  20,   /* SOLO      witching */
-  20,   /* SOLO      hour */
+  21,   /* SOLO      one */
+  21,   /* SOLO      two */
+  21,   /* SOLO      three */
+  21,   /* SOLO      four */
+  21,   /* SOLO      five */
+  21,   /* SOLO      six */
+  21,   /* SOLO      seven */
+  21,   /* SOLO      eight */
+  21,   /* SOLO      nine */
+  21,   /* SOLO      ten */
+  21,   /* SOLO      eleven */
+  21,   /* SOLO      o'|clock */
+  21,   /* SOLO      the */
+  21,   /* SOLO      witching */
+  21,   /* SOLO      hour */
   18,   /* TIME      twenty-five */
   11,   /* HEDGE     just|gone */
   11,   /* HEDGE     nearly */

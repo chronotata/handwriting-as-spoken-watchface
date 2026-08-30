@@ -21,3 +21,7 @@ tools/sync.sh
 
 # Throwaway layout previews - not part of the project
 preview_*.png
+
+# Emulator screenshots from tools/date_sweep.sh. Regenerated on demand, and
+# a set per typeface per reading mode adds up fast.
+shots/

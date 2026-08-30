@@ -4,238 +4,238 @@
   "word": "w_d0",
   "family": "DATE",
   "w": 10,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 15,
-  "desc": 0,
+  "desc": 1,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 11,
-  "source": "handwritten_DATE (2).pdf p1"
+  "source": "handwritten_DATE (3).pdf p1"
  },
  {
   "anchor": "baseline",
   "word": "w_d1",
   "family": "DATE",
-  "w": 6,
-  "h": 29,
+  "w": 5,
+  "h": 28,
   "base": 19,
-  "asc": 17,
+  "asc": 14,
   "desc": 1,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 6,
-  "source": "handwritten_DATE (2).pdf p1"
+  "source": "handwritten_DATE (3).pdf p1"
  },
  {
   "anchor": "baseline",
   "word": "w_d2",
   "family": "DATE",
   "w": 10,
-  "h": 29,
+  "h": 28,
   "base": 19,
-  "asc": 16,
-  "desc": 0,
+  "asc": 15,
+  "desc": 1,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 12,
-  "source": "handwritten_DATE (2).pdf p2"
+  "source": "handwritten_DATE (3).pdf p2"
  },
  {
   "anchor": "baseline",
   "word": "w_d3",
   "family": "DATE",
-  "w": 11,
-  "h": 29,
+  "w": 10,
+  "h": 28,
   "base": 19,
-  "asc": 17,
-  "desc": 1,
+  "asc": 15,
+  "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 10,
-  "source": "handwritten_DATE (2).pdf p2"
+  "source": "handwritten_DATE (3).pdf p2"
  },
  {
   "anchor": "baseline",
   "word": "w_d4",
   "family": "DATE",
   "w": 10,
-  "h": 29,
+  "h": 28,
   "base": 19,
-  "asc": 16,
-  "desc": 3,
+  "asc": 15,
+  "desc": 1,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 10,
-  "source": "handwritten_DATE (2).pdf p3"
+  "source": "handwritten_DATE (3).pdf p3"
  },
  {
   "anchor": "baseline",
   "word": "w_d5",
   "family": "DATE",
   "w": 11,
-  "h": 29,
+  "h": 28,
   "base": 19,
-  "asc": 17,
-  "desc": 0,
+  "asc": 15,
+  "desc": 1,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 11,
-  "source": "handwritten_DATE (2).pdf p3"
+  "source": "handwritten_DATE (3).pdf p3"
  },
  {
   "anchor": "baseline",
   "word": "w_d6",
   "family": "DATE",
-  "w": 10,
-  "h": 29,
+  "w": 8,
+  "h": 28,
   "base": 19,
-  "asc": 16,
-  "desc": 0,
+  "asc": 14,
+  "desc": 1,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 10,
-  "source": "handwritten_DATE (2).pdf p4"
+  "source": "handwritten_DATE (3).pdf p4"
  },
  {
   "anchor": "baseline",
   "word": "w_d7",
   "family": "DATE",
-  "w": 9,
-  "h": 29,
+  "w": 8,
+  "h": 28,
   "base": 19,
   "asc": 15,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 9,
-  "source": "handwritten_DATE (2).pdf p4"
+  "source": "handwritten_DATE (3).pdf p4"
  },
  {
   "anchor": "baseline",
   "word": "w_d8",
   "family": "DATE",
-  "w": 11,
-  "h": 29,
+  "w": 9,
+  "h": 28,
   "base": 19,
-  "asc": 17,
+  "asc": 15,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 11,
-  "source": "handwritten_DATE (2).pdf p5"
+  "source": "handwritten_DATE (3).pdf p5"
  },
  {
   "anchor": "baseline",
   "word": "w_d9",
   "family": "DATE",
-  "w": 10,
-  "h": 29,
+  "w": 9,
+  "h": 28,
   "base": 19,
-  "asc": 17,
+  "asc": 15,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 10,
-  "source": "handwritten_DATE (2).pdf p5"
+  "source": "handwritten_DATE (3).pdf p5"
  },
  {
   "anchor": "baseline",
   "word": "w_dow_fri",
   "family": "DATE",
   "w": 32,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 1,
   "over_top": 0.3,
   "over_bot": 0.0,
   "font_w": 32,
-  "source": "handwritten_DATE (2).pdf p6"
+  "source": "handwritten_DATE (3).pdf p6"
  },
  {
   "anchor": "baseline",
   "word": "w_dow_mon",
   "family": "DATE",
   "w": 42,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 41,
-  "source": "handwritten_DATE (2).pdf p6"
+  "source": "handwritten_DATE (3).pdf p6"
  },
  {
   "anchor": "baseline",
   "word": "w_dow_sat",
   "family": "DATE",
   "w": 34,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 37,
-  "source": "handwritten_DATE (2).pdf p7"
+  "source": "handwritten_DATE (3).pdf p7"
  },
  {
   "anchor": "baseline",
   "word": "w_dow_sun",
   "family": "DATE",
   "w": 41,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 40,
-  "source": "handwritten_DATE (2).pdf p7"
+  "source": "handwritten_DATE (3).pdf p7"
  },
  {
   "anchor": "baseline",
   "word": "w_dow_thu",
   "family": "DATE",
   "w": 34,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.1,
   "over_bot": 0.0,
   "font_w": 36,
-  "source": "handwritten_DATE (2).pdf p8"
+  "source": "handwritten_DATE (3).pdf p8"
  },
  {
   "anchor": "baseline",
   "word": "w_dow_tue",
   "family": "DATE",
   "w": 30,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.3,
   "over_bot": 0.0,
   "font_w": 31,
-  "source": "handwritten_DATE (2).pdf p8"
+  "source": "handwritten_DATE (3).pdf p8"
  },
  {
   "anchor": "baseline",
   "word": "w_dow_wed",
   "family": "DATE",
   "w": 36,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 1,
   "over_top": 0.1,
   "over_bot": 0.0,
   "font_w": 40,
-  "source": "handwritten_DATE (2).pdf p9"
+  "source": "handwritten_DATE (3).pdf p9"
  },
  {
   "anchor": "baseline",
@@ -249,7 +249,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 82,
-  "source": "handwritten_TIME (3).pdf p1"
+  "source": "handwritten_TIME (4).pdf p1"
  },
  {
   "anchor": "baseline",
@@ -263,21 +263,21 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 135,
-  "source": "handwritten_TIME (3).pdf p1"
+  "source": "handwritten_TIME (4).pdf p1"
  },
  {
   "anchor": "baseline",
   "word": "w_eleven",
   "family": "TIME",
-  "w": 94,
+  "w": 90,
   "h": 51,
   "base": 34,
-  "asc": 33,
-  "desc": 0,
-  "over_top": 0.0,
-  "over_bot": 0.0,
+  "asc": 34,
+  "desc": 1,
+  "over_top": 1.0,
+  "over_bot": 51.0,
   "font_w": 99,
-  "source": "handwritten_TIME (3).pdf p2"
+  "source": "handwritten_TIME (4).pdf p2"
  },
  {
   "anchor": "baseline",
@@ -291,7 +291,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 110,
-  "source": "handwritten_TIME (3).pdf p2"
+  "source": "handwritten_TIME (4).pdf p2"
  },
  {
   "anchor": "baseline",
@@ -305,7 +305,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 60,
-  "source": "handwritten_TIME (3).pdf p3"
+  "source": "handwritten_TIME (4).pdf p3"
  },
  {
   "anchor": "baseline",
@@ -319,7 +319,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 64,
-  "source": "handwritten_TIME (3).pdf p3"
+  "source": "handwritten_TIME (4).pdf p3"
  },
  {
   "anchor": "baseline",
@@ -333,7 +333,7 @@
   "over_top": 0.2,
   "over_bot": 0.0,
   "font_w": 132,
-  "source": "handwritten_TIME (3).pdf p4"
+  "source": "handwritten_TIME (4).pdf p4"
  },
  {
   "anchor": "baseline",
@@ -347,7 +347,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 73,
-  "source": "handwritten_TIME (3).pdf p4"
+  "source": "handwritten_TIME (4).pdf p4"
  },
  {
   "anchor": "baseline",
@@ -375,7 +375,7 @@
   "over_top": 0.0,
   "over_bot": 1.4,
   "font_w": 132,
-  "source": "handwritten_TIME (3).pdf p5"
+  "source": "handwritten_TIME (4).pdf p5"
  },
  {
   "anchor": "baseline",
@@ -389,7 +389,7 @@
   "over_top": 0.6,
   "over_bot": 0.0,
   "font_w": 154,
-  "source": "handwritten_TIME (3).pdf p5"
+  "source": "handwritten_TIME (4).pdf p5"
  },
  {
   "anchor": "baseline",
@@ -424,168 +424,168 @@
   "word": "w_mon1",
   "family": "DATE",
   "w": 39,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 18,
   "desc": 9,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 43,
-  "source": "handwritten_DATE (2).pdf p9"
+  "source": "handwritten_DATE (3).pdf p9"
  },
  {
   "anchor": "baseline",
   "word": "w_mon10",
   "family": "DATE",
   "w": 32,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 18,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 34,
-  "source": "handwritten_DATE (2).pdf p10"
+  "source": "handwritten_DATE (3).pdf p10"
  },
  {
   "anchor": "baseline",
   "word": "w_mon11",
   "family": "DATE",
   "w": 37,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.2,
   "over_bot": 0.0,
   "font_w": 34,
-  "source": "handwritten_DATE (2).pdf p10"
+  "source": "handwritten_DATE (3).pdf p10"
  },
  {
   "anchor": "baseline",
   "word": "w_mon12",
   "family": "DATE",
   "w": 36,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 18,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 36,
-  "source": "handwritten_DATE (2).pdf p11"
+  "source": "handwritten_DATE (3).pdf p11"
  },
  {
   "anchor": "baseline",
   "word": "w_mon2",
   "family": "DATE",
   "w": 33,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.7,
   "over_bot": 0.0,
   "font_w": 37,
-  "source": "handwritten_DATE (2).pdf p11"
+  "source": "handwritten_DATE (3).pdf p11"
  },
  {
   "anchor": "baseline",
   "word": "w_mon3",
   "family": "DATE",
   "w": 41,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 0,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 39,
-  "source": "handwritten_DATE (2).pdf p12"
+  "source": "handwritten_DATE (3).pdf p12"
  },
  {
   "anchor": "baseline",
   "word": "w_mon4",
   "family": "DATE",
   "w": 39,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 18,
   "desc": 9,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 41,
-  "source": "handwritten_DATE (2).pdf p12"
+  "source": "handwritten_DATE (3).pdf p12"
  },
  {
   "anchor": "baseline",
   "word": "w_mon5",
   "family": "DATE",
   "w": 40,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 9,
   "over_top": 0.1,
   "over_bot": 0.0,
   "font_w": 41,
-  "source": "handwritten_DATE (2).pdf p13"
+  "source": "handwritten_DATE (3).pdf p13"
  },
  {
   "anchor": "baseline",
   "word": "w_mon6",
   "family": "DATE",
   "w": 39,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 7,
   "over_top": 0.2,
   "over_bot": 0.0,
   "font_w": 43,
-  "source": "handwritten_DATE (2).pdf p13"
+  "source": "handwritten_DATE (3).pdf p13"
  },
  {
   "anchor": "baseline",
   "word": "w_mon7",
   "family": "DATE",
   "w": 31,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 18,
   "desc": 8,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 38,
-  "source": "handwritten_DATE (2).pdf p14"
+  "source": "handwritten_DATE (3).pdf p14"
  },
  {
   "anchor": "baseline",
   "word": "w_mon8",
   "family": "DATE",
   "w": 41,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 18,
-  "desc": 10,
+  "desc": 9,
   "over_top": 0.0,
-  "over_bot": 0.0,
+  "over_bot": 1.0,
   "font_w": 44,
-  "source": "handwritten_DATE (2).pdf p14"
+  "source": "handwritten_DATE (3).pdf p14"
  },
  {
   "anchor": "baseline",
   "word": "w_mon9",
   "family": "DATE",
   "w": 34,
-  "h": 29,
+  "h": 28,
   "base": 19,
   "asc": 19,
   "desc": 9,
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 39,
-  "source": "handwritten_DATE (2).pdf p15"
+  "source": "handwritten_DATE (3).pdf p15"
  },
  {
   "anchor": "baseline",
@@ -627,7 +627,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 69,
-  "source": "handwritten_TIME (3).pdf p6"
+  "source": "handwritten_TIME (4).pdf p6"
  },
  {
   "anchor": "baseline",
@@ -641,7 +641,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 137,
-  "source": "handwritten_TIME (3).pdf p6"
+  "source": "handwritten_TIME (4).pdf p6"
  },
  {
   "anchor": "baseline",
@@ -655,7 +655,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 69,
-  "source": "handwritten_TIME (3).pdf p7"
+  "source": "handwritten_TIME (4).pdf p7"
  },
  {
   "anchor": "baseline",
@@ -669,7 +669,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 52,
-  "source": "handwritten_TIME (3).pdf p7"
+  "source": "handwritten_TIME (4).pdf p7"
  },
  {
   "anchor": "baseline",
@@ -683,7 +683,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 74,
-  "source": "handwritten_TIME (3).pdf p8"
+  "source": "handwritten_TIME (4).pdf p8"
  },
  {
   "anchor": "baseline",
@@ -697,7 +697,7 @@
   "over_top": 1.2,
   "over_bot": 0.0,
   "font_w": 121,
-  "source": "handwritten_TIME (3).pdf p8"
+  "source": "handwritten_TIME (4).pdf p8"
  },
  {
   "anchor": "baseline",
@@ -725,7 +725,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 85,
-  "source": "handwritten_TIME (3).pdf p9"
+  "source": "handwritten_TIME (4).pdf p9"
  },
  {
   "anchor": "baseline",
@@ -739,7 +739,7 @@
   "over_top": 1.0,
   "over_bot": 0.0,
   "font_w": 153,
-  "source": "handwritten_TIME (3).pdf p9"
+  "source": "handwritten_TIME (4).pdf p9"
  },
  {
   "anchor": "baseline",
@@ -753,7 +753,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 45,
-  "source": "handwritten_TIME (3).pdf p10"
+  "source": "handwritten_TIME (4).pdf p10"
  },
  {
   "anchor": "baseline",
@@ -767,7 +767,7 @@
   "over_top": 1.6,
   "over_bot": 0.0,
   "font_w": 114,
-  "source": "handwritten_TIME (3).pdf p10"
+  "source": "handwritten_TIME (4).pdf p10"
  },
  {
   "anchor": "baseline",
@@ -1033,7 +1033,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 51,
-  "source": "handwritten_TIME (3).pdf p11"
+  "source": "handwritten_TIME (4).pdf p11"
  },
  {
   "anchor": "baseline",
@@ -1061,7 +1061,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 129,
-  "source": "handwritten_TIME (3).pdf p11"
+  "source": "handwritten_TIME (4).pdf p11"
  },
  {
   "anchor": "baseline",
@@ -1075,7 +1075,7 @@
   "over_top": 0.8,
   "over_bot": 0.0,
   "font_w": 83,
-  "source": "handwritten_TIME (3).pdf p12"
+  "source": "handwritten_TIME (4).pdf p12"
  },
  {
   "anchor": "baseline",
@@ -1089,7 +1089,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 29,
-  "source": "handwritten_TIME (3).pdf p12"
+  "source": "handwritten_TIME (4).pdf p12"
  },
  {
   "anchor": "baseline",
@@ -1103,7 +1103,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 103,
-  "source": "handwritten_TIME (3).pdf p13"
+  "source": "handwritten_TIME (4).pdf p13"
  },
  {
   "anchor": "baseline",
@@ -1117,7 +1117,7 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 111,
-  "source": "handwritten_TIME (3).pdf p13"
+  "source": "handwritten_TIME (4).pdf p13"
  },
  {
   "anchor": "baseline",
@@ -1131,7 +1131,7 @@
   "over_top": 0.0,
   "over_bot": 1.0,
   "font_w": 122,
-  "source": "handwritten_TIME (3).pdf p14"
+  "source": "handwritten_TIME (4).pdf p14"
  },
  {
   "anchor": "baseline",
@@ -1145,7 +1145,7 @@
   "over_top": 0.0,
   "over_bot": 0.6,
   "font_w": 181,
-  "source": "handwritten_TIME (3).pdf p14"
+  "source": "handwritten_TIME (4).pdf p14"
  },
  {
   "anchor": "baseline",
@@ -1159,6 +1159,6 @@
   "over_top": 0.0,
   "over_bot": 0.0,
   "font_w": 55,
-  "source": "handwritten_TIME (3).pdf p15"
+  "source": "handwritten_TIME (4).pdf p15"
  }
 ]

@@ -35,6 +35,14 @@ if [ -f "$INK" ] && [ "$INK" -nt ../../src/c/geometry.h ]; then
   echo "         Re-run: python3 tools/tune.py"                           >&2
 fi
 
+# A size mismatch between geometry.h and the images is a hard failure, not a
+# warning: the watchface draws a bitmap into whatever rect WORDS[] declares,
+# and a rect that is not the image's size repeats it. That reads as a smeared
+# letter rather than as an error, so nothing downstream will ever complain.
+if ! python3 ../check_resources.py; then
+  exit 1
+fi
+
 OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 

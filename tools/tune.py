@@ -30,7 +30,14 @@ The padding also exists to be drawn into. A tight "one" was 16px tall and left
 nowhere to put a flourish; on the family box it is 47px with room above and
 below the baseline.
 
-    python3 tools/tune.py       # requires Pillow
+    python3 tools/tune.py            # requires Pillow
+    python3 tools/tune.py --rebox    # when a family box has changed size
+
+The family boxes are measured from real ink, so they move when a word is
+added and they differ by a pixel between machines. When one moves, the
+handwriting cut against the old one no longer fits, and this tool and
+extract_handwriting.py deadlock waiting on each other. --rebox is the way
+out; see drop_stale_handwriting() and UPGRADING.md 11c.
 """
 
 import json
@@ -393,6 +400,15 @@ def write_test_header(rendered, box, hand):
     # the font exactly and a drawn one does not, and it cannot ask WORDS[]
     # that question - comparing the table against itself would pass whatever
     # the table happened to say.
+    # The words as text, so harness diagnostics can name what collided
+    # rather than printing two integers and leaving the reader to count
+    # through the enum.
+    out += ["/* The words themselves, for readable failure messages. */",
+            "static const char *const WORD_TEXT[] = {"]
+    for name, _fam, text, _c, _b, _bold in rendered:
+        out.append('  "%s",' % text.replace("|", " "))
+    out += ["};", ""]
+
     out += ["/* Has this word been drawn by hand? Independent of WORDS[]. */",
             "static const uint8_t WORD_DRAWN[] = {"]
     for name, _fam, text, _c, _b, _bold in rendered:
@@ -508,9 +524,78 @@ def check_declared_sizes(rows, hand, box):
     if problems:
         sys.exit("the images on disk do not match the geometry about to be "
                  "written:\n" + "\n".join(problems) +
-                 "\n\nFor a handwritten word, re-run "
-                 "tools/extract_handwriting.py - it cuts those, and it cuts "
-                 "them\nto whatever geometry.h said at the time.")
+                 "\n\nA 'font' row is this run disagreeing with images this "
+                 "run just wrote, which\nis a bug in tune.py rather than "
+                 "anything to fix in the tree.\n"
+                 "A 'hand' row should have been caught earlier by "
+                 "--rebox; see\ndrop_stale_handwriting().")
+
+
+def drop_stale_handwriting(hand, box, rebox):
+    """Handwriting cut against a DIFFERENT family box than the one about to
+    be written. Returns the subset that still fits; the rest fall back to the
+    font, which is a state the watchface already supports.
+
+    WHY THIS CANNOT JUST BE AN ERROR
+    --------------------------------
+    The two tools depend on each other in a circle. extract_handwriting.py
+    cuts each word to the family box it reads out of geometry.h; tune.py
+    writes geometry.h, and refuses to write it while the images disagree. So
+    the moment a family box changes size, neither tool can run: the ink is
+    stale until geometry.h moves, and geometry.h will not move until the ink
+    is re-cut. That is a dead end with no way out except editing a generated
+    file by hand, which is exactly what these guards exist to prevent.
+
+    The box changes for two reasons, and both are ordinary. Adding a word
+    can widen a family - the weekdays did. And the box is measured from real
+    ink, so a machine whose FreeType rasterises one descender a row shorter
+    measures a box one pixel shorter. That second one bites whenever the
+    generated files were last written somewhere else, which makes this a
+    thing that happens to anyone picking the project up.
+
+    So --rebox breaks the circle in the safe direction: write the new
+    geometry, leave the mis-cut words on the font, and say loudly which ones
+    and what to run next. A word on the font is legible and correct, just
+    not yet handwritten. Silence is what would be dangerous, so this never
+    happens without being asked for.
+    """
+    stale = []
+    for name in sorted(hand):
+        want = (hand[name]["w"], box[hand[name]["family"]][0]
+                + box[hand[name]["family"]][1])
+        path = IMGDIR / ("h_%s.png" % name.lower()[2:])
+        if not path.exists() or png_size(path) != want:
+            stale.append((name, want, png_size(path) if path.exists() else None))
+    if not stale:
+        return hand
+
+    fams = sorted({hand[n]["family"] for n, _w, _g in stale})
+    detail = "\n".join(
+        "  %-16s geometry wants %dx%d, the image is %s"
+        % (n, w[0], w[1], "missing" if g is None else "%dx%d" % g)
+        for n, w, g in stale)
+    if not rebox:
+        sys.exit(
+            "%d handwritten word(s) were cut against a different box than "
+            "the one\nthis run measures - %s:\n\n%s\n\n"
+            "extract_handwriting.py cuts to whatever geometry.h says, and "
+            "this refuses\nto write geometry.h while they disagree, so "
+            "neither tool can go first.\nBreak the circle:\n\n"
+            "    python3 tools/tune.py --rebox          # new geometry, "
+            "those words on the font\n"
+            "    python3 tools/extract_handwriting.py   # re-cut them to it\n"
+            "    python3 tools/tune.py                  # embed them again\n\n"
+            "Nothing is lost; the ink lives in handwriting-templates/drawn/ "
+            "and is\nre-cut from the PDFs every time."
+            % (len(stale), ", ".join(fams), detail))
+
+    print("--rebox: %d word(s) do not fit the box this run measures, so they "
+          "stay\non the font for now - %s:\n%s\n"
+          % (len(stale), ", ".join(fams), detail))
+    print("Re-cut them and put them back:\n"
+          "    python3 tools/extract_handwriting.py\n"
+          "    python3 tools/tune.py\n")
+    return {k: v for k, v in hand.items() if k not in {n for n, _w, _g in stale}}
 
 
 def handwriting():
@@ -582,7 +667,8 @@ def main():
 
     box = family_boxes(rendered)
     check_fit(rendered, box, layout)
-    hand = handwriting()
+    hand = drop_stale_handwriting(handwriting(), box,
+                                  rebox="--rebox" in sys.argv[1:])
 
     # Pass 2: pad every word onto its family box and write it out.
     rows, media, total = [], [], 0
