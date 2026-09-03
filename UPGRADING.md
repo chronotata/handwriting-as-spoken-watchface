@@ -520,10 +520,13 @@ tools/date_sweep.sh          # days, dates, then times — 66 shots, ~4 min
 tools/date_sweep.sh days     # every day number, 1st to 31st
 tools/date_sweep.sh dates    # one date per month
 tools/date_sweep.sh times    # just the phrase
+tools/date_sweep.sh stacks   # every word that can sit ABOVE past/to — 59
+tools/date_sweep.sh hours    # every word that can sit BELOW past/to — 26
+tools/date_sweep.sh all      # all five — 151 shots, ~10 min
 tools/date_sweep.sh 2026-02-29 14:35   # anything you name
 ```
 
-It writes `shots/`. Three sets, each isolating one variable:
+It writes `shots/`. Five sets, each isolating one variable:
 
 **days** — all 31 day numbers in one month. Each digit is its own bitmap, so
 a two-digit day sets two side by side and the *pairing* is a thing in its own
@@ -540,6 +543,34 @@ every distinct wording: centred vs stacked, split vs whole, with and without
 the annotation, both sides of the hour, and the rollovers into midnight and
 midday. Pinned to 22 August so the widest date line sits under every phrase.
 
+**stacks** and **hours** answer a different question, and are opt-in for that
+reason. The three sets above ask *does it fit*, for which one shot per layout
+is the right unit. These ask *does it look right*, and what looks wrong is a
+particular descender landing on a particular ascender — a property of the two
+words, not of the layout. "past" under "quarter" and "past" under "twenty"
+are the same layout and a completely different picture.
+
+`past` and `to` are where this bites. Every phrase has one, they are the only
+words with a row above *and* a row below, and their ink is nearly all
+x-height with one deep descender and one tall ascender.
+
+**stacks** — every word that can sit directly above them. Which word that is
+depends on the reading mode and the minutes setting, so no fixed list of
+times covers it; but it is always a function of the minute alone, and minute
+*m* puts its word above "past" while minute *60−m* puts the same word above
+"to". So all 59 minutes is the complete set of both, whatever the settings.
+Shots are named by the **spoken** minute, so `stack-08-past` and
+`stack-08-to` sit next to each other — an offset that fixes one and breaks
+the other is the trap. **Run this one in EXACT mode**: the rounded modes
+collapse most of the 59 onto a dozen phrases and never split 21–29.
+
+**hours** — every word that can sit directly below them. Fourteen hour words,
+and they are not symmetric: "twelve" only ever appears under "to", "noon"
+only under "past", "midnight" under both, so each side is swept in full.
+Pinned to :15 and :45, which survive every reading mode unchanged and never
+take a hedge — so this is the one sweep that looks identical in all three
+modes, with the phrase above held still while the word below changes.
+
 The **year** is not swept — four fixed digits that change once a year. If a
 later year looks wrong, name a date in it.
 
@@ -549,19 +580,141 @@ times only show a hedge in "nearest five, spoken". Compare the sets side by
 side; judging one screenshot at a time hides exactly the inconsistency you
 are looking for.
 
-### Why it waits
-
-A screenshot taken too early catches the reveal mid-stroke — the first
-version of this script produced shots with the year still going down.
-`run.sh` reports the worst case:
+### Sweeping without an emulator: `tools/mock_sweep.py`
 
 ```
-longest reveal       629px of stroke, 2.42s at WRITE_SPEED 260
+python3 tools/mock_sweep.py stacks          # same modes as date_sweep.sh
+python3 tools/mock_sweep.py all --typeface 0
+python3 tools/mock_sweep.py 2026-02-29 14:35 --scale 3
 ```
 
-`SETTLE` defaults to 3.5s from that figure. If `WRITE_SPEED` changes in
-`config.h`, re-read that line and adjust. If a shot still looks half-drawn,
-raise it.
+Writes `shots-mock/`. **59 shots in under two seconds**, deterministically,
+with no clock to fight — against roughly five minutes on the emulator with a
+few frames showing the real time.
+
+Use it for placement, spacing and how words stack, which is most of the
+reason to sweep at all. Use `tools/sweep.sh` to sign off on how it looks.
+
+**It is not a model of the watchface.** A second implementation of the layout
+would agree on the day it was written and drift silently afterwards, and
+every disagreement would be ambiguous — is the watchface wrong, or the model?
+So `tools/test/dump_layout.c` `#include`s `src/c/handwritten.c` and calls the
+shipping `refresh()` and `build_face()`, exactly as the test harness does,
+then prints where every word landed. This script only pastes the real
+bitmaps at those coordinates. There is no layout in Python to drift, and the
+dumper is rebuilt on every run so it cannot go stale.
+
+The time and date lists are read **out of `date_sweep.sh`**, not copied, so
+the two sweeps cannot quietly stop covering the same ground.
+
+| | |
+|---|---|
+| faithful | placement to the pixel; which words each setting chooses; the real bitmaps in either typeface |
+| approximated | colour — the palette ramp follows `tint()` and `to_palette()`, then rounds to Pebble's two bits per channel, but it is this script's arithmetic and not the SDK's |
+| absent | the reveal animation, and whatever the SDK does to a bitmap on the way to the panel |
+
+### `emu-set-time` does not redraw the watchface
+
+This is the single most important thing to know about sweeping, and it cost
+three full sweeps to find.
+
+`emu-set-time` moves the emulator's clock and does nothing else. The face is
+rebuilt by `tick_handler`, which the firmware calls when its **own** clock
+crosses a minute boundary — and a clock that has been shoved sideways has not
+crossed anything. So the face only ever changed once a real minute, showing
+whatever the RTC happened to hold at that instant.
+
+At roughly six seconds a shot, that is one picture for every nine files.
+151 shots were taken and believed; they contained **19 distinct images**, and
+not one was guaranteed to be the time named on it. The duplicates were the
+obvious damage. The shots that *did* differ were no more trustworthy.
+
+**The fix is to stop fighting the tick and use it.** To show 09:15, set the
+clock to 09:14:57 — `LEAD` seconds early — and wait. The emulator's clock
+runs on, crosses into 09:15:00 by itself, fires the tick, and the face is
+rebuilt at exactly the wanted time. No relaunch, no buttons, no change to the
+watchface, and the normal incremental reveal is exercised rather than a
+forced full redraw.
+
+#### And any `pebble` command resets the clock to real time
+
+Found by leaving the clock alone for 70 seconds — it held, and ticked on to
+the next minute correctly — then taking two screenshots a minute apart. The
+first showed the time that had been set; the second had snapped back to the
+real date and time. The emulator runs **pypkjs** alongside QEMU as a stand-in
+phone, and a connecting client re-syncs the watch to the host clock.
+
+So between setting the clock and taking the shot, **exactly one command may
+run, and it has to be the screenshot.** No polling, no second frame, no
+waiting for the reveal to settle and no checking afterwards whether it had —
+both of those need a second screenshot, and the second screenshot is what
+destroys the thing being photographed.
+
+An intermediate version of this script polled for a still frame, which is
+exactly why it produced a sweep of real-time screenshots: every extra frame
+shoved the clock back, and "two identical frames" then settled quite happily
+on the real time.
+
+#### So the sweep needs its own build
+
+One screenshot is only safe if the face is already complete when it is taken,
+so sweeps run with **`WRITE_SPEED 0`** in `config.h` — the face drawn whole,
+no reveal — which has to go back before shipping, because the reveal is the
+watchface.
+
+**Use `tools/sweep.sh` rather than doing that by hand.** It sets the value,
+syncs, builds, installs, sweeps, then puts it back and rebuilds. The restore
+is a trap on EXIT, so Ctrl-C, a failed build or a failed sweep all still
+leave the source shippable; if the *rebuild* fails it says so, because at
+that point the emulator is still holding the sweep build and nothing in the
+tree records it. `tools/sweep.sh --restore` fixes up an interrupted run.
+
+Two states of this tree disagreeing is the shape of every serious bug here so
+far — geometry from one machine and images from another, font images checked
+out from git after `tune.py` wrote them. A sweep build left in place would be
+the same mistake and a quiet one: the watchface would simply stop animating,
+and look like it had always been that way.
+
+Safe to sweep with: it changes only how the final frame is *reached*, not
+what it holds, and the final frame is the entire point of a sweep. Verified —
+`run.sh` returns byte-identical results either way (same `573px` longest
+reveal, same 6,985,398 checks), because the harness plays the reveal at the
+shipping speed regardless and prints a `SWEEP BUILD` banner when `config.h`
+says zero.
+
+`date_sweep.sh` warns if the source tree has a non-zero `WRITE_SPEED`. It
+can only read the source, not what is installed on the emulator, so it is a
+warning rather than a refusal.
+
+| variable | default | is |
+|---|---|---|
+| `LEAD` | `3` | whole seconds to set the clock early by. Must exceed how long `emu-set-time` takes to land — too short and the clock is already past the boundary on arrival, the rollover never happens, and the shot duplicates its predecessor |
+| `WAIT` | `4.5` | seconds from setting the clock to taking the shot |
+| `RETRIES` | `3` | attempts at a shot that came out unchanged |
+
+#### Three dead ends, recorded so they are not tried again
+
+- **Waiting longer.** A fixed 3.5s. The face is not slow, it is not being
+  redrawn at all.
+- **Polling until the picture stops moving.** Worse than useless: it is the
+  polling that resets the clock.
+- **`emu-button click select` / `back`,** to leave the watchface and return —
+  the manual trick that appears to unstick it. Four of five test shots came
+  back byte-identical. The window is re-shown and the layer redrawn, but
+  `update_proc` draws `s_face`, which was built at the last tick and is
+  stale. Only `window_load` rebuilds it, and that runs on app launch.
+
+#### Each shot is compared to the one before it
+
+Its absence is why three sweeps were believed. The check costs nothing — an
+md5 of a file already on disk, with no connection to the emulator — so it
+always runs. An identical shot re-arms the clock and tries again, up to
+`RETRIES`, and says `UNCHANGED` if it still will not move. Not proof of a bug
+— in the rounded modes two different times genuinely draw one face — so it
+reports rather than fails. What it rules out is finding this by eye, three
+sweeps later.
+The first shot has nothing before it, so the comparison is primed from the
+screen as it is before the clock is touched.
 
 ### Timezones
 
@@ -674,9 +827,11 @@ pebble build
 # 4. Emulator
 pebble install --emulator emery
 
-# 5. Screenshot sweep, back in the git folder
+# 5. Screenshot sweep, back in the git folder. This handles the sweep build
+#    itself: WRITE_SPEED 0, sync, build, install, sweep, then put it all
+#    back. Do NOT call tools/date_sweep.sh directly.
 cd /mnt/c/Users/chron/Documents/GitHub/handwriting-as-spoken-watchface
-tools/date_sweep.sh                     # days, dates, times -> shots/
+tools/sweep.sh                          # days, dates, times -> shots/
 
 # 6. The real watch, from the build folder
 cd /home/chrono/handwritten-british
@@ -695,7 +850,14 @@ and not a reason to stop, but it does mean `run.sh` must not be chained with
 **`pebble build` may refuse on size**: 263.6 kB of resources against a
 256 kB limit, with both typefaces shipping. §12.
 
-Step 5 needs the emulator from step 4 still running, and it re-runs
+**Step 5 needs a sweep build**, because only one screenshot can be taken per
+shot (§11) so the face has to arrive complete. `tools/sweep.sh` does the
+whole dance — `WRITE_SPEED 0`, sync, build, install, sweep, then back to the
+shipping value and rebuild — and restores the source from a trap, so an
+interrupted or failed run still leaves the tree shippable. It takes the same
+arguments as `date_sweep.sh`.
+
+Step 5 also needs the emulator from step 4 still running, and it re-runs
 `check_resources.py` first — it refuses to photograph a tree whose images
 and geometry disagree, because a sweep of smeared digits that is then
 trusted is worse than no sweep.

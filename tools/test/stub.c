@@ -7,8 +7,8 @@
 static int s_live;
 
 GBitmap *gbitmap_create_with_resource(uint32_t resource_id) {
-  (void)resource_id;
   GBitmap *b = calloc(1, sizeof(GBitmap));
+  b->resource_id = resource_id;
   /* A plausible source palette: tune.py encodes level 0-15 as (level & 3) in
    * red and (level >> 2) in green, and tint() decodes it back. Reproducing it
    * here means tint() is exercised on realistic input rather than zeroes. */
@@ -51,7 +51,7 @@ int stub_draw_count(void) { return s_draw_count; }
 
 StubDraw stub_draw_at(int i) {
   if (i < 0 || i >= s_draw_count) {
-    StubDraw none = {0, 0, 0, 0};
+    StubDraw none = {0, 0, 0, 0, 0};
     return none;
   }
   return s_draws[i];
@@ -59,7 +59,8 @@ StubDraw stub_draw_at(int i) {
 
 void graphics_draw_bitmap_in_rect(GContext *ctx, const GBitmap *bmp, GRect r) {
   if (s_draw_count < STUB_MAX_DRAWS) {
-    StubDraw d = {r.origin.x, r.origin.y, r.size.w, r.size.h};
+    StubDraw d = {r.origin.x, r.origin.y, r.size.w, r.size.h,
+                  bmp ? bmp->resource_id : 0};
     s_draws[s_draw_count++] = d;
   }
   (void)ctx; (void)bmp;

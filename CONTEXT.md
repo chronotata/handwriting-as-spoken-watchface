@@ -778,9 +778,55 @@ every distinct layout rather than every distinct wording. The times are pinned t
 22 August so the widest date line sits under every phrase. Run it once per
 typeface *and* per reading mode, then compare the sets side by side.
 
-It waits `SETTLE` seconds before each shot, defaulting to 3.5 — `run.sh`
-reports the worst-case reveal as 2.42s, and the first version of the script
-waited 1s and captured half-drawn faces.
+**There is a second sweep that skips the emulator entirely.**
+`tools/mock_sweep.py` renders the shots directly: 59 in under two seconds,
+deterministic, no clock to fight. It is not a model — `tools/test/
+dump_layout.c` includes `handwritten.c` and calls the shipping `refresh()`,
+so the coordinates come from the code that ships and there is no second
+layout to drift; the script only pastes the real bitmaps where it is told,
+and reads its time lists out of `date_sweep.sh` rather than copying them.
+Colour is approximated and there is no reveal, so the emulator sweep stays
+the authority on how it actually looks. Placement questions — which is most
+of them — belong to the mock.
+
+**`emu-set-time` does not redraw the face.** It moves the clock and nothing
+else; `tick_handler` runs when the firmware's *own* clock crosses a minute,
+and a clock shoved sideways has not crossed anything. So the face changed
+once a real minute, showing whatever the RTC held at that instant — one
+picture per nine shots. **151 shots were taken and believed across three
+sweeps; they held 19 distinct images, and none was guaranteed to be the time
+named on it.** The duplicates were the obvious damage; the ones that differed
+were no more trustworthy.
+
+The fix uses the tick instead of fighting it: set the clock `LEAD` seconds
+*early*, and let the emulator's own rollover land on the target minute and
+fire the tick.
+
+**And any `pebble` command resets the emulated clock to the host's real
+time** — pypkjs stands in for the phone, and a connecting client re-syncs the
+watch. So exactly one command may run between setting the clock and taking
+the shot, and it has to be the screenshot. No polling, no second frame, no
+settling check. An intermediate version of the script polled for a still
+frame, which is precisely why it produced a sweep of real-time screenshots.
+
+That forces a **sweep build**: `WRITE_SPEED 0` in `config.h` draws each face
+complete, because one screenshot is only safe if there is nothing left to
+draw. It changes how the final frame is reached, not what it holds, and
+`run.sh` returns byte-identical results either way — the harness plays the
+reveal at the shipping speed regardless, and prints a `SWEEP BUILD` banner so
+the two states cannot be confused.
+
+Three dead ends, recorded: waiting longer cannot work, because the face is
+not slow, it is not being drawn; polling is worse than useless, because the
+polling is what resets the clock; and `emu-button select`/`back` does not
+work either — four of five test shots came back identical, because the window
+is re-shown and the layer redrawn from the stale `s_face`, and only
+`window_load` rebuilds it.
+
+Three sweeps were believed because nothing compared a shot to **the shot
+before it**. That check now exists, re-arms the clock and retries, and
+reports `UNCHANGED` if it still will not move — which the rounded modes can
+legitimately trigger, so it reports rather than fails.
 
 **Timezones.** The watchface calls `localtime()` — correct, and not
 negotiable: a watch shows the time where its wearer is. Nothing in it

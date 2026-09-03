@@ -25,3 +25,7 @@ preview_*.png
 # Emulator screenshots from tools/date_sweep.sh. Regenerated on demand, and
 # a set per typeface per reading mode adds up fast.
 shots/
+
+# Rendered screenshots from tools/mock_sweep.py. Same reasoning, and these
+# take two seconds to rebuild.
+shots-mock/

@@ -280,8 +280,29 @@
 /* Animation                                                         */
 /* ---------------------------------------------------------------- */
 
-#define WRITE_SPEED 260   /* reveal speed, pixels per second */
-#define WRITE_FRAME_MS 33 /* redraw interval                 */
+/*
+ * Reveal speed, pixels per second. ZERO MEANS NO REVEAL: the face is drawn
+ * complete in one frame. That is a SWEEP BUILD, not a shipping one.
+ *
+ * It exists because of how the emulator has to be driven. emu-set-time does
+ * not redraw the face - the firmware only rebuilds it on a minute tick - so
+ * tools/date_sweep.sh sets the clock a few seconds early and lets the
+ * emulator's own rollover land on the wanted minute. But any `pebble`
+ * command resets the emulated clock back to the host's real time, so
+ * exactly ONE command may run between setting the clock and taking the
+ * shot: the screenshot itself.
+ *
+ * One screenshot means no way to wait for the reveal to finish, and no way
+ * to check afterwards whether it had. Drawing the face complete in a single
+ * frame removes the question rather than answering it.
+ *
+ * Safe to sweep with, because it changes only how the final frame is
+ * REACHED, not what it contains - the settled pixels are identical either
+ * way, and the settled pixels are the whole point of the sweep. Not safe to
+ * ship with: the reveal is the watchface.
+ */
+#define WRITE_SPEED 260   /* 0 = draw complete, for sweeps only */
+#define WRITE_FRAME_MS 33 /* redraw interval                    */
 
 /*
  * The reveal mask covers each row's whole vertical band, bounded by the ink of

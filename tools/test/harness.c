@@ -2137,6 +2137,19 @@ static int s_twentydash_top = INT16_MIN;
  * guessed at - the first guess was one second, and it was not enough. */
 static int s_max_reveal;
 
+/*
+ * The harness plays the reveal at the SHIPPING speed even when this is a
+ * sweep build with WRITE_SPEED 0 (see config.h). Two reasons: at 0 the step
+ * below is 0 and the loop never terminates, and more importantly the reveal
+ * is what ships - a build flag that exists to make screenshotting possible
+ * must not quietly delete a third of the test suite along the way.
+ */
+#if WRITE_SPEED > 0
+#define REVEAL_SPEED WRITE_SPEED
+#else
+#define REVEAL_SPEED 260
+#endif
+
 static void play_reveal(void) {
   if (s_total > s_max_reveal) {
     s_max_reveal = s_total;
@@ -2147,7 +2160,7 @@ static void play_reveal(void) {
     if (s_progress >= s_total) {
       break;
     }
-    s_progress += (WRITE_SPEED * WRITE_FRAME_MS) / 1000;
+    s_progress += (REVEAL_SPEED * WRITE_FRAME_MS) / 1000;
     if (s_progress > s_total) {
       s_progress = s_total;
     }
@@ -2624,7 +2637,13 @@ int main(void) {
   print_fail_kinds();
   report_interweaves();
   printf("  longest reveal       %dpx of stroke, %.2fs at WRITE_SPEED %d\n",
-         s_max_reveal, (double)s_max_reveal / WRITE_SPEED, WRITE_SPEED);
+         s_max_reveal, (double)s_max_reveal / REVEAL_SPEED, REVEAL_SPEED);
+#if WRITE_SPEED <= 0
+  printf("  *** SWEEP BUILD: config.h has WRITE_SPEED 0, so the watchface\n"
+         "      draws each face complete with no reveal. Fine for\n"
+         "      screenshotting, NOT what to ship. The reveal above was\n"
+         "      still exercised, at the shipping speed.\n");
+#endif
 
   printf("\n%d checks, %d failures\n", s_checks, s_failures);
   if (s_failures) {

@@ -1270,9 +1270,16 @@ static void start_animation(void) {
     app_timer_cancel(s_timer);
     s_timer = NULL;
   }
+#if WRITE_SPEED <= 0
+  /* Sweep build: no reveal, the face arrives complete. Registering the timer
+   * would also never terminate - timer_cb advances s_progress by
+   * WRITE_SPEED * WRITE_FRAME_MS / 1000, which is 0. See config.h. */
+  s_progress = s_total;
+#else
   if (s_total > 0) {
     s_timer = app_timer_register(WRITE_FRAME_MS, timer_cb, NULL);
   }
+#endif
   layer_mark_dirty(s_layer);
 }
 

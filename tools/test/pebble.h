@@ -74,7 +74,15 @@ static inline GRect GRect_(int16_t x, int16_t y, int16_t w, int16_t h) {
 /* but never filled with pixels.                                     */
 /* ---------------------------------------------------------------- */
 
-typedef struct { GColor palette[16]; } GBitmap;
+typedef struct {
+  GColor palette[16];
+  /* Which word this is. The real SDK does not keep it, but the
+   * stub can, and tools/test/dump_layout.c needs to know WHICH
+   * bitmap landed in each recorded rect - otherwise a caller has
+   * to recompute the y itself, which is a second copy of
+   * draw_element()'s arithmetic and drifts from it. */
+  uint32_t resource_id;
+} GBitmap;
 typedef struct GContext GContext;
 
 GBitmap *gbitmap_create_with_resource(uint32_t resource_id);
@@ -99,6 +107,7 @@ int stub_live_bitmaps(void);
 
 typedef struct {
   int16_t x, y, w, h;
+  uint32_t resource_id;
 } StubDraw;
 
 void stub_reset_draws(void);
