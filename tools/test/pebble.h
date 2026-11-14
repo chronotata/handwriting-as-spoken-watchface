@@ -221,6 +221,7 @@ void app_message_open(uint32_t in, uint32_t out);
 #define MESSAGE_KEY_OffBlock 20
 #define MESSAGE_KEY_OffBlockFive 21
 #define MESSAGE_KEY_Typeface 22
+#define MESSAGE_KEY_OffPast 23
 
 /* ---------------------------------------------------------------- */
 /* Tick service and event loop                                       */

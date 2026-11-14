@@ -141,6 +141,30 @@ typedef enum {
    * wording - different balance, different lever.
    */
   ROW_HEDGE_SOLO,
+
+  /*
+   * "past" alone. "to" keeps ROW_RELATION.
+   *
+   * The two words share a slot in the staircase and are interchangeable in
+   * every other respect, but they are not the same shape: "past" is an
+   * ascender and a descender with nothing between them, "to" is a tall t
+   * over a round o. Hung from the same baseline, "past" reads as sitting
+   * lower than "to" does - which is a property of the lettering, not of the
+   * layout, so it cannot be fixed by moving the row.
+   *
+   * Offsets are per ROW, and this is the one place where one row holds two
+   * words that want different treatment. Rather than make offsets
+   * per-word - which would mean a lever for all 83 of them - "past" gets
+   * its own row id, and that row INHERITS the relation offset and adds to
+   * it. So OFFSET_RELATION and its slider still move both words together,
+   * which is what they are for, and OFFSET_PAST is the difference between
+   * them. Setting it to 0 restores the old behaviour exactly.
+   *
+   * Appended, like every row since the sixth, because the first six are
+   * persisted as an array and renumbering them would reinterpret every
+   * existing user's settings.
+   */
+  ROW_RELATION_PAST,
   ROW_COUNT
 } RowId;
 
@@ -198,6 +222,7 @@ typedef struct {
   int8_t offset_block;          /* the whole phrase, as one - SPOKEN     */
   int8_t offset_block_five;     /* the same, for the plain rounded mode  */
   uint8_t typeface;             /* 0 the font, 1 the handwriting         */
+  int8_t offset_past;           /* ROW_RELATION_PAST, on top of RELATION */
 } Settings;
 
 #define SETTINGS_KEY 2
@@ -940,7 +965,8 @@ static void build_face(Face *f, struct tm *t) {
       }
     }
 
-    push(f, past ? W_PAST : W_TO, ROW_RELATION);
+    push(f, past ? W_PAST : W_TO,
+         past ? ROW_RELATION_PAST : ROW_RELATION);
     push(f, hour_word(ref, past), ROW_HOUR);
     const int last = f->count - 1;
 
@@ -1136,6 +1162,8 @@ static int baked_offset(uint8_t row) {
     case ROW_MINUTE:         return OFFSET_MINUTE;
     case ROW_MINUTES_INLINE: return OFFSET_MINUTES;
     case ROW_RELATION:       return OFFSET_RELATION;
+    /* Inherits, so OFFSET_RELATION still means "both words". */
+    case ROW_RELATION_PAST:  return OFFSET_RELATION + OFFSET_PAST;
     case ROW_HOUR:           return OFFSET_HOUR;
     case ROW_SOLO:           return OFFSET_SOLO;
     case ROW_DATE:           return OFFSET_DATE;
@@ -1158,6 +1186,7 @@ static bool in_phrase_block(uint8_t row) {
     case ROW_MINUTES_OWN:
     case ROW_MINUTES_INLINE:
     case ROW_RELATION:
+    case ROW_RELATION_PAST:
     case ROW_HOUR:
       return true;
     default:
@@ -1185,6 +1214,13 @@ static int row_offset(uint8_t row) {
   }
   if (row == ROW_HEDGE_SOLO) {
     return base + s_settings.offset_hedge_solo;
+  }
+  if (row == ROW_RELATION_PAST) {
+    /* Both sliders, for the same reason baked_offset adds both
+     * constants: moving "past" and "to" together is what the
+     * relation lever is for, and this one is the difference. */
+    return base + s_settings.offset[ROW_RELATION]
+         + s_settings.offset_past + block_offset();
   }
   const int own = (row < OFFSET_ROWS) ? s_settings.offset[row] : 0;
   return base + own + (in_phrase_block(row) ? block_offset() : 0);
@@ -1343,6 +1379,7 @@ static void settings_defaults(void) {
   s_settings.offset_block = 0;
   s_settings.offset_block_five = 0;
   s_settings.offset_split_head = 0;
+  s_settings.offset_past = 0;
 }
 
 static void settings_load(void) {
@@ -1438,6 +1475,8 @@ static void read_offset(DictionaryIterator *it, uint32_t key, RowId row) {
     s_settings.offset_hedge = v;
   } else if (row == ROW_HEDGE_SOLO) {
     s_settings.offset_hedge_solo = v;
+  } else if (row == ROW_RELATION_PAST) {
+    s_settings.offset_past = v;
   } else if (row < OFFSET_ROWS) {
     s_settings.offset[row] = v;
   }
@@ -1483,6 +1522,7 @@ static void inbox_received(DictionaryIterator *it, void *context) {
     s_settings.typeface = clamp_typeface(tuple_int(t));
   }
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
+  read_offset(it, MESSAGE_KEY_OffPast, ROW_RELATION_PAST);
   read_offset(it, MESSAGE_KEY_OffHour, ROW_HOUR);
   read_offset(it, MESSAGE_KEY_OffSolo, ROW_SOLO);
   read_offset(it, MESSAGE_KEY_OffDate, ROW_DATE);

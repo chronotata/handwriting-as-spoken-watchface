@@ -230,7 +230,13 @@ module.exports = [
                    'it to another word, so this is purely how close it sits ' +
                    'to "past"/"to"'),
       offsetSlider('OffRelation', '"past" / "to"',
-                   'Middle row - the anchor the phrase hangs from'),
+                   'Middle row - the anchor the phrase hangs from. Moves ' +
+                   'both words together'),
+      offsetSlider('OffPast', '"past" only, against "to"',
+                   'On top of the row above. "past" is an ascender and a ' +
+                   'descender with nothing between them and reads as ' +
+                   'hanging lower than "to" on the same baseline; this is ' +
+                   'the difference between the two. 0 places them alike'),
       offsetSlider('OffHour', 'Hour word',
                    'Bottom row - "six", "midnight", "noon"'),
       offsetSlider('OffSolo', '"midnight" / "midday"',

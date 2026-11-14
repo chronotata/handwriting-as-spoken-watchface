@@ -161,7 +161,25 @@
 #define OFFSET_MINUTES 4  /* "minute(s)" beside a split number       */
 #define OFFSET_MINUTES_OWN -11  /* "minute(s)" on a line of its own        */
 
-#define OFFSET_RELATION -1  /* "past" / "to"                     */
+#define OFFSET_RELATION -1  /* "past" / "to", both together      */
+
+/*
+ * "past" ALONE, on top of OFFSET_RELATION. "to" is the unadjusted case.
+ *
+ * The two words share a rung of the staircase and the same baseline, but
+ * they are not the same shape: "past" is an ascender and a descender with
+ * nothing in between, "to" a tall t over a round o. On the same baseline
+ * "past" reads as hanging lower than "to" does. That is a property of the
+ * lettering rather than of the layout, so no amount of moving the row fixes
+ * it - the row is where both words want to be, and only one of them needs
+ * nudging.
+ *
+ * Negative is higher up the screen. At 0 the two are placed identically,
+ * which is exactly how they behaved before this existed.
+ *
+ * Judged against "to", which is the one that looked right.
+ */
+#define OFFSET_PAST -5
 #define OFFSET_HOUR -9  /* the hour word                     */
 #define OFFSET_SOLO      0  /* solo midnight / midday            */
 #define OFFSET_DATE      0  /* the date line                     */

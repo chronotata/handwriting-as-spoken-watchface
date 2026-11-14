@@ -42,7 +42,8 @@
       "OffHedgeSolo",
       "OffBlock",
       "OffBlockFive",
-      "Typeface"
+      "Typeface",
+      "OffPast"
     ],
     "resources": {
       "media": [

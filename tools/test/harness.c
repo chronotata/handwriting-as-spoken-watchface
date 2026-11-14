@@ -120,6 +120,12 @@ static WordInk gink(uint8_t word) {
   return WORD_INK[s_settings.typeface][word];
 }
 
+/* "past" and "to" share the rung; only their offsets differ. Every
+ * structural check about the relation row applies to both ids. */
+static bool is_relation(uint8_t row) {
+  return row == ROW_RELATION || row == ROW_RELATION_PAST;
+}
+
 static int baseline_of(const Element *e) { return e->top + gw(e->word)->base; }
 static int ink_top_of(const Element *e) {
   return baseline_of(e) - gink(e->word).asc;
@@ -225,7 +231,7 @@ static void check_indents(const Face *f, int h, int m) {
   CHECK(f->items[0].x == MARGIN, "first row not at margin", h, m, "");
   for (int i = 0; i < f->count; i++) {
     const Element *e = &f->items[i];
-    if (e->row == ROW_RELATION) {
+    if (is_relation(e->row)) {
       snprintf(buf, sizeof(buf), "x=%d expected %d", e->x, MARGIN + 2 * INDENT);
       CHECK(e->x == MARGIN + 2 * INDENT, "relation not at indent 2", h, m, buf);
     }
@@ -289,7 +295,7 @@ static void check_pinned_rows(const Face *f, int h, int m) {
   }
   for (int i = 0; i < f->count; i++) {
     const Element *e = &f->items[i];
-    if (e->row == ROW_RELATION) {
+    if (is_relation(e->row)) {
       snprintf(buf, sizeof(buf), "top=%d expected %d", e->top, REL_TOP);
       CHECK(e->top == REL_TOP, "relation row not pinned at REL_TOP", h, m, buf);
     }
@@ -631,7 +637,7 @@ static bool expected_in_block(uint8_t row) {
   return row == ROW_SPLIT_HEAD || row == ROW_MINUTE ||
          row == ROW_MINUTE_ALONE || row == ROW_MINUTE_SPLIT ||
          row == ROW_MINUTES_OWN || row == ROW_MINUTES_INLINE ||
-         row == ROW_RELATION || row == ROW_HOUR;
+         is_relation(row) || row == ROW_HOUR;
 }
 
 /*
@@ -863,6 +869,8 @@ static void check_baked_baseline(void) {
     {ROW_MINUTE,         OFFSET_MINUTE,       "OFFSET_MINUTE"},
     {ROW_MINUTES_INLINE, OFFSET_MINUTES,      "OFFSET_MINUTES"},
     {ROW_RELATION,       OFFSET_RELATION,     "OFFSET_RELATION"},
+    {ROW_RELATION_PAST,  OFFSET_RELATION + OFFSET_PAST,
+                                              "OFFSET_RELATION+PAST"},
     {ROW_HOUR,           OFFSET_HOUR,         "OFFSET_HOUR"},
     {ROW_SOLO,           OFFSET_SOLO,         "OFFSET_SOLO"},
     {ROW_DATE,           OFFSET_DATE,         "OFFSET_DATE"},
@@ -1122,6 +1130,7 @@ static const char *const kRowKey[ROW_COUNT] = {
   [ROW_MINUTE]        = "OffMinute",
   [ROW_MINUTES_INLINE] = "OffMinutes",
   [ROW_RELATION]      = "OffRelation",
+  [ROW_RELATION_PAST] = "OffPast",
   [ROW_HOUR]          = "OffHour",
   [ROW_SOLO]          = "OffSolo",
   [ROW_DATE]          = "OffDate",

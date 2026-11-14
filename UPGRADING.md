@@ -84,6 +84,41 @@ Then the SDK itself:
 pebble sdk install latest
 ```
 
+### Updating later
+
+Two different things prompt you to update, and they are fixed in two
+different places. Both have cost time once already by being mistaken for
+each other.
+
+**"A newer version of pebble-tool is available"** — that is the CLI.
+`uv tool upgrade pebble-tool` is the command the prompt suggests, and on
+this machine it answers:
+
+```
+error: Failed to upgrade pebble-tool
+  Caused by: `pebble-tool` is not installed
+```
+
+which is correct and not a fault. `uv` never installed it — `uv tool
+install` failed with `Cannot allocate memory (os error 12)` above, so it
+went in through **pipx**. Upgrade it the way it was installed:
+
+```bash
+pipx upgrade pebble-tool
+```
+
+`which pebble` says which route is in play: `~/.local/bin/pebble` is pipx's
+shim, `~/.local/share/uv/tools/...` would be uv's.
+
+**"A new SDK is available: v4.33.1"** — that is the SDK, not the CLI, and
+`pebble sdk install latest` can answer that you already have the latest
+while the prompt keeps appearing. Name the version and activate it:
+
+```bash
+pebble sdk install 4.33.1
+pebble sdk activate 4.33.1
+```
+
 ---
 
 ## 3. Get the project onto disk
