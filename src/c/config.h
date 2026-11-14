@@ -75,7 +75,7 @@
  * middle of the screen with the o'clock wording and is a different balance
  * entirely.
  */
-#define OFFSET_HEDGE -4      /* stacked: above the minute number  */
+#define OFFSET_HEDGE -9      /* stacked: above the minute number  */
 #define OFFSET_HEDGE_SOLO 0  /* centred: above the o'clock wording */
 
 /*
