@@ -337,27 +337,6 @@ static const char *const kMinutesModes[] = {
   ((uint8_t)(sizeof(kMinutesModes) / sizeof(kMinutesModes[0])))
 
 /*
- * `mins` is the spoken minute count - the number actually said aloud, so 29
- * at both :29 and :31 - not tm_min.
- *
- * MINS_ALWAYS keys off the two cases where the minute is spoken as a WORD
- * rather than a number. "quarter minutes past" and "half minutes past" are
- * not English, and no amount of "always" makes them so; 15 and 30 are the
- * only two, because 45 is spoken as "quarter to" with mins == 15.
- */
-static bool wants_minutes(int mins) {
-  switch (s_settings.minutes_mode) {
-    case MINS_NEVER:
-      return false;
-    case MINS_ALWAYS:
-      return mins != 15 && mins != 30;
-    case MINS_AUTO:
-    default:
-      return (mins % 5) != 0;
-  }
-}
-
-/*
  * How the minute is read off the dial.
  *
  * Index order is the wire format - the phone stores and sends it - so new
@@ -368,6 +347,55 @@ typedef enum {
   ROUND_FIVE,        /* "five past one"                               */
   ROUND_SPOKEN       /* "just gone five past one" / "nearly ten past" */
 } RoundingMode;
+
+/*
+ * `mins` is the spoken minute count - the number actually said aloud, so 29
+ * at both :29 and :31 - not tm_min.
+ *
+ * MINS_ALWAYS keys off the two cases where the minute is spoken as a WORD
+ * rather than a number. "quarter minutes past" and "half minutes past" are
+ * not English, and no amount of "always" makes them so; 15 and 30 are the
+ * only two, because 45 is spoken as "quarter to" with mins == 15.
+ */
+static bool wants_minutes(int mins) {
+  /*
+   * NEITHER ROUNDED MODE SAYS "minutes". Only the exact minute does.
+   *
+   * It starts as a fit problem in the SPOKEN mode. The hedge takes a row
+   * above the phrase and "minute(s)" takes one inside it, so together they
+   * make a five-row stack - "nearly / five / minutes / past / four" - which
+   * is one row more than the screen has. Swept over all 1440 minutes, 768
+   * land on five rows, and the top of that stack already touches row 0:
+   * "nearly" clips, with nothing above it to give.
+   *
+   * ROUND_FIVE has room for it - four rows, no hedge - and is excluded all
+   * the same, because the two rounded modes are required to draw the SAME
+   * PHRASE, differing only by one uniform block offset. That invariant is
+   * asserted in tools/test/harness.c and has caught real bugs. Letting
+   * "five minutes past four" exist in one rounded mode and not the other
+   * would break it for the sake of a wording available nowhere else.
+   *
+   * Little is lost either way. Rounding makes every minute a multiple of
+   * five, and MINS_AUTO already declines to annotate those - so in both
+   * rounded modes AUTO and NEVER were always identical, and ALWAYS was the
+   * only value that did anything. Pinning all three to "never" makes the
+   * setting genuinely inert whenever rounding is on, which is what lets the
+   * settings page grey it out honestly instead of leaving a live control
+   * that overflows the screen.
+   */
+  if (s_settings.rounding != ROUND_EXACT) {
+    return false;
+  }
+  switch (s_settings.minutes_mode) {
+    case MINS_NEVER:
+      return false;
+    case MINS_ALWAYS:
+      return mins != 15 && mins != 30;
+    case MINS_AUTO:
+    default:
+      return (mins % 5) != 0;
+  }
+}
 
 /*
  * Both typefaces ship, and the setting swaps between them on the wrist.

@@ -68,24 +68,24 @@ module.exports = function() {
    * mode selects themselves - is always live and never touched.
    */
   var REACHABLE = {
-    '0|0|0': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit'],
-    '0|0|1': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'DateFormat'],
-    '0|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinuteAlone', 'OffMinuteSplit'],
-    '0|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinuteAlone', 'OffMinuteSplit', 'DateFormat'],
-    '0|2|0': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit'],
-    '0|2|1': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'DateFormat'],
-    '1|0|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffBlockFive'],
-    '1|0|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'DateFormat', 'OffBlockFive'],
-    '1|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffBlockFive'],
-    '1|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'DateFormat', 'OffBlockFive'],
-    '1|2|0': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffMinutesOwn', 'OffMinuteAlone', 'OffBlockFive'],
-    '1|2|1': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinutesOwn', 'OffMinuteAlone', 'DateFormat', 'OffBlockFive'],
-    '2|0|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffBlock'],
-    '2|0|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'DateFormat', 'OffBlock'],
-    '2|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffBlock'],
-    '2|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'DateFormat', 'OffBlock'],
-    '2|2|0': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffMinutesOwn', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffBlock'],
-    '2|2|1': ['OffMinute', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinutesOwn', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'DateFormat', 'OffBlock']
+    '0|0|0': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'OffPast'],
+    '0|0|1': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'OffPast', 'DateFormat'],
+    '0|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinuteAlone', 'OffMinuteSplit', 'OffPast'],
+    '0|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinuteAlone', 'OffMinuteSplit', 'OffPast', 'DateFormat'],
+    '0|2|0': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'OffPast'],
+    '0|2|1': ['OffMinute', 'OffMinutes', 'OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffSplitHead', 'OffMinutesOwn', 'OffMinuteAlone', 'OffMinuteSplit', 'OffPast', 'DateFormat'],
+    '1|0|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffPast', 'OffBlockFive'],
+    '1|0|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffPast', 'DateFormat', 'OffBlockFive'],
+    '1|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffPast', 'OffBlockFive'],
+    '1|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffPast', 'DateFormat', 'OffBlockFive'],
+    '1|2|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffPast', 'OffBlockFive'],
+    '1|2|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffPast', 'DateFormat', 'OffBlockFive'],
+    '2|0|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffPast', 'OffBlock'],
+    '2|0|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffPast', 'DateFormat', 'OffBlock'],
+    '2|1|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffPast', 'OffBlock'],
+    '2|1|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffPast', 'DateFormat', 'OffBlock'],
+    '2|2|0': ['OffRelation', 'OffHour', 'OffSolo', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffPast', 'OffBlock'],
+    '2|2|1': ['OffRelation', 'OffHour', 'OffSolo', 'OffDate', 'OffMinuteAlone', 'OffHedge', 'OffHedgeSolo', 'OffPast', 'DateFormat', 'OffBlock']
   };
 
   /* Every control the table governs, gathered from the table itself so a
@@ -108,7 +108,41 @@ module.exports = function() {
     var showDate = clayConfig.getItemByMessageKey('ShowDate');
     if (!rounding || !minutes || !showDate) { return; }
 
+    /* Rounding mode 0 - "exact minute". The wire value, which is an index
+     * into kRoundingModes[] in src/c/handwritten.c and never changes. */
+    var EXACT = '0';
+    var MINUTES_DEFAULT = '0';
+    var resetting = false;
+
+    /*
+     * "Say minutes" is dead whenever rounding is on, so it is greyed there.
+     *
+     * The watchface ignores it outright in both rounded modes - see
+     * wants_minutes(). In the spoken mode there is no room: the hedge takes
+     * a row above the phrase and "minute(s)" one inside it, which makes a
+     * five-row stack the screen cannot hold. The plain rounded mode could
+     * fit it, but the two rounded modes are required to draw the same
+     * phrase, so it goes from both.
+     *
+     * Greying alone would leave the stored value as "after any number",
+     * which is then a setting the user can neither see nor reach - so it is
+     * also put back to the default. The guard is for the change event that
+     * set() fires, which would otherwise re-enter this function.
+     */
     function sync() {
+      if (resetting) { return; }
+      var rounded = String(rounding.get()) !== EXACT;
+      if (rounded) {
+        if (String(minutes.get()) !== MINUTES_DEFAULT) {
+          resetting = true;
+          minutes.set(MINUTES_DEFAULT);
+          resetting = false;
+        }
+        minutes.disable();
+      } else {
+        minutes.enable();
+      }
+
       /* Clay hands a select's value back as a string and a toggle as a
        * boolean, so both are normalised rather than trusted. */
       var cell = String(rounding.get()) + '|' + String(minutes.get()) + '|' +

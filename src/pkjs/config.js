@@ -140,8 +140,10 @@ module.exports = [
           'everywhere. "After any number" says <em>five minutes past ' +
           'five</em>, while still saying <em>quarter past</em> and ' +
           '<em>half past</em> — "quarter minutes past" is not English.' +
-          ' With rounding on, "only when not a round five" never fires, ' +
-          'since every minute becomes one.'
+          ' Greyed out unless the minute is read exactly: rounding makes ' +
+          'every minute a round five, so there is nothing left to annotate ' +
+          '— and in the spoken mode <em>nearly five minutes past four</em> ' +
+          'would be five stacked lines, one more than the screen holds.'
       }
     ]
   },

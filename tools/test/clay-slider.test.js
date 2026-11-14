@@ -353,6 +353,40 @@ check('with the date off, its lever and its format are both dead',
 check('a control the table does not govern is never touched',
       items.PaperColor.enabled && !governed.PaperColor);
 
+/*
+ * "SAY MINUTES" IS DEAD WHENEVER ROUNDING IS ON.
+ *
+ * Not driven by REACHABLE - that table is about row OFFSETS, and this is a
+ * wording setting - so it needs its own checks or it is tested by nothing.
+ * wants_minutes() in src/c/handwritten.c returns false outright in both
+ * rounded modes, so a live control there would do nothing at best, and in
+ * the spoken mode would have added a fifth row the screen has no space
+ * for.
+ *
+ * The RESET matters as much as the greying: left alone, "after any number"
+ * stays stored while greyed, and the user can neither see it nor change
+ * it. Switching back to the exact minute would then surprise them with a
+ * setting they never chose.
+ */
+applyCell(0, 2, 1);
+check('exact minute leaves "say minutes" usable', items.MinutesText.enabled);
+check('exact minute keeps the chosen value', items.MinutesText.get() === '2');
+
+applyCell(1, 2, 1);
+check('nearest five greys "say minutes"', !items.MinutesText.enabled);
+check('nearest five resets it to the default',
+      items.MinutesText.get() === '0');
+
+applyCell(0, 2, 1);
+check('going back to exact re-enables it', items.MinutesText.enabled);
+
+applyCell(2, 2, 1);
+check('spoken greys "say minutes"', !items.MinutesText.enabled);
+check('spoken resets it to the default', items.MinutesText.get() === '0');
+
+applyCell(0, 0, 1);
+check('exact minute is usable again afterwards', items.MinutesText.enabled);
+
 /* An unrecognised combination means the table went stale against a mode
  * that has since been added. Everything must stay usable. */
 items.Rounding.set('9');

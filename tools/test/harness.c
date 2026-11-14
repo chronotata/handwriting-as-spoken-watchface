@@ -502,6 +502,12 @@ static void check_minutes_mode(const Face *f, uint8_t mode, int h, int m) {
 
   const int mins = (sm <= 30) ? sm : 60 - sm;
   bool want;
+  /* Rounding suppresses the annotation outright, in both rounded modes -
+   * see wants_minutes(). Checked here rather than folded into the switch so
+   * that the three modes keep meaning what they say in the exact mode. */
+  if (s_settings.rounding != ROUND_EXACT) {
+    want = false;
+  } else
   switch (mode) {
     case MINS_NEVER:
       want = false;
@@ -1819,6 +1825,8 @@ static void apply_plan(const OffsetPlan *plan, int n) {
       s_settings.offset_hedge = (int8_t)plan[i].off;
     } else if (plan[i].row == ROW_HEDGE_SOLO) {
       s_settings.offset_hedge_solo = (int8_t)plan[i].off;
+    } else if (plan[i].row == ROW_RELATION_PAST) {
+      s_settings.offset_past = (int8_t)plan[i].off;
     } else {
       s_settings.offset[plan[i].row] = (int8_t)plan[i].off;
     }
@@ -1834,27 +1842,50 @@ static int plan_for(const OffsetPlan *plan, int n, uint8_t row) {
   return 0;
 }
 
+/*
+ * What a row SHOULD move by, under a plan.
+ *
+ * Every row answers to its own lever and nothing else, with one
+ * deliberate exception: ROW_RELATION_PAST inherits ROW_RELATION, so
+ * that OffRelation still means "past and to together" and OffPast is
+ * only the difference between them. Teaching the check about it is
+ * the price of that; leaving it out made 12,960 of these fire the
+ * moment OffRelation was swept, and the inheritance is the design
+ * rather than the bug.
+ */
+static int expected_move(const OffsetPlan *plan, int n, uint8_t row) {
+  int want = plan_for(plan, n, row);
+  if (row == ROW_RELATION_PAST) {
+    want += plan_for(plan, n, ROW_RELATION);
+  }
+  return want;
+}
+
 static void check_offset_independence(void) {
   char buf[220];
   /* Distinct values everywhere, except the inline annotation which is held
    * equal to the split number it rides beside - that pairing is the one
    * relationship the separation is supposed to preserve. */
-  static const OffsetPlan kPlans[][10] = {
+  static const OffsetPlan kPlans[][11] = {
     {{ROW_SPLIT_HEAD, 0}, {ROW_MINUTE, 0}, {ROW_MINUTE_ALONE, 0},
      {ROW_MINUTE_SPLIT, 0}, {ROW_MINUTES_INLINE, 0}, {ROW_MINUTES_OWN, 0},
-     {ROW_RELATION, 0}, {ROW_HOUR, 0}, {ROW_HEDGE, 0}, {ROW_HEDGE_SOLO, 0}},
+     {ROW_RELATION, 0}, {ROW_HOUR, 0}, {ROW_HEDGE, 0}, {ROW_HEDGE_SOLO, 0},
+     {ROW_RELATION_PAST, 0}},
     {{ROW_SPLIT_HEAD, 10}, {ROW_MINUTE, 3}, {ROW_MINUTE_ALONE, -6},
      {ROW_MINUTE_SPLIT, 8}, {ROW_MINUTES_INLINE, 8}, {ROW_MINUTES_OWN, -2},
-     {ROW_RELATION, -3}, {ROW_HOUR, -12}, {ROW_HEDGE, 4}, {ROW_HEDGE_SOLO, -7}},
+     {ROW_RELATION, -3}, {ROW_HOUR, -12}, {ROW_HEDGE, 4}, {ROW_HEDGE_SOLO, -7},
+     {ROW_RELATION_PAST, 6}},
     {{ROW_SPLIT_HEAD, -15}, {ROW_MINUTE, 15}, {ROW_MINUTE_ALONE, 7},
      {ROW_MINUTE_SPLIT, -9}, {ROW_MINUTES_INLINE, -9}, {ROW_MINUTES_OWN, 12},
-     {ROW_RELATION, 5}, {ROW_HOUR, -4}, {ROW_HEDGE, -13}, {ROW_HEDGE_SOLO, 10}},
+     {ROW_RELATION, 5}, {ROW_HOUR, -4}, {ROW_HEDGE, -13}, {ROW_HEDGE_SOLO, 10},
+     {ROW_RELATION_PAST, -11}},
     {{ROW_SPLIT_HEAD, 4}, {ROW_MINUTE, -11}, {ROW_MINUTE_ALONE, 14},
      {ROW_MINUTE_SPLIT, 2}, {ROW_MINUTES_INLINE, 2}, {ROW_MINUTES_OWN, -15},
-     {ROW_RELATION, 0}, {ROW_HOUR, 9}, {ROW_HEDGE, 11}, {ROW_HEDGE_SOLO, -2}}
+     {ROW_RELATION, 0}, {ROW_HOUR, 9}, {ROW_HEDGE, 11}, {ROW_HEDGE_SOLO, -2},
+     {ROW_RELATION_PAST, 13}}
   };
   const int kPlanCount = (int)(sizeof(kPlans) / sizeof(kPlans[0]));
-  const int kRows = 10;
+  const int kRows = 11;
   int inline_lines = 0;
 
   for (int p = 0; p < kPlanCount; p++) {
@@ -1901,7 +1932,7 @@ static void check_offset_independence(void) {
 
         for (int i = 0; i < s_face.count && i < flat.count; i++) {
           const Element *e = &s_face.items[i];
-          const int want = plan_for(kPlans[p], kRows, e->row);
+          const int want = expected_move(kPlans[p], kRows, e->row);
           const int moved = drawn_baseline(e) - flat_drawn[i];
           snprintf(buf, sizeof(buf),
                    "plan %d mode %d: element %d (word %d, row %d) moved %d, "

@@ -285,10 +285,19 @@ FAMILIES = [
     ("shots-mock-always-min",          0, 2,
      "exact minute, \"minute(s)\" always"),
     ("shots-mock-nearest",             2, None,
-     "nearest five spoken, \"minute(s)\" as it falls"),
-    ("shots-mock-nearest-always-min",  2, 2,
-     "nearest five spoken, \"minute(s)\" always"),
+     "nearest five spoken"),
 ]
+#
+# There is no "nearest five spoken, minute(s) always" family, because there
+# is no such setting any more. Rounding suppresses the annotation outright -
+# see wants_minutes() in src/c/handwritten.c - so all three values of "say
+# minutes" draw the same face in both rounded modes, and the settings page
+# greys the control there.
+#
+# It existed briefly and was worth having: it is the family that showed the
+# five-row stack ("nearly / five / minutes / past / four") hard against the
+# top of the screen, which is what put the lid on OFFSET_HEDGE. Rendering
+# it now would be 151 shots byte-identical to shots-mock-nearest.
 
 
 def main():
@@ -391,6 +400,7 @@ def main():
                     opts += [flag, str(val)]
 
             out.mkdir(exist_ok=True)
+            written = set()
             print("\n%d shots -> %s/%s" % (
                 len(shots), folder,
                 ("   " + (note or " ".join(opts))) if (note or opts) else ""))
@@ -408,8 +418,22 @@ def main():
                     img = img.resize((img.width * args.scale,
                                       img.height * args.scale), Image.NEAREST)
                 img.save(out / ("%s.png" % name))
+                written.add("%s.png" % name)
                 if not args.families:
                     print("  %-28s -> %s/%s.png" % (label, folder, name))
+
+            # Shots this run did not write are left over from an earlier
+            # one, against whatever config.h said then. Named rather than
+            # deleted - a subset run is a normal thing to do, and silently
+            # emptying the folder around it would be worse. But comparing
+            # two folders and finding four stale files is exactly the kind
+            # of confusion this project keeps paying for.
+            stale = sorted(p.name for p in out.glob("*.png")
+                           if p.name not in written)
+            if stale:
+                print("  %d older file(s) left from an earlier run: %s%s"
+                      % (len(stale), ", ".join(stale[:4]),
+                         ", ..." if len(stale) > 4 else ""), file=sys.stderr)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
