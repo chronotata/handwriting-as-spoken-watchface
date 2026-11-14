@@ -6,9 +6,15 @@
     python3 tools/mock_sweep.py hours all
     python3 tools/mock_sweep.py 2026-02-29 14:35
     python3 tools/mock_sweep.py stacks --rounding 0 --typeface 1
+    python3 tools/mock_sweep.py all --families # one folder per settings set
 
 Writes shots-mock/. Every combination in seconds, deterministically, with no
 clock to fight.
+
+--families renders the same shots under each set of reader-facing settings,
+into one folder each (see FAMILIES below), under the SAME filenames - so
+shots-mock/stack-08-past.png and shots-mock-nearest/stack-08-past.png are
+the same moment read two ways, and open side by side.
 
 
 WHY THIS EXISTS BESIDE tools/date_sweep.sh
@@ -255,6 +261,36 @@ def render(draws, res, paper, ink, ring_top, cache):
     return canvas
 
 
+# ------------------------------------------------------------- families
+#
+# A FAMILY is one set of reader-facing settings, rendered into its own
+# folder under the same filenames - so the same shot in two folders is the
+# same moment under two settings, and they can be looked at side by side.
+#
+# The settings that change the WORDS are the rounding mode and whether
+# "minute(s)" is spoken. Everything else (colour, date format, typeface) is
+# orthogonal to the phrase and is left on --flags for a one-off.
+#
+# The values are the C enums, named here so a reordering of either enum
+# shows up as a wrong-looking sweep rather than silently swapping folders:
+#   rounding   0 exact        1 nearest five        2 nearest five, spoken
+#   minutes    0 auto         1 never               2 always
+#
+# ROUND_FIVE (1) has no family of its own because it is ROUND_SPOKEN minus
+# the hedge, and the hedge is the part worth looking at. --rounding 1 if
+# you want it.
+FAMILIES = [
+    ("shots-mock",                     0, None,
+     "exact minute, \"minute(s)\" as it falls"),
+    ("shots-mock-always-min",          0, 2,
+     "exact minute, \"minute(s)\" always"),
+    ("shots-mock-nearest",             2, None,
+     "nearest five spoken, \"minute(s)\" as it falls"),
+    ("shots-mock-nearest-always-min",  2, 2,
+     "nearest five spoken, \"minute(s)\" always"),
+]
+
+
 def main():
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("what", nargs="*", default=[],
@@ -269,7 +305,18 @@ def main():
                     help="0 the font, 1 the handwriting")
     ap.add_argument("--scale", type=int, default=1,
                     help="write the images this many times larger")
+    ap.add_argument("--families", action="store_true",
+                    help="render every family in FAMILIES, each to its own "
+                         "folder, instead of one folder from the flags")
+    ap.add_argument("--out", default=None,
+                    help="folder to write to (default shots-mock)")
     args = ap.parse_args()
+
+    if args.families and (args.rounding is not None or
+                          args.minutes is not None or args.out):
+        sys.exit("--families sets the rounding, the minutes mode and the "
+                 "folder itself.\nDrop --rounding/--minutes/--out, or drop "
+                 "--families and set them by hand.")
 
     # Build the dumper from the shipping source. Not cached between runs:
     # it is a second of gcc, and a stale binary here would be a mock-up of
@@ -319,39 +366,56 @@ def main():
         res = resource_map()
         ring_top = cfg("BOLD_RING_TOP", 2)
         paper, ink = (0, 0, 0), (255, 255, 255)
+        # Shared across families: the bitmaps do not depend on the settings,
+        # only on which of them each family asks for.
         cache = {}
 
-        OUT.mkdir(exist_ok=True)
-        # Anything not asked for is left to settings_defaults() in the C,
-        # rather than restated here where it could disagree with it.
-        opts = []
-        for flag, val in (("--rounding", args.rounding),
-                          ("--minutes", args.minutes),
-                          ("--format", args.fmt),
-                          ("--typeface", args.typeface)):
-            if val is not None:
-                opts += [flag, str(val)]
+        if args.families:
+            jobs = FAMILIES
+        else:
+            jobs = [(args.out or OUT.name, args.rounding, args.minutes, None)]
 
-        print("%d shots -> %s/%s" % (len(shots), OUT.name,
-                                     ("  " + " ".join(opts)) if opts else ""))
-        for date, hh, mm, name, label in shots:
-            run = subprocess.run(
-                [str(exe), date, "%02d:%02d" % (hh, mm)] + opts,
-                capture_output=True, text=True)
-            if run.returncode:
-                sys.exit("dump_layout failed on %s %02d:%02d:\n%s"
-                         % (date, hh, mm, run.stderr))
-            draws = [tuple(int(v) for v in line.split())
-                     for line in run.stdout.splitlines() if line.strip()]
-            img = render(draws, res, paper, ink, ring_top, cache)
-            if args.scale > 1:
-                img = img.resize((img.width * args.scale,
-                                  img.height * args.scale), Image.NEAREST)
-            img.save(OUT / ("%s.png" % name))
-            print("  %-28s -> %s/%s.png" % (label, OUT.name, name))
+        for job in jobs:
+            folder, rounding, minutes = job[0], job[1], job[2]
+            note = job[3] if len(job) > 3 else None
+            out = ROOT / folder
+
+            # Anything not asked for is left to settings_defaults() in the C,
+            # rather than restated here where it could disagree with it.
+            opts = []
+            for flag, val in (("--rounding", rounding),
+                              ("--minutes", minutes),
+                              ("--format", args.fmt),
+                              ("--typeface", args.typeface)):
+                if val is not None:
+                    opts += [flag, str(val)]
+
+            out.mkdir(exist_ok=True)
+            print("\n%d shots -> %s/%s" % (
+                len(shots), folder,
+                ("   " + (note or " ".join(opts))) if (note or opts) else ""))
+            for date, hh, mm, name, label in shots:
+                run = subprocess.run(
+                    [str(exe), date, "%02d:%02d" % (hh, mm)] + opts,
+                    capture_output=True, text=True)
+                if run.returncode:
+                    sys.exit("dump_layout failed on %s %02d:%02d:\n%s"
+                             % (date, hh, mm, run.stderr))
+                draws = [tuple(int(v) for v in line.split())
+                         for line in run.stdout.splitlines() if line.strip()]
+                img = render(draws, res, paper, ink, ring_top, cache)
+                if args.scale > 1:
+                    img = img.resize((img.width * args.scale,
+                                      img.height * args.scale), Image.NEAREST)
+                img.save(out / ("%s.png" % name))
+                if not args.families:
+                    print("  %-28s -> %s/%s.png" % (label, folder, name))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
+    if args.families:
+        print("\nSame filename in each folder is the same moment under "
+              "different settings,\nso they line up for a side-by-side.")
     print("\nPlacement is the shipping build_face(), to the pixel. Colour is\n"
           "this script's arithmetic, and there is no reveal animation - for\n"
           "those, tools/sweep.sh on the emulator.")

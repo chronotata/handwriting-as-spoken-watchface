@@ -27,5 +27,6 @@ preview_*.png
 shots/
 
 # Rendered screenshots from tools/mock_sweep.py. Same reasoning, and these
-# take two seconds to rebuild.
-shots-mock/
+# take two seconds to rebuild. The glob covers --families, which writes one
+# folder per settings set: shots-mock-nearest/, shots-mock-always-min/, ...
+shots-mock*/
