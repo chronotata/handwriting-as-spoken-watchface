@@ -1,0 +1,13 @@
+Tells the time the way it would traditionally be said out loud: "quarter past three", "twenty-nine minutes to midnight", "half past seven". Every hand-drawn word appears as if it's being written whenever it changes.
+
+Show the exact minute, or round it to the nearest five minutes like reading a real analogue clock, with the option to add "just gone" or "nearly" for more precision. For example, 6:16 can be displayed as:
+
+- sixteen minutes past six
+- quarter past six ("fuzzy time")
+- just gone quarter past six
+
+Other options include a date line in two formats, a choice of paper and ink colours, and fine-tuning controls to adjust vertical spacings.
+
+Made for Pebble Time 2. Inspired by the original Handwritten watchface by etiennovski.
+
+All text was drawn with a pen, and the layouts were tuned by hand. Technical implementation and documentation done with the help of AI coding agent (Claude). Source code available on GitHub - feel free to ask for additional features there and I'll see what I can do.
