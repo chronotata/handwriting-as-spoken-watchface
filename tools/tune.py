@@ -9,6 +9,22 @@ to the pixel and the reveal animation leaked fragments for three iterations.
 With images the geometry is exact: the reveal draws a sub-rectangle, so nothing
 unrevealed is ever drawn at all.
 
+THE FONT IS NOT SHIPPED
+-----------------------
+It is still RENDERED here, and has to be: the family boxes are measured from
+its ink, extract_handwriting.py cuts the drawn pages to those boxes, and
+handwriting-templates/ holds these same images as the pages to draw over. It
+simply is not PACKAGED any more, and geometry.h carries one table, not two.
+
+That halves the resources - about 97 kB of 195 - which is what brings the
+build under the 256 kB publishing limit. The images and the TTF stay in the
+repo, so the two-typeface version is a git revert away.
+
+The cost is that every word must now be drawn, because there is nothing left
+to fall back to. All 83 are, and main() refuses to write a geometry.h if
+that ever stops being true.
+
+
 Canvas heights are UNIFORM PER SIZE FAMILY
 ------------------------------------------
 Every word in a family gets the same canvas height - the union of the family's
@@ -373,27 +389,12 @@ def write_test_header(rendered, box, hand):
             "   taller than the letters in it, so bounds-checking against that",
             "   would pass anything. This is what is really visible - and the",
             "   handwriting's extents are its own, measured off the drawn page. */",
-            "/* Not TYPEFACE_COUNT: this header is included BEFORE",
-            "   geometry.h, so the number is repeated and then asserted",
-            "   equal in harness.c, which sees both. */",
-            "#define GENERATED_TYPEFACES 2",
-            "static const WordInk WORD_INK[GENERATED_TYPEFACES][%d] = {" % n,
-            "  {"]
+            "static const WordInk WORD_INK[%d] = {" % n]
     for name, fam, text, crop, baseline, _bold in rendered:
-        out.append("    {%d, %d},%s/* %s */"
-                   % (baseline, crop.height - baseline,
-                      " " * max(1, 10 - len(str(baseline))), text))
-    out += ["  },", "  {"]
-    for name, fam, text, crop, baseline, _bold in rendered:
-        if name in hand:
-            out.append("    {%d, %d},%s/* %-11s drawn */"
-                       % (hand[name]["asc"], hand[name]["desc"],
-                          " " * max(1, 10 - len(str(hand[name]["asc"]))), text))
-        else:
-            out.append("    {%d, %d},%s/* %s */"
-                       % (baseline, crop.height - baseline,
-                          " " * max(1, 10 - len(str(baseline))), text))
-    out += ["  },", "};", ""]
+        out.append("  {%d, %d},%s/* %s */"
+                   % (hand[name]["asc"], hand[name]["desc"],
+                      " " * max(1, 10 - len(str(hand[name]["asc"]))), text))
+    out += ["};", ""]
 
     # Which words exist in the second typeface, recorded SEPARATELY from
     # WORDS[]. The harness needs to check that an undrawn word falls back to
@@ -492,7 +493,7 @@ def png_size(path):
     return struct.unpack(">II", b[16:24])
 
 
-def check_declared_sizes(rows, hand, box):
+def check_declared_sizes(rows, hand, box, rebox=False):
     """Every WORDS[] row must match the image on disk, to the pixel.
 
     This is the check that was missing when the DATE canvas grew from 28px
@@ -521,6 +522,8 @@ def check_declared_sizes(rows, hand, box):
         if got != want:
             problems.append("  %-16s hand   declared %dx%d, image is %dx%d"
                             % (name, want[0], want[1], got[0], got[1]))
+    if problems and rebox and all("hand" in x for x in problems):
+        return          # --rebox has already said its piece above
     if problems:
         sys.exit("the images on disk do not match the geometry about to be "
                  "written:\n" + "\n".join(problems) +
@@ -589,13 +592,21 @@ def drop_stale_handwriting(hand, box, rebox):
             "and is\nre-cut from the PDFs every time."
             % (len(stale), ", ".join(fams), detail))
 
-    print("--rebox: %d word(s) do not fit the box this run measures, so they "
-          "stay\non the font for now - %s:\n%s\n"
+    # They are KEPT, not dropped. Parking them on the font was the old way
+    # out, and the font is no longer in the table to park them on - so this
+    # writes the new geometry describing images that do not match it yet,
+    # which is only safe because the very next step re-cuts them to it.
+    print("--rebox: writing the new geometry for %d word(s) whose images do "
+          "not fit\nit yet - %s:\n%s\n"
           % (len(stale), ", ".join(fams), detail))
-    print("Re-cut them and put them back:\n"
-          "    python3 tools/extract_handwriting.py\n"
-          "    python3 tools/tune.py\n")
-    return {k: v for k, v in hand.items() if k not in {n for n, _w, _g in stale}}
+    print("*** THE TREE IS INCONSISTENT UNTIL BOTH OF THESE HAVE RUN ***\n"
+          "    python3 tools/extract_handwriting.py   # re-cut to the new box\n"
+          "    python3 tools/tune.py                  # no flag\n\n"
+          "Do not build in between. A bitmap drawn into a rect that is not "
+          "its own\nsize repeats to fill it, which reads as a smeared letter "
+          "rather than an\nerror - check_resources.py refuses, and so do "
+          "run.sh and the sweeps.\n")
+    return hand
 
 
 def handwriting():
@@ -682,14 +693,13 @@ def main():
         img.save(EXPORT / ("%s.png" % stem))   # template to draw over for v2
 
         rows.append((name, img.width, img.height, box[fam][0], text))
-        media.append({"type": "bitmap", "name": name.upper(),
-                      "file": "images/%s.png" % stem,
-                      "memoryFormat": "4BitPalette",
-                      "storageFormat": "pbi"})
+        # NOT added to `media`. The font is still RENDERED - the family
+        # boxes are measured from its ink, extract_handwriting.py cuts to
+        # those boxes, and handwriting-templates/ carries these very images
+        # as the pages to draw over - but it is no longer PACKAGED. See
+        # THE FONT IS NOT SHIPPED at the top of this file.
 
-    # The handwritten variants, appended AFTER every font word so that the
-    # font's resource ids never shift when a new word is drawn. Only words
-    # that have actually been drawn get an entry; the rest fall back below.
+    # The handwriting is the whole of the shipped vocabulary.
     hand_media = []
     for name, _fam, _text, _crop, _base, _bold in rendered:
         if name not in hand:
@@ -706,13 +716,24 @@ def main():
 
     # Before a single number is written down, make sure the numbers describe
     # the files that are actually there.
-    check_declared_sizes(rows, hand, box)
+    check_declared_sizes(rows, hand, box, rebox="--rebox" in sys.argv[1:])
 
     out = ["/* GENERATED by tools/tune.py - do not edit. */",
            "/* Canvas HEIGHT and BASELINE are uniform within a size family, so */",
            "/* swapping one word for another moves nothing around it. Widths   */",
            "/* stay tight to each word's own ink. */",
            "", "#pragma once", "#include <stdint.h>", ""]
+    # Every word must be drawn: there is no second table to fall back to,
+    # so a gap would be a resource id that does not exist and a word that
+    # draws as nothing on the watch, at runtime, silently.
+    missing = [nm for nm, _f, _t in words() if nm not in hand]
+    if missing:
+        sys.exit("%d word(s) have no handwriting, and the font is no longer "
+                 "shipped\nas a fallback:\n  %s\n\nDraw them (UPGRADING.md "
+                 "7b) before this can write a geometry.h."
+                 % (len(missing), ", ".join(missing[:8])
+                    + (", ..." if len(missing) > 8 else "")))
+
     out.append("/* Marks a geometry.h new enough to contain the weekday words.")
     out.append("   handwritten.c #errors without it, so a stale file cannot be")
     out.append("   built against silently - the same trick as TIME_BOX_H. */")
@@ -721,8 +742,11 @@ def main():
     out.append("/* Marks a geometry.h that carries BOTH typefaces. Same guard")
     out.append("   trick again: a stale file would compile with one table where")
     out.append("   the watchface expects two, and index off the end of it. */")
-    out.append("#define GEOMETRY_HAS_TYPEFACES 1")
-    out.append("#define TYPEFACE_COUNT 2")
+    out.append("/* Marks a geometry.h that carries the HANDWRITING ONLY.")
+    out.append("   The font used to ship beside it as a second table and a")
+    out.append("   setting; handwritten.c #errors without this, so a file")
+    out.append("   from either era cannot be built against the other. */")
+    out.append("#define GEOMETRY_IS_HANDWRITTEN 1")
     out.append("")
     out.append("/* Family boxes: ascent + descent, and the shared baseline offset. */")
     for fam in ("TIME", "SOLO", "MINS", "DATE", "ORD", "HEDGE"):
@@ -753,18 +777,11 @@ def main():
             "   repeats its font row, so the two typefaces can be swapped at any",
             "   time and an undrawn word simply does not change. Nothing in the",
             "   watchface has to know which words exist in which typeface. */",
-            "static const WordGeom WORDS[TYPEFACE_COUNT][W_COUNT] = {", "  {"]
+            "static const WordGeom WORDS[W_COUNT] = {"]
     for name, w, h, base, text in rows:
-        out.append("    {RESOURCE_ID_%s, %d, %d, %d}," % (name.upper(), w, h, base))
-    out += ["  },", "  {"]
-    for name, w, h, base, text in rows:
-        if name in hand:
-            out.append("    {RESOURCE_ID_H_%s, %d, %d, %d},"
-                       % (name.upper()[2:], hand[name]["w"], h, base))
-        else:
-            out.append("    {RESOURCE_ID_%s, %d, %d, %d},   /* not drawn */"
-                       % (name.upper(), w, h, base))
-    out += ["  },", "};", ""]
+        out.append("  {RESOURCE_ID_H_%s, %d, %d, %d},"
+                   % (name.upper()[2:], hand[name]["w"], h, base))
+    out += ["};", ""]
     GEOM.write_text("\n".join(out))
 
     # Words can leave the list as well as join it - "o' clock" and friends

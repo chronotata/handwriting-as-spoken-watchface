@@ -347,14 +347,19 @@ real hardware the same way `--emulator` does from the simulator.
 
 ## 7b. Handwriting
 
-Both typefaces ship. **Lettering** in the settings swaps between them on the
-wrist, with no rebuild - which is the point, because handwriting at 200x228
-can only be judged against the thing it replaces, on the real screen, and a
-reinstall between each look is enough friction that nobody does it honestly.
+**Only the handwriting ships.** The rendered font used to ship beside it
+with a **Lettering** switch, so the two could be compared on the wrist while
+the handwriting was drawn a family at a time. All 83 words are drawn now, and
+carrying the font cost about 97 kB of a 256 kB resource budget — so it went,
+along with the setting.
 
-A word that has not been drawn yet **falls back to the font**, so the two
-tables are always complete and switching is safe at any point. That is what
-lets the vocabulary be drawn a family at a time.
+`tune.py` still renders it, and has to: the family boxes are measured from
+its ink, `extract_handwriting.py` cuts the drawn pages to those boxes, and
+the pages you draw over **are** its images. It is simply not packaged, and
+`geometry.h` carries one table rather than two.
+
+The consequence is that **every word must be drawn** — there is no fallback
+left. `tune.py` refuses to write a `geometry.h` with a hole in it.
 
 The loop:
 
@@ -609,7 +614,7 @@ modes, with the phrase above held still while the word below changes.
 The **year** is not swept — four fixed digits that change once a year. If a
 later year looks wrong, name a date in it.
 
-Do it once per **Lettering** setting and once per **reading mode**. The
+Do it once per **reading mode**. The
 phrase shapes genuinely differ between the three modes, and three of the
 times only show a hedge in "nearest five, spoken". Compare the sets side by
 side; judging one screenshot at a time hides exactly the inconsistency you
@@ -619,7 +624,6 @@ are looking for.
 
 ```
 python3 tools/mock_sweep.py stacks          # same modes as date_sweep.sh
-python3 tools/mock_sweep.py all --typeface 0
 python3 tools/mock_sweep.py 2026-02-29 14:35 --scale 3
 ```
 
@@ -644,7 +648,7 @@ the two sweeps cannot quietly stop covering the same ground.
 
 | | |
 |---|---|
-| faithful | placement to the pixel; which words each setting chooses; the real bitmaps in either typeface |
+| faithful | placement to the pixel; which words each setting chooses; the real bitmaps |
 | approximated | colour — the palette ramp follows `tint()` and `to_palette()`, then rounds to Pebble's two bits per channel, but it is this script's arithmetic and not the SDK's |
 | absent | the reveal animation, and whatever the SDK does to a bitmap on the way to the panel |
 
@@ -882,8 +886,8 @@ the layout-versus-limit decision in `CONTEXT.md` §8. That is a known state
 and not a reason to stop, but it does mean `run.sh` must not be chained with
 `&&` — everything after it would be skipped.
 
-**`pebble build` may refuse on size**: 263.6 kB of resources against a
-256 kB limit, with both typefaces shipping. §12.
+**Resources are about 98 kB** against a 256 kB publishing limit, since the
+font stopped shipping. §7b.
 
 **Step 5 needs a sweep build**, because only one screenshot can be taken per
 shot (§11) so the face has to arrive complete. `tools/sweep.sh` does the
@@ -913,7 +917,7 @@ The full list, with reasoning, is `CONTEXT.md` §8. In short:
 - **Bake the offsets** currently sitting in the Clay sliders into
   `config.h` — add the slider value to the constant, then zero the slider.
   No regeneration needed; do run `tools/test/run.sh`.
-- **Trim the build** for publishing: 263.6 kB of resources against a 256 kB
-  limit. Dropping the font typeface behind a build switch takes it to about
-  132 kB, keeping the images in the repo.
+- ~~Trim the build for publishing.~~ **Done** — the font no longer ships,
+  which took resources from about 195 kB to 98 kB against the 256 kB limit.
+  Its images and the TTF stay in the repo; see §7b.
 - **Look at the dates**, per §11 above.

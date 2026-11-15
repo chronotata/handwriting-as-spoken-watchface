@@ -1,7 +1,7 @@
 /*
  * Print where the watchface would put every word, for one moment in time.
  *
- *     dump_layout YYYY-MM-DD HH:MM [rounding minutes format typeface]
+ *     dump_layout YYYY-MM-DD HH:MM [--rounding N] [--minutes N] [--format N]
  *
  * One line per DRAW, in draw order:
  *
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
   if (argc < 3) {
     fprintf(stderr,
             "usage: dump_layout YYYY-MM-DD HH:MM "
-            "[--rounding N] [--minutes N] [--format N] [--typeface N]\n");
+            "[--rounding N] [--minutes N] [--format N]\n");
     return 2;
   }
 
@@ -93,17 +93,16 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  /* Named rather than positional, so setting the typeface does not oblige
-   * the caller to also state a rounding mode it did not care about - and so
-   * an omitted one keeps the watchface's OWN default rather than whatever
-   * the caller guessed that default was. */
+  /* Named rather than positional, so a caller can set one setting without
+   * having to state the others - and so an omitted one keeps the
+   * watchface's OWN default rather than whatever the caller guessed that
+   * default was. */
   settings_defaults();
   for (int i = 3; i + 1 < argc; i += 2) {
     const int v = atoi(argv[i + 1]);
     if      (!strcmp(argv[i], "--rounding")) s_settings.rounding     = (uint8_t)v;
     else if (!strcmp(argv[i], "--minutes"))  s_settings.minutes_mode = (uint8_t)v;
     else if (!strcmp(argv[i], "--format"))   s_settings.date_format  = (uint8_t)v;
-    else if (!strcmp(argv[i], "--typeface")) s_settings.typeface     = (uint8_t)v;
     else {
       fprintf(stderr, "unknown option '%s'\n", argv[i]);
       return 2;

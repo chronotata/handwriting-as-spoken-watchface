@@ -26,8 +26,8 @@
 #error "src/c/geometry.h has no weekday words. Run: python3 tools/tune.py"
 #endif
 
-#ifndef GEOMETRY_HAS_TYPEFACES
-#error "src/c/geometry.h has one typeface, not two. Run: python3 tools/tune.py"
+#ifndef GEOMETRY_IS_HANDWRITTEN
+#error "src/c/geometry.h still carries the font as a second table. Run: python3 tools/tune.py"
 #endif
 
 /*
@@ -221,7 +221,9 @@ typedef struct {
   int8_t offset_hedge_solo;     /* ROW_HEDGE_SOLO                        */
   int8_t offset_block;          /* the whole phrase, as one - SPOKEN     */
   int8_t offset_block_five;     /* the same, for the plain rounded mode  */
-  uint8_t typeface;             /* 0 the font, 1 the handwriting         */
+  uint8_t typeface_unused;      /* was the font/handwriting switch.      */
+                                /* KEPT so the persisted blob's layout   */
+                                /* does not shift under offset_past.     */
   int8_t offset_past;           /* ROW_RELATION_PAST, on top of RELATION */
 } Settings;
 
@@ -237,22 +239,21 @@ static bool s_have_prev;
 static GBitmap *s_cache[W_COUNT];   /* only the words on screen are loaded */
 
 /*
- * THE WORD, IN WHICHEVER TYPEFACE IS SHOWING.
+ * THE WORD.
  *
- * geometry.h carries two tables - the font and the handwriting - and every
- * word appears in both. A word nobody has drawn yet has its font row copied
- * into the handwriting row, so this never has to ask whether a particular
- * word exists in the chosen typeface: it always does, and an undrawn one
- * simply looks the same in either. That is what lets the handwriting be
- * drawn a family at a time with the watchface usable throughout.
+ * One table now. geometry.h used to carry two - the font and the
+ * handwriting - with a setting to swap them on the wrist, which is how the
+ * handwriting got drawn a family at a time while the watchface stayed
+ * usable. All 83 words are drawn, so the font has no job left at runtime,
+ * and shipping it cost about 97 kB of a 256 kB budget.
  *
- * Canvas HEIGHT and BASELINE are identical between the two by construction -
- * the drawing template is the font's own family box - so switching typeface
- * changes widths and nothing else. No row moves, which is the whole point:
- * the two are meant to be compared on the wrist.
+ * It is still rendered by tools/tune.py, because the family boxes are
+ * measured from its ink and the drawing templates ARE its images - it just
+ * is not packaged. Every word's canvas height and baseline are still the
+ * font's, which is why none of the layout had to change when it went.
  */
 static const WordGeom *wg(uint8_t word) {
-  return &WORDS[s_settings.typeface][word];
+  return &WORDS[word];
 }
 
 static AppTimer *s_timer;
@@ -396,27 +397,6 @@ static bool wants_minutes(int mins) {
       return (mins % 5) != 0;
   }
 }
-
-/*
- * Both typefaces ship, and the setting swaps between them on the wrist.
- *
- * Not a build flag, because the only way to judge handwriting at 200x228 is
- * against the thing it is replacing, on the real screen, in real light -
- * and a rebuild-and-reinstall between each look is enough friction to stop
- * anyone doing it honestly. The cost is one extra bitmap per drawn word in
- * the .pbw, which is a few hundred bytes each.
- */
-static const char *const kTypefaces[] = {
-  "font",
-  "handwritten"
-};
-
-#define TYPEFACE_MODES \
-  ((uint8_t)(sizeof(kTypefaces) / sizeof(kTypefaces[0])))
-
-_Static_assert(TYPEFACE_MODES == TYPEFACE_COUNT,
-               "kTypefaces[] and geometry.h disagree on how many typefaces "
-               "there are");
 
 static const char *const kRoundingModes[] = {
   "exact",
@@ -1389,7 +1369,6 @@ static void settings_defaults(void) {
   s_settings.minutes_mode = DEFAULT_MINUTES_MODE;
   s_settings.stroke_weight = DEFAULT_STROKE_WEIGHT;
   s_settings.rounding = DEFAULT_ROUNDING;
-  s_settings.typeface = DEFAULT_TYPEFACE;
   /*
    * Every slider starts at ZERO, and zero means the tuned layout - see
    * baked_offset(). Seeding them with the tuned numbers instead would mean a
@@ -1452,10 +1431,6 @@ static int32_t tuple_int(const Tuple *t) {
 
 static uint8_t clamp_date_format(int32_t v) {
   return (v >= 0 && v < DATE_FORMAT_COUNT) ? (uint8_t)v : DEFAULT_DATE_FORMAT;
-}
-
-static uint8_t clamp_typeface(int32_t v) {
-  return (v >= 0 && v < TYPEFACE_MODES) ? (uint8_t)v : DEFAULT_TYPEFACE;
 }
 
 static uint8_t clamp_rounding(int32_t v) {
@@ -1545,9 +1520,6 @@ static void inbox_received(DictionaryIterator *it, void *context) {
   }
   if ((t = dict_find(it, MESSAGE_KEY_OffBlockFive))) {
     s_settings.offset_block_five = clamp_offset(tuple_int(t));
-  }
-  if ((t = dict_find(it, MESSAGE_KEY_Typeface))) {
-    s_settings.typeface = clamp_typeface(tuple_int(t));
   }
   read_offset(it, MESSAGE_KEY_OffRelation, ROW_RELATION);
   read_offset(it, MESSAGE_KEY_OffPast, ROW_RELATION_PAST);

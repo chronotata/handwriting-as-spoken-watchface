@@ -375,13 +375,12 @@
 #define DEFAULT_ROUNDING 0
 
 /*
- * Which set of word images to draw with - see kTypefaces in handwritten.c.
+ * There is no typeface setting any more. The watchface shipped both the
+ * rendered font and the handwriting, with a switch, so that the two could
+ * be compared on the wrist while the handwriting was being drawn a family
+ * at a time. All 83 words are drawn now, and carrying the font cost about
+ * 97 kB of a 256 kB resource budget.
  *
- *   0  font          the rendered script face
- *   1  handwritten   real handwriting, for the words that have been drawn
- *
- * Both ship. A word that has not been drawn yet looks identical either way,
- * because geometry.h gives it the font's row in both tables, so switching is
- * safe at any point during the drawing.
+ * tools/tune.py still renders it - the family boxes are measured from its
+ * ink, and the pages drawn on ARE its images - it is simply not packaged.
  */
-#define DEFAULT_TYPEFACE 1

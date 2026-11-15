@@ -103,21 +103,16 @@ static void fail(const char *what, int h, int m, const char *detail) {
 /* ------------------------------------------------------------------ */
 
 /*
- * The word's geometry in whichever typeface is set, indexed here rather than
- * borrowed from handwritten.c's wg(). The two look the same on the page and
- * that is the point: a wg() that ignored the setting, or read the wrong row,
- * would still agree with itself, and every width check would pass while the
- * watch drew the other typeface.
+ * The word's geometry, indexed here rather than borrowed from
+ * handwritten.c's wg(). The two look the same on the page and that is the
+ * point: a wg() that read the wrong row would still agree with itself, and
+ * every width check would pass while the watch drew something else.
  */
-_Static_assert(GENERATED_TYPEFACES == TYPEFACE_COUNT,
-               "generated.h and geometry.h disagree on how many typefaces "
-               "there are - re-run tools/tune.py");
-
 static const WordGeom *gw(uint8_t word) {
-  return &WORDS[s_settings.typeface][word];
+  return &WORDS[word];
 }
 static WordInk gink(uint8_t word) {
-  return WORD_INK[s_settings.typeface][word];
+  return WORD_INK[word];
 }
 
 /* "past" and "to" share the rung; only their offsets differ. Every
@@ -755,120 +750,6 @@ static void check_hedge_does_not_move_the_hour(void) {
  *   family box - so only widths differ. If a row moved, the comparison the
  *   setting exists for would be worthless.
  */
-static void check_typefaces(void) {
-  char buf[200];
-  int drawn = 0, shared = 0;
-
-  for (uint8_t w = 0; w < W_COUNT; w++) {
-    const WordGeom *f = &WORDS[0][w];
-    const WordGeom *h = &WORDS[1][w];
-
-    snprintf(buf, sizeof(buf),
-             "word %d: font {res %u, w %d, h %d, base %d}, "
-             "hand {res %u, w %d, h %d, base %d}", w,
-             (unsigned)f->res, f->w, f->h, f->base,
-             (unsigned)h->res, h->w, h->h, h->base);
-
-    CHECK(f->h == h->h, "the two typefaces disagree on a canvas height",
-          0, 0, buf);
-    CHECK(f->base == h->base, "the two typefaces disagree on a baseline",
-          0, 0, buf);
-
-    if (WORD_DRAWN[w]) {
-      CHECK(f->res != h->res,
-            "a drawn word still points at the font's image", 0, 0, buf);
-      drawn++;
-    } else {
-      CHECK(f->res == h->res && f->w == h->w,
-            "an undrawn word does not fall back to the font", 0, 0, buf);
-      shared++;
-    }
-  }
-
-  /* And the setting actually reaches the DRAWING.
-   *
-   * The first version of this counted words whose two table rows differ,
-   * which proved only that the table differs from itself - it passed
-   * happily with wg() hard-wired to the font. What is needed is something
-   * on the drawn face that could only have come from the chosen row, and
-   * the inline "minute(s)" is exactly that: it is placed one MIN_TRAIL to
-   * the right of the split number it follows, so its x is a function of
-   * that number's WIDTH. Draw "twenty-four" in a narrower hand and the
-   * annotation must move left with it. */
-  int differing_x = 0;
-  for (int t = 0; t < 1440; t += 7) {
-    struct tm tm = make_tm(232, 21, 7, 2026, t / 60, t % 60);
-
-    settings_defaults();
-    s_settings.typeface = 0;
-    s_have_prev = false;
-    refresh(&tm, true);
-    const Face a = s_face;
-
-    settings_defaults();
-    s_settings.typeface = 1;
-    s_have_prev = false;
-    refresh(&tm, true);
-
-    CHECK(s_face.count == a.count, "switching typeface changed the layout",
-          t / 60, t % 60, "element count");
-    for (int i = 0; i < s_face.count && i < a.count; i++) {
-      const Element *e = &s_face.items[i];
-      snprintf(buf, sizeof(buf),
-               "element %d: word %d/%d, row %d/%d, top %d/%d",
-               i, a.items[i].word, e->word, a.items[i].row, e->row,
-               a.items[i].top, e->top);
-      CHECK(e->word == a.items[i].word,
-            "switching typeface changed which word is drawn",
-            t / 60, t % 60, buf);
-      CHECK(e->row == a.items[i].row,
-            "switching typeface moved a word to another row",
-            t / 60, t % 60, buf);
-      if (e->x != a.items[i].x) {
-        differing_x++;
-      }
-      /* The inline annotation, against the width of the word it follows -
-       * in whichever typeface is showing. */
-      if (e->row == ROW_MINUTES_INLINE && i > 0) {
-        const Element *host = &s_face.items[i - 1];
-        const int after = host->x + gw(host->word)->w + MIN_TRAIL;
-        const int clamp = SCREEN_W - MARGIN - gw(e->word)->w;
-        const int want = (after < clamp) ? after : clamp;
-        snprintf(buf, sizeof(buf),
-                 "\"minute(s)\" at x %d, but the word before it is %dpx wide "
-                 "and ends at %d, so it belongs at %d",
-                 e->x, gw(host->word)->w, host->x + gw(host->word)->w, want);
-        CHECK(e->x == want,
-              "the inline annotation is placed off the other typeface's width",
-              t / 60, t % 60, buf);
-      }
-    }
-  }
-  CHECK(differing_x > 0,
-        "switching typeface moved nothing at all, so the setting is not "
-        "reaching the layout", 0, 0,
-        "some drawn word is narrower than its font original and something "
-        "downstream of it should have shifted");
-
-  printf("  typefaces            %d drawn, %d shared with the font\n",
-         drawn, shared);
-}
-
-/*
- * A SLIDER AT ZERO MEANS THE TUNED LAYOUT.
- *
- * The offsets in config.h are part of the design, not the sliders' starting
- * values: with every slider at 0 each row must already sit where it was
- * tuned to sit. That is the whole point of baking them in - it is what makes
- * "put it back to 0" restore the design rather than flatten the row, and
- * what lets src/pkjs/config.js honestly declare 0 instead of keeping a
- * second copy of the numbers.
- *
- * The expected values are written out here from config.h rather than read
- * back from baked_offset(). Asking the function under test what it thinks
- * the baseline is would pass whatever it returned, including zero - which is
- * exactly the regression this exists to catch.
- */
 static void check_baked_baseline(void) {
   char buf[200];
   static const struct { uint8_t row; int off; const char *name; } kBaked[] = {
@@ -1404,8 +1285,6 @@ static void check_rounded_modes_agree(void) {
 static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
                                uint8_t rnd) {
   char buf[210];
-  /* Put back on the way out - see the note in sweep_minutes(). */
-  const uint8_t was_typeface = s_settings.typeface;
   static const int kShifts[] = {-11, 6, 15};
   struct tm tm = make_tm(232, 21, 7, 2026, h, m);
 
@@ -1471,7 +1350,6 @@ static void check_block_offset(int h, int m, uint8_t fmt, uint8_t mode,
   s_settings.date_format = fmt;
   s_settings.minutes_mode = mode;
   s_settings.rounding = rnd;
-  s_settings.typeface = was_typeface;
 }
 
 /*
@@ -1647,13 +1525,14 @@ typedef struct {
   int overlap, limit, h, m;
 } Interweave;
 
-/* One table PER TYPEFACE. A single shared one filled up with the font's
- * pairs before the handwriting sweep began, and reported the handwriting as
- * having no interweaves at all - which is the opposite of the truth and
- * exactly the sort of quiet nothing that reads as good news. */
-static Interweave s_tight[TYPEFACE_COUNT][MAX_TIGHT];
-static int s_tight_n[TYPEFACE_COUNT];
-static int s_tight_dropped[TYPEFACE_COUNT];
+/* One table. There used to be one per typeface, because a single shared
+ * one filled up with the font's pairs before the handwriting sweep began
+ * and then reported the handwriting as having no interweaves at all - the
+ * opposite of the truth, and exactly the sort of quiet nothing that reads
+ * as good news. Only the handwriting ships now, so one is right again. */
+static Interweave s_tight[MAX_TIGHT];
+static int s_tight_n;
+static int s_tight_dropped;
 
 static void note_interweave(uint8_t upper, uint8_t lower, int overlap,
                             int limit, int h, int m) {
@@ -1662,55 +1541,49 @@ static void note_interweave(uint8_t upper, uint8_t lower, int overlap,
    * the row below at all - and skipping those left the handwriting with an
    * empty report, which reads as "nothing to look at" when what it means is
    * "everything is close but clear". A negative overlap is a gap. */
-  const uint8_t tf = s_settings.typeface;
-  for (int i = 0; i < s_tight_n[tf]; i++) {
-    if (s_tight[tf][i].upper == upper && s_tight[tf][i].lower == lower) {
-      if (limit - overlap < s_tight[tf][i].limit - s_tight[tf][i].overlap) {
-        s_tight[tf][i].overlap = overlap;
-        s_tight[tf][i].limit = limit;
-        s_tight[tf][i].h = h;
-        s_tight[tf][i].m = m;
+  for (int i = 0; i < s_tight_n; i++) {
+    if (s_tight[i].upper == upper && s_tight[i].lower == lower) {
+      if (limit - overlap < s_tight[i].limit - s_tight[i].overlap) {
+        s_tight[i].overlap = overlap;
+        s_tight[i].limit = limit;
+        s_tight[i].h = h;
+        s_tight[i].m = m;
       }
       return;
     }
   }
-  if (s_tight_n[tf] >= MAX_TIGHT) {
-    s_tight_dropped[tf]++;
+  if (s_tight_n >= MAX_TIGHT) {
+    s_tight_dropped++;
     return;
   }
-  Interweave *w = &s_tight[tf][s_tight_n[tf]++];
+  Interweave *w = &s_tight[s_tight_n++];
   w->upper = upper; w->lower = lower;
   w->overlap = overlap; w->limit = limit;
   w->h = h; w->m = m;
 }
 
 static void report_interweaves(void) {
-  printf("  stacked pairs seen   font %d, handwritten %d\n",
-         s_tight_n[0], s_tight_n[1]);
-  for (uint8_t tf = 0; tf < TYPEFACE_COUNT; tf++) {
-    int n = s_tight_n[tf];
-    if (!n) {
-      continue;
-    }
+  printf("  stacked pairs seen   %d\n", s_tight_n);
+  const int n = s_tight_n;
+  if (n) {
     /* Tightest first: least room left before the limit. */
     for (int i = 1; i < n; i++) {
       for (int j = i; j > 0; j--) {
-        const int a = s_tight[tf][j].limit - s_tight[tf][j].overlap;
-        const int b = s_tight[tf][j - 1].limit - s_tight[tf][j - 1].overlap;
+        const int a = s_tight[j].limit - s_tight[j].overlap;
+        const int b = s_tight[j - 1].limit - s_tight[j - 1].overlap;
         if (a >= b) {
           break;
         }
-        const Interweave tmp = s_tight[tf][j];
-        s_tight[tf][j] = s_tight[tf][j - 1];
-        s_tight[tf][j - 1] = tmp;
+        const Interweave tmp = s_tight[j];
+        s_tight[j] = s_tight[j - 1];
+        s_tight[j - 1] = tmp;
       }
     }
-    printf("\n  closest stacked pairs, %s - the times worth looking at\n",
-           kTypefaces[tf]);
+    printf("\n  closest stacked pairs - the times worth looking at\n");
     printf("  %-6s %-14s %-14s %s\n",
            "time", "descender of", "over", "reaches");
     for (int i = 0; i < n && i < 8; i++) {
-      const Interweave *w = &s_tight[tf][i];
+      const Interweave *w = &s_tight[i];
       if (w->overlap > 0) {
         printf("  %02d:%02d  %-14s %-14s %dpx INTO it, limit %d\n",
                w->h, w->m, WORD_TEXT[w->upper], WORD_TEXT[w->lower],
@@ -1722,9 +1595,9 @@ static void report_interweaves(void) {
       }
     }
     printf("  %d stacked pairs in all", n);
-    if (s_tight_dropped[tf]) {
+    if (s_tight_dropped) {
       printf(", plus %d not recorded - raise MAX_TIGHT",
-             s_tight_dropped[tf]);
+             s_tight_dropped);
     }
     printf("\n");
   }
@@ -2130,11 +2003,6 @@ static void check_message_routing(void) {
   CHECK(s_settings.rounding == 2, "Rounding did not arrive", 0, 0, "");
 
   settings_defaults();
-  send_setting_str(MESSAGE_KEY_Typeface, "1");
-  CHECK(s_settings.typeface == 1, "Typeface did not arrive", 0, 0,
-        "as a cstring, which is how Clay's select sends it");
-
-  settings_defaults();
   send_setting(MESSAGE_KEY_StrokeWeight, 14);
   CHECK(s_settings.stroke_weight == 14, "StrokeWeight did not arrive", 0, 0, "");
 
@@ -2207,14 +2075,12 @@ static void play_reveal(void) {
   }
 }
 
-static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding,
-                          uint8_t typeface) {
+static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding) {
   int redrawn = 0, moved = 0, elements = 0, peak_bitmaps = 0;
 
   s_settings.date_format = fmt;
   s_settings.minutes_mode = mode;
   s_settings.rounding = rounding;
-  s_settings.typeface = typeface;
   s_have_prev = false;
   s_last_yday = -1;
   drop_all_bitmaps();
@@ -2239,17 +2105,15 @@ static void sweep_minutes(uint8_t fmt, uint8_t mode, uint8_t rounding,
      */
     char sbuf[140];
     snprintf(sbuf, sizeof(sbuf),
-             "wanted fmt %d mode %d rounding %d typeface %d, found "
-             "%d %d %d %d", fmt, mode, rounding, typeface,
-             s_settings.date_format, s_settings.minutes_mode,
-             s_settings.rounding, s_settings.typeface);
+             "wanted fmt %d mode %d rounding %d, found %d %d %d",
+             fmt, mode, rounding, s_settings.date_format,
+             s_settings.minutes_mode, s_settings.rounding);
     CHECK(s_settings.date_format == fmt && s_settings.minutes_mode == mode &&
-          s_settings.rounding == rounding && s_settings.typeface == typeface,
+          s_settings.rounding == rounding,
           "a check left the sweep's settings changed behind it", h, m, sbuf);
     s_settings.date_format = fmt;
     s_settings.minutes_mode = mode;
     s_settings.rounding = rounding;
-    s_settings.typeface = typeface;
 
     Face before = s_face;
     const bool had_prev = s_have_prev;
@@ -2490,15 +2354,6 @@ static void check_settings(void) {
     CHECK(clamp_minutes_mode(f) == f, "minutes mode clamp", 0, 0, "in range");
   }
 
-  CHECK(clamp_typeface(-1) == DEFAULT_TYPEFACE, "typeface clamp", 0, 0,
-        "negative");
-  CHECK(clamp_typeface(TYPEFACE_MODES) == DEFAULT_TYPEFACE, "typeface clamp",
-        0, 0, "one past the end - a watch sent a typeface this build has no "
-        "images for would index off WORDS[]");
-  for (uint8_t f = 0; f < TYPEFACE_MODES; f++) {
-    CHECK(clamp_typeface(f) == f, "typeface clamp", 0, 0, "in range");
-  }
-
   CHECK(clamp_rounding(-1) == DEFAULT_ROUNDING, "rounding clamp", 0, 0, "negative");
   CHECK(clamp_rounding(ROUNDING_COUNT) == DEFAULT_ROUNDING, "rounding clamp",
         0, 0, "one past the end");
@@ -2640,16 +2495,10 @@ int main(void) {
   for (uint8_t fmt = 0; fmt < DATE_FORMAT_COUNT; fmt++) {
     for (uint8_t mode = 0; mode < MINUTES_MODE_COUNT; mode++) {
       for (uint8_t rnd = 0; rnd < ROUNDING_COUNT; rnd++) {
-        /* Both typefaces, because their WIDTHS differ and width is what the
-         * indent, bounds and date-line checks are about. A layout that fits
-         * in the font is not evidence that it fits in the handwriting. */
-        for (uint8_t tf = 0; tf < TYPEFACE_COUNT; tf++) {
-          printf("\ndate %d \"%s\"  x  minutes \"%s\"  x  reading \"%s\""
-                 "  x  %s\n",
-                 fmt, kDateFormats[fmt].sample, kMinutesModes[mode],
-                 kRoundingModes[rnd], kTypefaces[tf]);
-          sweep_minutes(fmt, mode, rnd, tf);
-        }
+        printf("\ndate %d \"%s\"  x  minutes \"%s\"  x  reading \"%s\"\n",
+               fmt, kDateFormats[fmt].sample, kMinutesModes[mode],
+               kRoundingModes[rnd]);
+        sweep_minutes(fmt, mode, rnd);
       }
     }
     sweep_dates(fmt);
@@ -2663,7 +2512,6 @@ int main(void) {
   check_offset_independence();
   check_rounded_modes_agree();
   check_hedge_does_not_move_the_hour();
-  check_typefaces();
   check_baked_baseline();
   check_hedge_erase();
   check_message_routing();

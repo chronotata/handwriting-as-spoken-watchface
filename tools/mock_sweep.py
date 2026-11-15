@@ -5,7 +5,7 @@
     python3 tools/mock_sweep.py stacks         # same modes as date_sweep.sh
     python3 tools/mock_sweep.py hours all
     python3 tools/mock_sweep.py 2026-02-29 14:35
-    python3 tools/mock_sweep.py stacks --rounding 0 --typeface 1
+    python3 tools/mock_sweep.py stacks --rounding 0
     python3 tools/mock_sweep.py all --families # one folder per settings set
 
 Writes shots-mock/. Every combination in seconds, deterministically, with no
@@ -51,7 +51,7 @@ layout here to drift.
 Faithful, therefore:
   - word placement, to the pixel, from the code that ships
   - which words are chosen, for every reading mode and setting
-  - the actual bitmaps, in either typeface, at their real sizes
+  - the actual bitmaps, at their real sizes
 
 Approximated:
   - colour. The palette ramp follows tint() in handwritten.c and the level
@@ -310,8 +310,6 @@ def main():
     ap.add_argument("--minutes", type=int, default=None,
                     help="0 auto, 1 never, 2 always")
     ap.add_argument("--format", type=int, default=None, dest="fmt")
-    ap.add_argument("--typeface", type=int, default=None,
-                    help="0 the font, 1 the handwriting")
     ap.add_argument("--scale", type=int, default=1,
                     help="write the images this many times larger")
     ap.add_argument("--families", action="store_true",
@@ -394,8 +392,7 @@ def main():
             opts = []
             for flag, val in (("--rounding", rounding),
                               ("--minutes", minutes),
-                              ("--format", args.fmt),
-                              ("--typeface", args.typeface)):
+                              ("--format", args.fmt),):
                 if val is not None:
                     opts += [flag, str(val)]
 

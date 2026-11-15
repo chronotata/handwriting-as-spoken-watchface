@@ -649,8 +649,10 @@ this in any project, not just this one:
 
 ## 7. The handwriting
 
-**Done.** Every one of the 83 words is drawn by hand, and both typefaces
-ship: **Lettering** in the settings swaps between them on the wrist.
+**Done.** Every one of the 83 words is drawn by hand, and the handwriting is
+now the only typeface that ships — the font and its **Lettering** switch were
+dropped once there was nothing left to compare, taking resources from about
+195 kB to 98 kB against the 256 kB publishing limit.
 
 ### 7.1 Why both
 
@@ -742,9 +744,8 @@ are not an input to anything generated. Do run `tools/test/run.sh`: the sweep
 covers both typefaces, so it will say if an offset tuned against the
 handwriting pushes the *font* layout into a collision.
 
-**Trim the build.** The `.pbw` reports **263.6 kB of resources against a
-256 kB publishing limit** — a warning, not an error, so it installs and runs;
-it just cannot be published. Roughly 140 kB of that is the font and 132 kB
+**~~Trim the build.~~ Done.** Resources are now about **98 kB against the
+256 kB publishing limit**, because the font typeface no longer ships. Roughly 140 kB of that is the font and 132 kB
 the handwriting, so dropping the font lands around 132 kB, half the limit.
 
 Do it as a **build switch, not a deletion**: the font images and the TTF stay
