@@ -301,13 +301,13 @@ static const WordInk WORD_INK[GENERATED_TYPEFACES][83] = {
     {16, 0},        /* minutes     drawn */
     {39, 18},        /* midnight    drawn */
     {37, 19},        /* midday      drawn */
-    {15, 1},        /* 0           drawn */
-    {14, 1},        /* 1           drawn */
+    {15, 0},        /* 0           drawn */
+    {15, 0},        /* 1           drawn */
     {15, 1},        /* 2           drawn */
     {15, 0},        /* 3           drawn */
-    {15, 1},        /* 4           drawn */
+    {15, 0},        /* 4           drawn */
     {15, 1},        /* 5           drawn */
-    {14, 1},        /* 6           drawn */
+    {15, 0},        /* 6           drawn */
     {15, 0},        /* 7           drawn */
     {15, 0},        /* 8           drawn */
     {15, 0},        /* 9           drawn */

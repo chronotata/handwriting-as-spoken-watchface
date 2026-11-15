@@ -423,17 +423,35 @@ def main():
                     print("  %-28s -> %s/%s.png" % (label, folder, name))
 
             # Shots this run did not write are left over from an earlier
-            # one, against whatever config.h said then. Named rather than
-            # deleted - a subset run is a normal thing to do, and silently
-            # emptying the folder around it would be worse. But comparing
-            # two folders and finding four stale files is exactly the kind
-            # of confusion this project keeps paying for.
+            # one, against whatever the tree said then. Named rather than
+            # deleted - rendering a subset into a folder is a normal thing
+            # to do, and silently emptying it around the caller would be
+            # worse.
+            #
+            # Said loudly, though, and in proportion. A handful of leftovers
+            # from an ad-hoc render is noise; a folder where most of the
+            # files predate the run is a trap, because they sit under the
+            # same names, in the same place, looking like part of the set.
+            # Redrawing three digits and then running `days` leaves 120
+            # shots showing the OLD ink in their date lines - which is
+            # exactly how this warning earned its keep.
             stale = sorted(p.name for p in out.glob("*.png")
                            if p.name not in written)
             if stale:
-                print("  %d older file(s) left from an earlier run: %s%s"
-                      % (len(stale), ", ".join(stale[:4]),
-                         ", ..." if len(stale) > 4 else ""), file=sys.stderr)
+                loud = len(stale) > len(written)
+                print("  %s%d of the %d file(s) in %s/ are from an EARLIER "
+                      "RUN,\n  not this one: %s%s"
+                      % ("*** " if loud else "", len(stale),
+                         len(stale) + len(written), folder,
+                         ", ".join(stale[:3]),
+                         ", ..." if len(stale) > 3 else ""), file=sys.stderr)
+                if loud:
+                    print("  They are rendered from whatever the tree held "
+                          "then, so do not compare\n  them with the %d just "
+                          "written. Re-render the lot with:  "
+                          "mock_sweep.py all%s"
+                          % (len(written), " --families" if args.families
+                             else ""), file=sys.stderr)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
