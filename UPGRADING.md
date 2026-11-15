@@ -402,11 +402,18 @@ filename, and say so.
 
 ## 8. Tuning without a rebuild
 
-Open the watchface's settings in the Pebble phone app. Fourteen sliders
-nudge a row up (negative) or down (positive) by up to 15px, and apply the
-moment you change them. No rebuild, no reinstall. The same page carries the
-colours, the date on/off toggle, the date format, whether `minute(s)` is
-spoken, and the stroke weight.
+Open the watchface's settings in the Pebble phone app and switch on **Show
+fine tuning** at the bottom. Fifteen sliders appear, each nudging a row up
+(negative) or down (positive) by up to 15px, applied the moment you change
+them. No rebuild, no reinstall. The same page carries the colours, the date
+on/off toggle, the date format, whether `minute(s)` is spoken, and the
+stroke weight.
+
+The section opens **collapsed every time**, so the Save button is a short
+scroll away for anyone who came for the colours. The toggle has no message
+key on purpose — it is a view control, not a setting, so nothing is sent to
+the watch or remembered. Every slider on the page is collapsed by type, so a
+new lever joins the section without being listed anywhere.
 
 **Zero is the tuned layout, not a flat one.** The offsets in
 `src/c/config.h` are baked into the design the same way `REL_TOP` is, and a

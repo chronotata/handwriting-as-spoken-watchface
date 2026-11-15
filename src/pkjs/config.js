@@ -159,8 +159,25 @@ module.exports = [
     type: 'section',
     items: [
       { type: 'heading', defaultValue: 'Fine tuning' },
+      // Collapsed by default: fifteen sliders stand between everything else
+      // on this page and the Save button, and most people opening it want
+      // the colours or the wording, not a pixel nudge. custom-clay.js hides
+      // the help text and every slider until this is switched on.
+      //
+      // Deliberately NO messageKey. It is a view control, not a setting:
+      // nothing is sent to the watch, nothing is stored, no message key is
+      // spent on it - and so the page opens collapsed every time, which is
+      // the point.
+      {
+        type: 'toggle',
+        id: 'showFineTuning',
+        label: 'Show fine tuning',
+        description: 'Nudge individual rows up or down by a pixel or two.',
+        defaultValue: false
+      },
       {
         type: 'text',
+        id: 'fineTuningHelp',
         defaultValue:
           '<strong>Zero is the tuned layout</strong>, not a flat one. ' +
           'Each slider nudges its row away from where the watchface was ' +

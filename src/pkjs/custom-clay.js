@@ -166,6 +166,52 @@ module.exports = function() {
     sync();
   });
 
+  /*
+   * COLLAPSE THE FINE TUNING SECTION.
+   *
+   * Fifteen sliders sit between the rest of the page and the Save button,
+   * and most visits are for the colours or the wording. So the section shows
+   * only its heading and a "Show fine tuning" toggle until asked.
+   *
+   * The sliders are found BY TYPE rather than by name: every slider on this
+   * page is a row offset, and a lever added later is collapsed with the rest
+   * without anyone remembering to list it here.
+   *
+   * Hidden is not the same as disabled, and the two do not interfere: the
+   * greying above decides whether a slider can affect the watch, this
+   * decides whether it is on screen at all. A slider can be both, and
+   * showing the section reveals it exactly as greyed as it was.
+   *
+   * FAILS OPEN. If this Clay cannot list items by type or by id, everything
+   * stays visible - a page that is merely long is far better than one with
+   * controls hidden and no way to reach them.
+   */
+  clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
+    if (typeof clayConfig.getItemById !== 'function' ||
+        typeof clayConfig.getItemsByType !== 'function') {
+      return;
+    }
+    var toggle = clayConfig.getItemById('showFineTuning');
+    if (!toggle) { return; }
+
+    function members() {
+      var list = (clayConfig.getItemsByType('slider') || []).slice();
+      var help = clayConfig.getItemById('fineTuningHelp');
+      if (help) { list.push(help); }
+      return list;
+    }
+
+    function apply() {
+      var open = !!toggle.get();
+      members().forEach(function (item) {
+        if (open) { item.show(); } else { item.hide(); }
+      });
+    }
+
+    toggle.on('change', apply);
+    apply();
+  });
+
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
     /* AFTER_BUILD can fire again if the page is rebuilt; the listeners are
      * delegated to `document` and only ever need attaching once. */

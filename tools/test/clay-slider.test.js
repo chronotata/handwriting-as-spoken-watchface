@@ -72,11 +72,15 @@ function dispatch(type, ev) {
 var REACH = require('./reachability.json');
 
 /* A Clay config item: a value, an enabled flag, and change listeners. */
-function makeItem(value) {
+function makeItem(value, type) {
   return {
+    type: type || 'select',
     value: value,
     enabled: true,
+    visible: true,
     handlers: [],
+    hide: function () { this.visible = false; },
+    show: function () { this.visible = true; },
     get: function () { return this.value; },
     set: function (v) {
       this.value = v;
@@ -95,14 +99,26 @@ function makeItem(value) {
 var items = {
   Rounding: makeItem('0'),
   MinutesText: makeItem('0'),
-  ShowDate: makeItem(true),
-  PaperColor: makeItem('000000')
+  ShowDate: makeItem(true, 'toggle'),
+  PaperColor: makeItem('000000', 'color')
 };
+/* Every row lever is a slider; DateFormat, the one non-lever the table
+ * governs, is a select - which matters to the collapse checks below, since
+ * the collapse goes by type and must leave DateFormat on screen. */
 Object.keys(REACH).forEach(function (cell) {
   REACH[cell].forEach(function (key) {
-    if (!items[key]) { items[key] = makeItem(0); }
+    if (!items[key]) {
+      items[key] = makeItem(0, key.indexOf('Off') === 0 ? 'slider' : 'select');
+    }
   });
 });
+
+/* Items addressed by id rather than messageKey: the collapse toggle, which
+ * has no messageKey on purpose, and the help text it hides. */
+var byId = {
+  showFineTuning: makeItem(false, 'toggle'),
+  fineTuningHelp: makeItem('', 'text')
+};
 
 /* Boot it exactly as Clay does: call with clayConfig as `this`, which
  * registers its AFTER_BUILD handlers, then fire them.
@@ -114,7 +130,12 @@ var afterBuilds = [];
 var fakeClayConfig = {
   EVENTS: { AFTER_BUILD: 'AFTER_BUILD' },
   on: function (evt, fn) { if (evt === 'AFTER_BUILD') { afterBuilds.push(fn); } },
-  getItemByMessageKey: function (key) { return items[key] || null; }
+  getItemByMessageKey: function (key) { return items[key] || null; },
+  getItemById: function (id) { return byId[id] || null; },
+  getItemsByType: function (type) {
+    return Object.keys(items).map(function (k) { return items[k]; })
+      .filter(function (item) { return item.type === type; });
+  }
 };
 require('../../src/pkjs/custom-clay.js').call(fakeClayConfig);
 var afterBuild = afterBuilds.length
@@ -394,6 +415,48 @@ var allLive = Object.keys(governed).every(function (key) {
   return items[key].enabled;
 });
 check('an unknown mode leaves every control usable', allLive);
+
+/*
+ * THE FINE TUNING SECTION OPENS COLLAPSED.
+ *
+ * Fifteen sliders sit between the rest of the page and Save, so they hide
+ * behind a toggle. The checks go by what a person would see: every slider
+ * hidden until asked, all of them back on asking, and nothing OUTSIDE the
+ * section ever touched - the collapse finds sliders by type, so a careless
+ * version could as easily have swept up the selects above it.
+ */
+var sliders = fakeClayConfig.getItemsByType('slider');
+check('there are sliders to collapse', sliders.length >= 10);
+
+/* AFTER_BUILD has already run above, with the toggle at its default. */
+check('fine tuning opens collapsed: every slider hidden',
+      sliders.every(function (s) { return !s.visible; }));
+check('fine tuning opens collapsed: its help text hidden',
+      !byId.fineTuningHelp.visible);
+check('the toggle itself stays visible', byId.showFineTuning.visible);
+
+byId.showFineTuning.set(true);
+check('switching it on shows every slider',
+      sliders.every(function (s) { return s.visible; }));
+check('switching it on shows the help text', byId.fineTuningHelp.visible);
+
+byId.showFineTuning.set(false);
+check('switching it off hides them again',
+      sliders.every(function (s) { return !s.visible; }) &&
+      !byId.fineTuningHelp.visible);
+
+check('controls outside the section are never hidden',
+      items.Rounding.visible && items.MinutesText.visible &&
+      items.ShowDate.visible && items.PaperColor.visible &&
+      items.DateFormat.visible);
+
+/* Hiding and greying are separate. Reveal the section in a mode that greys
+ * the hedge levers, and they must come back visible AND still greyed. */
+applyCell(0, 0, 1);
+byId.showFineTuning.set(true);
+check('a revealed slider keeps its greying',
+      items.OffHedge.visible && !items.OffHedge.enabled);
+byId.showFineTuning.set(false);
 
 console.log('  clay slider          ' + (pass + fail) + ' checks, ' +
             fail + ' failures');
