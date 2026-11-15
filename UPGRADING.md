@@ -406,6 +406,21 @@ the top corner, so an export can be renamed, split or merged freely. Pages
 drawn before that existed fall back to reading the family out of the
 filename, and say so.
 
+### Icons
+
+`python3 tools/make_icons.py` cuts the icons from the drawn pages:
+
+- `resources/images/menu_icon.png` — 25×25, *"to"*. The **watch's** list of
+  faces; built into the `.pbw` as a resource marked `"menuIcon": true`, which
+  `tune.py` adds to `package.json` whenever the file exists. Without it the
+  watch shows a default icon.
+- `store/icon-144.png`, `store/icon-80.png` — *"past"*. Uploaded separately in
+  the Developer Dashboard, used by the phone app and the store; they never
+  reach the watch.
+
+Different words on purpose: at 25px only a very short word survives.
+`--menu-word` and `--store-word` change them.
+
 ## 8. Tuning without a rebuild
 
 Open the watchface's settings in the Pebble phone app and switch on **Show

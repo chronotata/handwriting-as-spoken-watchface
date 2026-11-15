@@ -741,6 +741,21 @@ def main():
                            "storageFormat": "pbi"})
     media += hand_media
 
+    # The watch launcher's own icon: 25x25, "menuIcon": true, made by
+    # tools/make_icons.py from the drawn pages. Listed here rather than by
+    # hand because this function writes the WHOLE media list, so anything
+    # added to package.json directly is gone on the next run. Last, so no
+    # word's resource id moves because of it, and the same in both builds -
+    # it is the face's icon, not a word in either typeface.
+    menu_icon = IMGDIR / "menu_icon.png"
+    if menu_icon.exists():
+        media.append({"type": "bitmap", "name": "MENU_ICON",
+                      "file": "images/menu_icon.png", "menuIcon": True})
+    else:
+        print("note: no resources/images/menu_icon.png, so the watch will show "
+              "the default\n      icon in its list. Make one with: "
+              "python3 tools/make_icons.py")
+
     # Before a single number is written down, make sure the numbers describe
     # the files that are actually there.
     check_declared_sizes(rows, hand, box, rebox="--rebox" in sys.argv[1:])

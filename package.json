@@ -627,6 +627,12 @@
           "file": "images/h_nearly.png",
           "memoryFormat": "4BitPalette",
           "storageFormat": "pbi"
+        },
+        {
+          "type": "bitmap",
+          "name": "MENU_ICON",
+          "file": "images/menu_icon.png",
+          "menuIcon": true
         }
       ]
     },
