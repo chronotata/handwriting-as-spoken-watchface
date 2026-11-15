@@ -173,11 +173,12 @@
 
 typedef struct { uint8_t asc, desc; } WordInk;
 
-/* Ink above and below the baseline, per word and per typeface.
-   The shipping WORDS[] carries the family BOX, which is routinely
-   taller than the letters in it, so bounds-checking against that
-   would pass anything. This is what is really visible - and the
-   handwriting's extents are its own, measured off the drawn page. */
+/* Ink above and below the baseline, per word, in whichever
+   typeface this build carries. The shipping WORDS[] has the family
+   BOX, which is routinely taller than the letters in it, so
+   bounds-checking against that would pass anything. This is what
+   is really visible - for the handwriting, measured off the drawn
+   page; for the font, off its own render. */
 static const WordInk WORD_INK[83] = {
   {18, 1},        /* one */
   {32, 1},        /* two */

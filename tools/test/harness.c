@@ -728,28 +728,6 @@ static void check_hedge_does_not_move_the_hour(void) {
   printf("  hedge holds still    %d transitions\n", compared);
 }
 
-/*
- * TWO TYPEFACES, ONE LAYOUT.
- *
- * The font and the handwriting both ship, and the setting swaps between them
- * on the wrist so the two can be compared on the real screen. Three things
- * have to hold for that to be worth anything:
- *
- *   A word nobody has drawn is IDENTICAL in both - same resource, same
- *   width, same everything. That is what lets the handwriting be drawn a
- *   family at a time instead of all at once, and it is checked against
- *   WORD_DRAWN[], which tune.py writes separately from WORDS[]. Asking
- *   WORDS[] whether WORDS[] is right would pass whatever it said.
- *
- *   A word that HAS been drawn really does change. A wg() that ignored the
- *   setting would sail through every other check in this file, because a
- *   layout drawn entirely in the font is a perfectly legal layout.
- *
- *   Switching NEVER moves a row. Canvas height and baseline are identical
- *   between the two by construction - the drawing template is the font's own
- *   family box - so only widths differ. If a row moved, the comparison the
- *   setting exists for would be worthless.
- */
 static void check_baked_baseline(void) {
   char buf[200];
   static const struct { uint8_t row; int off; const char *name; } kBaked[] = {

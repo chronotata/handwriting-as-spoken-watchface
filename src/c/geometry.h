@@ -11,14 +11,17 @@
    built against silently - the same trick as TIME_BOX_H. */
 #define GEOMETRY_HAS_WEEKDAYS 1
 
-/* Marks a geometry.h that carries BOTH typefaces. Same guard
-   trick again: a stale file would compile with one table where
-   the watchface expects two, and index off the end of it. */
-/* Marks a geometry.h that carries the HANDWRITING ONLY.
-   The font used to ship beside it as a second table and a
-   setting; handwritten.c #errors without this, so a file
-   from either era cannot be built against the other. */
-#define GEOMETRY_IS_HANDWRITTEN 1
+/* Marks a geometry.h with ONE table. The font and the
+   handwriting used to ship side by side as two, with a
+   setting between them; handwritten.c #errors without this,
+   so a file from that era cannot be built against. */
+#define GEOMETRY_ONE_TABLE 1
+
+/* Which of the two this build carries. Informational - nothing
+   in the watchface branches on it, because WORDS[] already
+   names the resources. tools/sync.sh reads it to know which
+   images should be packaged. */
+#define GEOMETRY_TYPEFACE_HANDWRITING 1
 
 /* Family boxes: ascent + descent, and the shared baseline offset. */
 #define TIME_BOX_H 51
@@ -132,10 +135,9 @@ typedef enum {
   W_COUNT
 } WordId;
 
-/* [0] the font, [1] the handwriting. A word nobody has drawn yet
-   repeats its font row, so the two typefaces can be swapped at any
-   time and an undrawn word simply does not change. Nothing in the
-   watchface has to know which words exist in which typeface. */
+/* One row per word, in handwriting. Height and baseline are the
+   family box's either way, so the layout is identical whichever
+   typeface is built - only widths differ. */
 static const WordGeom WORDS[W_COUNT] = {
   {RESOURCE_ID_H_ONE, 47, 51, 34},
   {RESOURCE_ID_H_TWO, 57, 51, 34},

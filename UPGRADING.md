@@ -347,19 +347,39 @@ real hardware the same way `--emulator` does from the simulator.
 
 ## 7b. Handwriting
 
-**Only the handwriting ships.** The rendered font used to ship beside it
-with a **Lettering** switch, so the two could be compared on the wrist while
-the handwriting was drawn a family at a time. All 83 words are drawn now, and
-carrying the font cost about 97 kB of a 256 kB resource budget — so it went,
-along with the setting.
+**A build carries one typeface: the handwriting, or the font.**
 
-`tune.py` still renders it, and has to: the family boxes are measured from
-its ink, `extract_handwriting.py` cuts the drawn pages to those boxes, and
-the pages you draw over **are** its images. It is simply not packaged, and
-`geometry.h` carries one table rather than two.
+```
+python3 tools/tune.py            # the handwriting (default)
+python3 tools/tune.py --font     # the rendered font instead
+```
 
-The consequence is that **every word must be drawn** — there is no fallback
-left. `tune.py` refuses to write a `geometry.h` with a hole in it.
+They used to ship side by side with a **Lettering** switch, so the
+handwriting could be compared on the wrist while it was drawn a family at a
+time. Both together came to 263 kB of resources against a 256 kB publishing
+limit; one alone is about 132 kB. Once every word was drawn, the comparison
+stopped earning its keep, and the switch went.
+
+`tune.py` renders the font on **every** run either way, and has to: the
+family boxes are measured from its ink, `extract_handwriting.py` cuts the
+drawn pages to those boxes, and the pages you draw over **are** its images.
+`--font` only changes what gets packaged and what `geometry.h` points at.
+Heights and baselines come from the family box in both, so the layout is
+identical — only the word widths differ.
+
+**Without `--font`, every word must be drawn.** There is no per-word
+fallback between the two, and `tune.py` refuses to write a `geometry.h` with
+a hole in it — naming the missing words and suggesting `--font`.
+
+**With `--font`, the handwriting is not read at all.** A fresh clone with no
+ink builds fine, and so does anyone who swaps in a different TTF at
+`resources/fonts/watchface.ttf` and wants to see it before drawing a thing.
+That is the reason the font stays in the repo.
+
+`--font` is not remembered. Each `tune.py` run picks one, so run it the same
+way every time while you're working in that mode. `tools/sync.sh` reads which
+one the last run chose from `geometry.h` and checks the packaged images
+match.
 
 The loop:
 
@@ -886,8 +906,8 @@ the layout-versus-limit decision in `CONTEXT.md` §8. That is a known state
 and not a reason to stop, but it does mean `run.sh` must not be chained with
 `&&` — everything after it would be skipped.
 
-**Resources are about 98 kB** against a 256 kB publishing limit, since the
-font stopped shipping. §7b.
+**Resources are about 132 kB** against a 256 kB publishing limit, since a
+build carries one typeface. §7b.
 
 **Step 5 needs a sweep build**, because only one screenshot can be taken per
 shot (§11) so the face has to arrive complete. `tools/sweep.sh` does the
@@ -918,6 +938,6 @@ The full list, with reasoning, is `CONTEXT.md` §8. In short:
   `config.h` — add the slider value to the constant, then zero the slider.
   No regeneration needed; do run `tools/test/run.sh`.
 - ~~Trim the build for publishing.~~ **Done** — the font no longer ships,
-  which took resources from about 195 kB to 98 kB against the 256 kB limit.
+  which took resources from 263 kB to about 132 kB against the 256 kB limit.
   Its images and the TTF stay in the repo; see §7b.
 - **Look at the dates**, per §11 above.

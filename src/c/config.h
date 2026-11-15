@@ -379,7 +379,7 @@
  * rendered font and the handwriting, with a switch, so that the two could
  * be compared on the wrist while the handwriting was being drawn a family
  * at a time. All 83 words are drawn now, and carrying the font cost about
- * 97 kB of a 256 kB resource budget.
+ * about 131 kB of a 256 kB resource budget.
  *
  * tools/tune.py still renders it - the family boxes are measured from its
  * ink, and the pages drawn on ARE its images - it is simply not packaged.

@@ -652,7 +652,8 @@ this in any project, not just this one:
 **Done.** Every one of the 83 words is drawn by hand, and the handwriting is
 now the only typeface that ships — the font and its **Lettering** switch were
 dropped once there was nothing left to compare, taking resources from about
-195 kB to 98 kB against the 256 kB publishing limit.
+263 kB to about 132 kB against the 256 kB publishing limit. `tune.py
+--font` builds the rendered font instead, for anyone without ink.
 
 ### 7.1 Why both
 
@@ -744,7 +745,7 @@ are not an input to anything generated. Do run `tools/test/run.sh`: the sweep
 covers both typefaces, so it will say if an offset tuned against the
 handwriting pushes the *font* layout into a collision.
 
-**~~Trim the build.~~ Done.** Resources are now about **98 kB against the
+**~~Trim the build.~~ Done.** Resources are now about **132 kB against the
 256 kB publishing limit**, because the font typeface no longer ships. Roughly 140 kB of that is the font and 132 kB
 the handwriting, so dropping the font lands around 132 kB, half the limit.
 

@@ -26,8 +26,8 @@
 #error "src/c/geometry.h has no weekday words. Run: python3 tools/tune.py"
 #endif
 
-#ifndef GEOMETRY_IS_HANDWRITTEN
-#error "src/c/geometry.h still carries the font as a second table. Run: python3 tools/tune.py"
+#ifndef GEOMETRY_ONE_TABLE
+#error "src/c/geometry.h is from the two-typeface era. Run: python3 tools/tune.py (or --font)"
 #endif
 
 /*
@@ -245,7 +245,7 @@ static GBitmap *s_cache[W_COUNT];   /* only the words on screen are loaded */
  * handwriting - with a setting to swap them on the wrist, which is how the
  * handwriting got drawn a family at a time while the watchface stayed
  * usable. All 83 words are drawn, so the font has no job left at runtime,
- * and shipping it cost about 97 kB of a 256 kB budget.
+ * and shipping it cost about 131 kB of a 256 kB budget.
  *
  * It is still rendered by tools/tune.py, because the family boxes are
  * measured from its ink and the drawing templates ARE its images - it just
