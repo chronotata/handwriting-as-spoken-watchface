@@ -53,10 +53,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONFIG=src/c/config.h
-# Same default as tools/sync.sh, and overridable the same way. That file is
-# gitignored for having machine-specific paths in it; this one takes the
-# path from the environment so it can stay committed.
-BUILD_DIR="${BUILD_DIR:-/home/chrono/handwritten-british}"
+# The build folder is machine-specific, so it is never written here. It
+# comes from the environment, or failing that from tools/sync.sh - which is
+# gitignored precisely because it holds this sort of path, and which every
+# build already depends on.
+if [ -z "${BUILD_DIR:-}" ] && [ -f tools/sync.sh ]; then
+  BUILD_DIR=$(sed -n 's/^BUILD_DIR="\${BUILD_DIR:-\(.*\)}"$/\1/p' tools/sync.sh | head -1)
+fi
+if [ -z "${BUILD_DIR:-}" ]; then
+  echo "no build folder: set BUILD_DIR, or write tools/sync.sh (UPGRADING.md 3)" >&2
+  exit 1
+fi
 EMU="${PEBBLE_EMULATOR:-emery}"
 
 speed() { sed -n 's/^#define WRITE_SPEED \([0-9]\+\).*/\1/p' "$CONFIG"; }

@@ -1,4 +1,4 @@
-# Handwritten (British) — Build Guide
+# Handwritten As Spoken — Build Guide
 
 Confirmed working end-to-end: builds clean, runs in the emulator, installs
 and displays correctly on a real Pebble Time 2 over Dev Connect. This is the
@@ -128,6 +128,12 @@ cd ~
 pebble new-project handwritten-british
 cd handwritten-british
 ```
+
+(The folder name is a leftover of the project's first working title,
+*Handwritten (British)* — chosen on the mistaken idea that telling the time
+this way was a British convention. The watchface is **Handwritten As
+Spoken**; the folder can be called anything, and this guide keeps the old
+name only so its paths stay consistent.)
 
 Copy in, from this chat's deliverables, replacing the generated versions:
 ```
@@ -873,11 +879,18 @@ generated in the git folder**, and the build folder only ever receives a
 copy (§ `tools/sync.sh`).
 
 **Do not paste this as one block.** Steps 2 and 5 are meant to be read
-before continuing, and `run.sh` currently exits non-zero — see below.
+before continuing.
+
+Set the two folders first — these are examples, use your own:
 
 ```bash
-# 1. Regenerate, in the git folder
-cd /mnt/c/Users/chron/Documents/GitHub/handwriting-as-spoken-watchface
+GIT=/mnt/c/Users/<you>/Documents/GitHub/handwriting-as-spoken-watchface
+BUILD=~/handwritten-british             # the build folder from §3
+```
+
+```bash
+# 1. Regenerate, in the git folder (add --font to tune.py for a font build)
+cd "$GIT"
 python3 tools/extract_handwriting.py    # re-cut the ink from the PDFs
 python3 tools/tune.py                   # geometry.h, generated.h, images
 
@@ -887,20 +900,21 @@ tools/test/run.sh                       # layout suite
 
 # 3. Copy to the build folder and build
 bash tools/sync.sh
-cd /home/chrono/handwritten-british
+cd "$BUILD"
 pebble build
 
 # 4. Emulator
 pebble install --emulator emery
 
-# 5. Screenshot sweep, back in the git folder. This handles the sweep build
-#    itself: WRITE_SPEED 0, sync, build, install, sweep, then put it all
-#    back. Do NOT call tools/date_sweep.sh directly.
-cd /mnt/c/Users/chron/Documents/GitHub/handwriting-as-spoken-watchface
-tools/sweep.sh                          # days, dates, times -> shots/
+# 5. Look at it, back in the git folder.
+cd "$GIT"
+python3 tools/mock_sweep.py all --families   # placement: 2 seconds, no emulator
+tools/sweep.sh                          # the real display, on the emulator
+                                        # (handles the sweep build itself -
+                                        # do NOT call tools/date_sweep.sh)
 
 # 6. The real watch, from the build folder
-cd /home/chrono/handwritten-british
+cd "$BUILD"
 pebble install --cloudpebble
 ```
 
@@ -908,10 +922,11 @@ pebble install --cloudpebble
 box has moved — run §11c's three-step `--rebox` sequence in place of step 1,
 then carry on from step 2.
 
-**`run.sh` currently fails**, on the handwriting interweave check, pending
-the layout-versus-limit decision in `CONTEXT.md` §8. That is a known state
-and not a reason to stop, but it does mean `run.sh` must not be chained with
-`&&` — everything after it would be skipped.
+**`run.sh` should pass with 0 failures.** If it ever reports interweave
+failures again, `python3 tools/inspect_failures.py` renders one picture per
+distinct collision rather than one per failure; and
+`python3 tools/preview_offset.py NAME=value ...` shows what an offset change
+would touch, everywhere, before you make it.
 
 **Resources are about 132 kB** against a 256 kB publishing limit, since a
 build carries one typeface. §7b.
@@ -941,10 +956,9 @@ committed from the machine that runs this loop.
 
 The full list, with reasoning, is `CONTEXT.md` §8. In short:
 
-- **Bake the offsets** currently sitting in the Clay sliders into
-  `config.h` — add the slider value to the constant, then zero the slider.
-  No regeneration needed; do run `tools/test/run.sh`.
-- ~~Trim the build for publishing.~~ **Done** — the font no longer ships,
-  which took resources from 263 kB to about 132 kB against the 256 kB limit.
-  Its images and the TTF stay in the repo; see §7b.
-- **Look at the dates**, per §11 above.
+- **Publish to the Pebble appstore** — screenshots at 200×228, a
+  description, a version bump.
+
+Done since the last release: offsets baked (every slider zero), the build
+trimmed to one typeface (§7b), the dates checked by eye, and the test suite
+passing outright.

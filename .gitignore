@@ -30,3 +30,9 @@ shots/
 # take two seconds to rebuild. The glob covers --families, which writes one
 # folder per settings set: shots-mock-nearest/, shots-mock-always-min/, ...
 shots-mock*/
+
+# Pictures of every interweave failure, from tools/inspect_failures.py.
+shots-failure-inspect/
+
+# Before/after pictures of a config.h change, from tools/preview_offset.py.
+shots-offset-preview/

@@ -1581,6 +1581,43 @@ static void report_interweaves(void) {
   }
 }
 
+/*
+ * Every interweave failure, one line each, for tools/inspect_failures.py.
+ *
+ * Opt-in through HARNESS_INTERWEAVE_LOG, so an ordinary run.sh writes
+ * nothing. The failure output above is capped and summarised for reading;
+ * this is the uncapped, machine-readable list, carrying the settings each
+ * failure happened under - which is what it takes to render it.
+ */
+static FILE *interweave_log(void) {
+  static int opened = 0;
+  static FILE *log = NULL;
+  if (!opened) {
+    opened = 1;
+    const char *path = getenv("HARNESS_INTERWEAVE_LOG");
+    if (path && *path) {
+      log = fopen(path, "w");
+    }
+  }
+  return log;
+}
+
+/* Every stacked pair, pass or fail, for tools/preview_offset.py - which
+ * compares two configs pair by pair to say exactly what an offset change
+ * touches. Opt-in through HARNESS_PAIRS_LOG, like the failure log above. */
+static FILE *pairs_log(void) {
+  static int opened = 0;
+  static FILE *log = NULL;
+  if (!opened) {
+    opened = 1;
+    const char *path = getenv("HARNESS_PAIRS_LOG");
+    if (path && *path) {
+      log = fopen(path, "w");
+    }
+  }
+  return log;
+}
+
 static void check_ink_overlap(const Face *f, int h, int m) {
   char buf[220];
   const Element *prev = NULL;
@@ -1603,6 +1640,19 @@ static void check_ink_overlap(const Face *f, int h, int m) {
                "%d ascender (limit %d)", prev->word, upper_bottom, e->word,
                lower_top, overlap, lower_asc, limit);
       CHECK(overlap <= limit, "rows interweave too deeply", h, m, buf);
+      if (overlap > limit && interweave_log()) {
+        /* h m rounding minutes date_format upper lower overlap limit asc */
+        fprintf(interweave_log(), "%d %d %d %d %d %d %d %d %d %d\n", h, m,
+                s_settings.rounding, s_settings.minutes_mode,
+                s_settings.date_format, prev->word, e->word, overlap, limit,
+                lower_asc);
+      }
+      if (pairs_log()) {
+        /* h m rounding minutes date_format upper lower overlap limit */
+        fprintf(pairs_log(), "%d %d %d %d %d %d %d %d %d\n", h, m,
+                s_settings.rounding, s_settings.minutes_mode,
+                s_settings.date_format, prev->word, e->word, overlap, limit);
+      }
       note_interweave(prev->word, e->word, overlap, limit, h, m);
 
       /* and neither may reach the other's x-height band */

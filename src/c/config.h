@@ -148,7 +148,14 @@
   */
 #define OFFSET_MINUTE -12  /* number WITH "minute(s)" stacked below   */
 #define OFFSET_MINUTE_ALONE -1  /* number with nothing below it            */
-#define OFFSET_MINUTE_SPLIT 4  /* the lower half of a split word          */
+/*
+ * 3, not the 4 it was tuned to by eye: at 4, once OFFSET_PAST lifted "past"
+ * to -5, the "f" of "four" and "five" reached 9px into "past" against an 8px
+ * limit at :24/:25 - the suite's only failures. Up 1px they sit exactly on
+ * the limit, and nothing else crosses it (tools/preview_offset.py compared
+ * every minute in every mode before the change was made).
+ */
+#define OFFSET_MINUTE_SPLIT 3  /* the lower half of a split word          */
 
  /*
   * "minute(s)" gets TWO offsets because it appears in two quite different
@@ -158,7 +165,8 @@
   * constrains it and its distance from "past"/"to" is pure taste, so
   * OFFSET_MINUTES_OWN is free.
   */
-#define OFFSET_MINUTES 4  /* "minute(s)" beside a split number       */
+#define OFFSET_MINUTES 3  /* "minute(s)" beside a split number       */
+                          /* = OFFSET_MINUTE_SPLIT, moved with it       */
 #define OFFSET_MINUTES_OWN -11  /* "minute(s)" on a line of its own        */
 
 #define OFFSET_RELATION -1  /* "past" / "to", both together      */

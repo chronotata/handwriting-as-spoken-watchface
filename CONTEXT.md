@@ -1,14 +1,10 @@
-# Handwritten (British) — Project Context
+# Handwritten As Spoken — Project Context
 
-Status: **v1.2 — feature complete for the rendered typeface.** Built,
+Status: **feature complete, being prepared for the Pebble appstore.** Built,
 installed and confirmed working on both the emulator and real Pebble Time 2
-hardware, including the uniform family boxes (§2, §3.2) and the selectable
-date formats (§3.4) — both of which were arithmetic and a layout sweep only
-until they were seen on the watch.
-
-The last round of work — the larger type, the SOLO wording on the hour, and
-the three ways of reading the minute — passes the full sweep but is newer
-than the last hardware confirmation. Update this line once it has been worn.
+hardware. All 83 words are drawn by hand; the handwriting is the default
+build, and `tune.py --font` builds the bundled font instead. The version
+number lives in `package.json`.
 
 This document describes what shipped and why. For the blow-by-blow of how it got here — three failed masking schemes,
 the font-vs-bitmap decision, the split-line layout exploration — see the
@@ -18,7 +14,7 @@ project's chat history; it isn't repeated here.
 
 ## 1. What this is
 
-A British-English rewrite of the 2014 `Handwritten` Pebble watchface,
+A rewrite of the 2014 `Handwritten` Pebble watchface,
 native to the Pebble Time 2 (Emery, 200×228):
 
 1. Speaks the time as it's said — *"quarter past three"*, *"twenty-nine
@@ -445,7 +441,7 @@ What it checks:
 | on the hour | every word in the centred layouts is `SOLO`-sized and on `ROW_SOLO` |
 | rounding | the spoken minute is always a multiple of five and never more than two minutes from the real one, and the hedge agrees with the direction it moved |
 | hedge | first in reading order, flush with the margin, never a step in, never outside the spoken mode |
-| two typefaces | every word's canvas height and baseline are identical in both, so switching moves no row; a word not yet drawn falls back to the font EXACTLY, checked against a `WORD_DRAWN[]` table `tune.py` writes separately from `WORDS[]`; and the setting is proved to reach the drawing through the inline annotation, whose x is a function of the width of the word it follows |
+| one typeface | `geometry.h` carries a single table, and the suite runs against whichever typeface the last `tune.py` chose (handwriting, or `--font`); a handwriting build refuses to generate at all while any word is undrawn |
 | baked baseline | with every slider at zero each row draws at exactly its `config.h` offset, in all three reading modes, and a slider ADDS to that rather than replacing it — with the expected values transcribed from `config.h` rather than read back from `baked_offset()` |
 | hedge rub-out | only a hedge is ever erased, only when the new face has none, never outside the spoken mode, and never when one hedge merely replaces another — with the expectation computed from the previous face rather than from `collect_leaving()`. The rub-out itself is checked on the DRAWN RECTANGLES: left edge pinned, width shrinking to nothing. 287 erasures a day |
 | hedge holds still | across all 46 on-the-hour transitions, the hedged face and the un-hedged one place every other word at the same row, x and top — asserted on POSITION, not on the animation flags, because position is the cause and a reveal rewritten to paper over a moving layout would still pass a flag check |
@@ -488,11 +484,7 @@ sliding the slice sideways instead of shortening it in place, and letting
 `prune_cache()` free the word mid-erase. And since the baseline was baked
 in: ignoring it so the sliders are absolute again, dropping it from one row,
 seeding the sliders with it so every offset doubles, and a slider replacing
-the baseline instead of adding to it. And since the second typeface landed:
-`wg()` hard-wired to the font so the setting did nothing, the typeface key
-dropped on the way in, an unclamped typeface indexing off `WORDS[]`, a drawn
-word reverting to the font's image, and an undrawn word falling back to the
-wrong one.
+the baseline instead of adding to it.
 
 **Two tests that could not fail, both found by injection.** The block
 lever's check computed what it expected by calling `in_phrase_block()` — the
@@ -649,28 +641,31 @@ this in any project, not just this one:
 
 ## 7. The handwriting
 
-**Done.** Every one of the 83 words is drawn by hand, and the handwriting is
-now the only typeface that ships — the font and its **Lettering** switch were
-dropped once there was nothing left to compare, taking resources from about
-263 kB to about 132 kB against the 256 kB publishing limit. `tune.py
---font` builds the rendered font instead, for anyone without ink.
+**Done.** Every one of the 83 words is drawn by hand.
 
-### 7.1 Why both
+### 7.1 One typeface per build
 
-Handwriting at 200×228 can only be judged against the thing it replaces, on
-the real screen, in real light. A rebuild-and-reinstall between each look is
-enough friction that nobody does that honestly, so the font stays in the
-build and the comparison is a tap away.
+    python3 tools/tune.py            # the handwriting (default)
+    python3 tools/tune.py --font     # the bundled font instead
 
-`geometry.h` carries `WORDS[2][W_COUNT]` — row 0 the font, row 1 the
-handwriting. A word nobody has drawn has its font row **copied** into the
-handwriting row, so nothing in the watchface ever asks whether a word exists
-in the chosen typeface: it always does. That is what let the vocabulary be
-drawn one family at a time with the watchface usable throughout.
+While the handwriting was being drawn, both typefaces shipped together with
+a **Lettering** switch: `WORDS[2][W_COUNT]`, an undrawn word repeating its
+font row so the watchface stayed usable throughout, and the comparison a tap
+away on the wrist. That cost 263 kB of resources against the 256 kB
+publishing limit, and once every word was drawn there was nothing left to
+compare. So a build now carries one table and one set of images, about
+132 kB, and the switch is gone.
 
-Canvas height and baseline are identical between the two by construction —
-the drawing template *is* the font's own family box — so switching changes
-widths and nothing else. No row moves.
+The font is still **rendered on every run** and has to be: the family boxes
+are measured from its ink, `extract_handwriting.py` cuts to those boxes, and
+the template pages *are* its images. `--font` only changes what is packaged
+and what `WORDS[]` points at. Canvas height and baseline come from the family
+box either way, so the layout is identical in both — only widths differ.
+
+Without `--font` every word must be drawn; there is no per-word fallback any
+more, and `tune.py` refuses to write a `geometry.h` with a hole in it. With
+`--font` the handwriting is not read at all, so a fresh clone with no ink, or
+someone trying a different TTF, builds immediately.
 
 ### 7.2 The pipeline
 
@@ -736,28 +731,30 @@ Nothing is broken. This is the list to pick up from.
 
 ### Pending — planned, not started
 
-**Bake the current offsets into `config.h`.** Offsets tuned on the watch
-since switching to the handwriting are still sitting in the Clay sliders.
-`OFFSET_*` are the baked baseline and the sliders are **deviations** from
-them, so the new constant is the old one *plus* the slider value; then zero
-the sliders and save. No `tune.py` or `extract_handwriting.py` run — offsets
-are not an input to anything generated. Do run `tools/test/run.sh`: the sweep
-covers both typefaces, so it will say if an offset tuned against the
-handwriting pushes the *font* layout into a collision.
+**~~Bake the current offsets into `config.h`.~~ Done.** Every Clay slider on
+the maintainer's watch reads zero, so `config.h` alone is the layout a new
+install gets.
 
-**~~Trim the build.~~ Done.** Resources are now about **132 kB against the
-256 kB publishing limit**, because the font typeface no longer ships. Roughly 140 kB of that is the font and 132 kB
-the handwriting, so dropping the font lands around 132 kB, half the limit.
+**~~Trim the build.~~ Done.** About **132 kB against the 256 kB publishing
+limit** — one typeface per build (§7.1) instead of two.
 
-Do it as a **build switch, not a deletion**: the font images and the TTF stay
-in the repo so anyone can rebuild the two-typeface version. `tune.py`
-already knows which words have handwriting, so emitting one table instead of
-two — and compiling out the typeface index, its setting and its message key —
-is contained. One consequence: with the font gone the per-word fallback goes
-too, so every word must be drawn. All 83 are, but adding a word to the
-vocabulary would then need ink before it could ship. Worth a guard.
+**Publish to the Pebble appstore.** Version bump in `package.json`, store
+screenshots (200×228, unframed; a GIF of the write-on reveal is the best
+showcase this face has), a plain-text description, then `pebble publish` or
+the Developer Dashboard. Emery-only, so only Pebble Time 2 owners see it.
 
-**Look at every date.** The harness already proves they *fit* — it sweeps all
+**~~Decide the last interweave failures.~~ Done — the suite passes.** The
+288 were two collisions counted once per hour, date format and minutes
+setting: the lower half of a split *twenty-four* / *twenty-five* reaching 9px
+into *past* against an 8px limit, after `OFFSET_PAST` went to -5.
+`OFFSET_MINUTE_SPLIT` and `OFFSET_MINUTES` moved from 4 to 3 together, lifting
+the split number and its inline *minutes* 1px; `tools/preview_offset.py`
+showed that touches only the split-number faces and fails nothing else, and
+the pair now sits exactly on the limit. `tools/inspect_failures.py` renders
+any failures the suite reports, should they come back.
+
+**~~Look at every date.~~ Done** — by eye, through the mock sweep, which is
+what prompted redrawing 0, 1 and 6. The harness already proves they *fit* — it sweeps all
 366 dates in both formats and reports the widest line:
 
 | format | widest | on | margin |
@@ -862,23 +859,19 @@ of them, then re-cut and re-embed. See `UPGRADING.md` §11c.
 
 ### Watching, not planned
 
-**One set of offsets, two typefaces.** They share canvas heights and
-baselines, so a vertical offset means the same thing in both — but the
-handwriting's ascenders and descenders sit differently from the font's, so an
-offset tuned against one can crowd the other. If they start pulling apart,
-the fix is per-typeface offsets, the same shape as the per-reading-mode block
-lever. Not built speculatively.
-
-**The fallback path is now untested.** The harness reports "83 drawn, 0
-shared with the font" — with the whole vocabulary drawn, the undrawn-word
-branch has nothing to exercise. Not broken, vacant. That counter is the
-signal, and it returns the moment a word joins the vocabulary.
+**One set of offsets, two possible builds.** A handwriting build and a
+`--font` build share every `OFFSET_*`, and the two faces' ascenders and
+descenders sit differently, so an offset tuned against one can crowd the
+other. Today the font build passes the suite outright (0 failures) with the
+offsets tuned for the handwriting. If someone tunes a font build and the two
+start pulling apart, the fix is per-typeface offsets, the same shape as the
+per-reading-mode block lever. Not built speculatively.
 
 **`BOLD_BLEND` is now a font-only question.** It exists to put weight back
 into a rendered face that draws ~20% thin on this panel (§2). A pressure pen
-brings its own weight, so it no longer applies to the handwriting at all, and
-the handwriting is what ships. The old plan to raise it past 0.26 toward 0.40
-is moot unless the font becomes the primary face again.
+brings its own weight, so it no longer applies to the handwriting at all.
+It matters only to `--font` builds; the old plan to raise it past 0.26 toward
+0.40 is theirs to revisit.
 
 **Dark ink on light paper.** Still a balance rather than a match: Medium
 reads "a little bit clearer" on the watch, Solid is crunchy. Unchanged, and

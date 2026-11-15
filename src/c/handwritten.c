@@ -1,5 +1,5 @@
 /*
- * Handwritten (British)
+ * Handwritten As Spoken
  *
  * Tells the time the way it is spoken: "quarter past three", "two to six",
  * "twenty-seven minutes to midnight", "midnight".
